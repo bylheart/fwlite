@@ -37,6 +37,7 @@ import atexit
 import platform
 import base64
 import encrypt
+import shutil
 import socket
 import struct
 from threading import Thread
@@ -92,8 +93,7 @@ def prestart():
     print('FGFW_Lite %s' % __version__)
 
     if not os.path.isfile('./userconf.ini'):
-        with open('./userconf.ini', 'w') as f:
-            f.write(open('./userconf.sample.ini').read())
+        shutil.copyfile('./userconf.sample.ini', './userconf.ini')
 
     if not os.path.isfile('./fgfw-lite/local.txt'):
         with open('./fgfw-lite/local.txt', 'w') as f:
@@ -101,7 +101,7 @@ def prestart():
 
     for item in ['./userconf.ini', './fgfw-lite/local.txt']:
         with open(item) as f:
-            data = open(item).read()
+            data = f.read()
         with open(item, 'w') as f:
             f.write(data)
 prestart()
@@ -1123,7 +1123,8 @@ class goagentHandler(FGFWProxyHandler):
         self.cmd = '{} {}/goagent/proxy.py'.format(PYTHON2, WORKINGDIR)
         self.enable = conf.userconf.dgetbool('goagent', 'enable', True)
         self.enableupdate = conf.userconf.dgetbool('goagent', 'update', True)
-        t = open('%s/goagent/proxy.py' % WORKINGDIR, 'rb').read()
+        with open('%s/goagent/proxy.py' % WORKINGDIR, 'rb') as f:
+            t = f.read()
         with open('%s/goagent/proxy.py' % WORKINGDIR, 'wb') as f:
             f.write(t.replace(b'sys.stdout.write', b'sys.stderr.write'))
         if self.enable:
@@ -1404,7 +1405,8 @@ class Config(object):
 
         if 'hosts' not in self.userconf.sections():
             self.userconf.add_section('hosts')
-            self.userconf.write(open('userconf.ini', 'w'))
+            with open('userconf.ini', 'w') as f:
+                self.userconf.write(f)
         for host, ip in self.userconf.items('hosts'):
             if ip not in HOSTS.get(host, []):
                 HOSTS[host].append(ip)
@@ -1425,7 +1427,8 @@ class Config(object):
         self.userconf.read('userconf.ini')
 
     def confsave(self):
-        self.version.write(open('version.ini', 'w'))
+        with open('version.ini', 'w') as f:
+            self.version.write(f)
         self.userconf.read('userconf.ini')
 
     def addparentproxy(self, name, proxy):
