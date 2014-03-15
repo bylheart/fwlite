@@ -1,7 +1,9 @@
 FGFW-Lite
 ============
 
-The toolkit I am using to get around the Great Firewall. FGFW-Lite dectets websites blocked by GFW automatically, and forward the request to a uncensored proxy server. Like COW, but with goagent and shadowsocks built in, support AutoProxy rules.
+A HTTP Proxy server help to get around the Great Firewall. FGFW-Lite dectets websites blocked by GFW automatically, and forward the request to a uncensored proxy server.
+
+Supported parent proxy server: GoAgent, Shadowsocks, SOCKS5 Proxy, HTTP Proxy, HTTP Proxy over SSL.
 
 For windows users, [download](https://github.com/v3aqb/fgfw-lite/archive/master.zip), edit userconf.ini as needed, and run FGFW_Lite.exe.
 
