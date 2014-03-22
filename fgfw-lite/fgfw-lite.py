@@ -649,8 +649,11 @@ class ProxyHandler(tornado.web.RequestHandler):
         logging.debug('retry? %s' % self._proxy_retry)
         self.remove_timeout()
         if self._close_flag:
-            self.upstream.close()
-            self.request.connection.stream.close()
+            try:
+                self.request.connection.stream.close()
+                self.upstream.close()
+            finally:
+                pass
         elif not self.upstream.closed():
             self.upstream.last_active = time.time()
             UPSTREAM_POOL[self.upstream_name].append(self.upstream)
