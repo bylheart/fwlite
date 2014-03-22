@@ -309,6 +309,7 @@ class ProxyHandler(tornado.web.RequestHandler):
         self._no_retry = False
         self._timeout = None
         self._success = False
+        self._close_flag = True
         self.ppname, self.pptype, self.pphost, self.ppport, self.ppusername, self.pppassword = 'direct', None, None, None, None, None
         self._proxylist = []
         self._crbuffer = []
@@ -627,17 +628,10 @@ class ProxyHandler(tornado.web.RequestHandler):
             self._success = True
             conn_header = self._headers.get("Connection", '').lower()
             if self.request.supports_http_1_1():
-                _close_flag = conn_header == 'close'
+                self._close_flag = conn_header == 'close'
             else:
-                _close_flag = conn_header != 'keep_alive'
+                self._close_flag = conn_header != 'keep_alive'
             self.upstream.set_close_callback(None)
-            if _close_flag:
-                self.upstream.close()
-                client.close()
-            elif not self.upstream.closed():
-                self.upstream.last_active = time.time()
-                UPSTREAM_POOL[self.upstream_name].append(self.upstream)
-                logging.debug('pooling remote connection')
             if not self._finished:
                 self.finish()
 
@@ -654,6 +648,13 @@ class ProxyHandler(tornado.web.RequestHandler):
         logging.debug('self._success? %s' % self._success)
         logging.debug('retry? %s' % self._proxy_retry)
         self.remove_timeout()
+        if self._close_flag:
+            self.upstream.close()
+            self.request.connection.stream.close()
+        elif not self.upstream.closed():
+            self.upstream.last_active = time.time()
+            UPSTREAM_POOL[self.upstream_name].append(self.upstream)
+            logging.debug('pooling remote connection')
         if all((self._success, self.get_status() < 400, self._proxy_retry)) or\
                 all((self.request.method == 'CONNECT', not self._success, self.ppname == 'direct', self._proxylist)):
             rule = '%s%s' % ('|https://' if self.request.method == 'CONNECT' else '|http://', self.request.host.split(':')[0])
