@@ -283,8 +283,11 @@ class ProxyHandler(tornado.web.RequestHandler):
     executor = ThreadPoolExecutor(10)
 
     def _getparent(self, level=1):
-        if not self._proxylist:
+        if self._proxylist is None:
             self._proxylist = PARENT_PROXY.parentproxy(self.request.uri, self.request.host.rsplit(':', 1)[0], level)
+        if not self._proxylist:
+            self.send_error(504)
+            return
         self.ppname = self._proxylist.pop(0)
         p = urlparse.urlparse(conf.parentdict.get(self.ppname))
         self.pptype, self.pphost, self.ppport, self.ppusername, self.pppassword = (p.scheme or None, p.hostname or p.path or None, p.port, p.username, p.password)
@@ -311,7 +314,7 @@ class ProxyHandler(tornado.web.RequestHandler):
         self._success = False
         self._close_flag = True
         self.ppname, self.pptype, self.pphost, self.ppport, self.ppusername, self.pppassword = 'direct', None, None, None, None, None
-        self._proxylist = []
+        self._proxylist = None
         self._crbuffer = []
         self._state = 'prepare'
         # transparent proxy
@@ -652,7 +655,7 @@ class ProxyHandler(tornado.web.RequestHandler):
             try:
                 self.request.connection.stream.close()
                 self.upstream.close()
-            finally:
+            except:
                 pass
         elif not self.upstream.closed():
             self.upstream.last_active = time.time()
