@@ -27,7 +27,7 @@ FGFW-Lite是一个辅助突破网络审查的HTTP代理服务器。它能自动�
 
 ##快速开始
 
-FGFW-Lite是便携软件，直接[下载](https://github.com/v3aqb/fgfw-lite/archive/0.4.zip)，解压即用。注意，**路径只支持英文，不能有空格**。
+FGFW-Lite是便携软件，直接[下载](https://github.com/v3aqb/fgfw-lite/archive/master.zip)，解压即用。注意，**路径只支持英文，不能有空格**。
 
 requirements under openSUSE:
 
