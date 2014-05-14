@@ -20,7 +20,7 @@
 
 from __future__ import print_function, unicode_literals, division
 
-__version__ = '0.4.0.0'
+__version__ = '4.1.0'
 
 import sys
 import os
@@ -318,6 +318,9 @@ class ProxyHandler(HTTPRequestHandler):
         s = []
         if self.pproxy.startswith('http'):
             s.append('%s %s %s\r\n' % (self.command, self.path, self.request_version))
+            if self.pproxyparse.username and 'Proxy-Authorization' not in self.headers:
+                a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
+                self.headers['Proxy-Authorization'] = 'Basic %s' % base64.b64encode(a.encode())
         else:
             s.append('%s /%s %s\r\n' % (self.command, '/'.join(self.path.split('/')[3:]), self.request_version))
         del self.headers['Proxy-Connection']
@@ -481,6 +484,9 @@ class ProxyHandler(HTTPRequestHandler):
 
         if self.pproxy.startswith('http'):
             s = ['%s %s %s\r\n' % (self.command, self.path, self.request_version), ]
+            if self.pproxyparse.username and 'Proxy-Authorization' not in self.headers:
+                a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
+                self.headers['Proxy-Authorization'] = 'Basic %s' % base64.b64encode(a.encode())
             s.append('\r\n'.join(['%s: %s' % (key, value) for key, value in self.headers.items()]))
             s.append('\r\n\r\n')
             remotesoc.sendall(''.join(s).encode())
@@ -578,18 +584,18 @@ class ProxyHandler(HTTPRequestHandler):
         if not self.pproxy:
             return socket.create_connection((host, port), timeout or 5)
         elif self.pproxy.startswith('http://'):
-            return socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port), timeout or 10)
+            return socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), timeout or 10)
         elif self.pproxy.startswith('https://'):
-            s = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port), timeout or 10)
+            s = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or 10)
             s = ssl.wrap_socket(s)
             s.do_handshake()
             return s
         elif self.pproxy.startswith('ss://'):
-            s = sssocket(self.pproxy, timeout or 10)
+            s = sssocket(self.pproxy, timeout, conf.parentdict.get('direct')[0])
             s.connect((host, port))
             return s
         elif self.pproxy.startswith('socks5://'):
-            s = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port), timeout or 10)
+            s = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or 10)
             s.sendall(b"\x05\x02\x00\x02" if self.pproxyparse.username else b"\x05\x01\x00")
             data = s.recv(2)
             if data == b'\x05\x02':  # basic auth
@@ -718,14 +724,38 @@ class ForceProxyHandler(ProxyHandler):
 
 
 class sssocket(object):
-    def __init__(self, ssServer, timeout=10):
-        p = urlparse.urlparse(ssServer)
-        _, sshost, ssport, ssmethod, sspassword = (p.scheme, p.hostname, p.port, p.username, p.password)
-        self._sock = socket.create_connection((sshost, ssport), timeout)
-        self.crypto = encrypt.Encryptor(sspassword, ssmethod)
+    def __init__(self, ssServer, timeout=10, parentproxy=''):
+        self.ssServer = ssServer
+        self.timeout = timeout
+        self.parentproxy = parentproxy
+        self.pproxyparse = urlparse.urlparse(parentproxy)
+        self._sock = None
+        self.crypto = None
         self.__rbuffer = b''
 
     def connect(self, address):
+        p = urlparse.urlparse(self.ssServer)
+        _, sshost, ssport, ssmethod, sspassword = (p.scheme, p.hostname, p.port, p.username, p.password)
+        if not self.parentproxy:
+            self._sock = socket.create_connection((sshost, ssport), self.timeout)
+        elif self.parentproxy.startswith('http://'):
+            self._sock = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), self.timeout)
+            s = 'CONNECT %s:%s HTTP/1.1\r\nHost: %s\r\n' % (sshost, ssport, sshost)
+            if self.pproxyparse.username:
+                a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
+                s += 'Proxy-Authorization: Basic %s\r\n' % base64.b64encode(a.encode())
+            s += '\r\n'
+            self._sock.sendall(s.encode())
+            remoterfile = self._sock.makefile('rb', 0)
+            data = remoterfile.readline()
+            if b'200' not in data:
+                logging.warning('connect to ssServer {} via proxy {} failed! {}'.format(self.ssServer, self.parentproxy, data))
+            while not data in (b'\r\n', b'\n', b''):
+                data = remoterfile.readline()
+        else:
+            logging.error('sssocket does not support parent proxy server: %s for now' % self.parentproxy)
+            return 1
+        self.crypto = encrypt.Encryptor(sspassword, ssmethod)
         host, port = address
         data = b''.join([b'\x03',
                         chr(len(host)).encode(),
@@ -1170,11 +1200,14 @@ class goagentHandler(FGFWProxyHandler):
 
         goagent.set('pac', 'enable', '0')
 
-        if conf.userconf.dget('goagent', 'proxy'):
+        goagent.set('proxy', 'autodetect', '0')
+        if conf.parentdict.get('direct')[0].startswith('http://'):
+            p = urlparse.urlparse(conf.parentdict.get('direct')[0])
             goagent.set('proxy', 'enable', '1')
-            host, port = conf.userconf.dget('goagent', 'proxy').rsplit(':')
-            goagent.set('proxy', 'host', host)
-            goagent.set('proxy', 'port', port)
+            goagent.set('proxy', 'host', p.hostname)
+            goagent.set('proxy', 'port', p.port)
+            goagent.set('proxy', 'username', p.username or '')
+            goagent.set('proxy', 'password', p.password or '')
         if '-hide' in sys.argv[1:]:
             goagent.set('listen', 'visible', '0')
         else:
@@ -1349,7 +1382,7 @@ class Config(object):
         self.userconf = SConfigParser()
         self.reload()
         self.UPDATE_INTV = 6
-        self.parentdict = {}
+        self.parentdict = {'direct': ('', 0), }
         self.FAKEHTTPS = set()
         self.WITHGAE = set()
         self.HOST = tuple()
@@ -1362,6 +1395,9 @@ class Config(object):
             self.listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
 
         self.region = set(x.upper() for x in self.userconf.dget('fgfwproxy', 'region', 'cn').split('|') if x.strip())
+
+        if self.userconf.dget('fgfwproxy', 'parentproxy', ''):
+            self.addparentproxy('direct', '%s 0' % self.userconf.dget('fgfwproxy', 'parentproxy', ''))
 
         for host, ip in self.userconf.items('hosts'):
             if ip not in HOSTS.get(host, []):
@@ -1397,6 +1433,8 @@ class Config(object):
         proxy, _, priority = proxy.partition(' ')
         if proxy == 'direct':
             proxy = ''
+        if proxy and not '//' in proxy:
+            proxy = 'http://%s' % proxy
         logging.info('adding parent proxy: %s: %s' % (name, proxy))
         self.parentdict[name] = (proxy, int(priority) if priority else 99)
 
@@ -1416,11 +1454,10 @@ def main():
     if os.name == 'nt':
         import ctypes
         ctypes.windll.kernel32.SetConsoleTitleW(u'FGFW-Lite v%s' % __version__)
-    goagentHandler()
-    snovaHandler()
     for k, v in conf.userconf.items('parents'):
         conf.addparentproxy(k, v)
-    conf.addparentproxy('direct', 'direct 0')
+    goagentHandler()
+    snovaHandler()
     updatedaemon = Thread(target=updater)
     updatedaemon.daemon = True
     updatedaemon.start()
