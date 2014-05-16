@@ -1026,7 +1026,7 @@ class parent_proxy(object):
         f = self.ifgfwed(uri, host, level)
 
         if f is False:
-            return ['direct']
+            return ['local' if 'local' in conf.parentdict.keys() else 'direct']
 
         parentlist = list(conf.parentdict.keys())
         random.shuffle(parentlist)
@@ -1038,6 +1038,9 @@ class parent_proxy(object):
                 parentlist.remove('goagent')
             if 'goagent-php' in parentlist and re.match(r'^([^/]+):\d+$', uri):
                 parentlist.remove('goagent-php')
+
+        if 'local' in parentlist:
+            parentlist.remove('local')
 
         if f is True:
             parentlist.remove('direct')
@@ -1398,6 +1401,7 @@ class Config(object):
 
         if self.userconf.dget('fgfwproxy', 'parentproxy', ''):
             self.addparentproxy('direct', '%s 0' % self.userconf.dget('fgfwproxy', 'parentproxy', ''))
+            self.addparentproxy('local', 'direct 100')
 
         for host, ip in self.userconf.items('hosts'):
             if ip not in HOSTS.get(host, []):
