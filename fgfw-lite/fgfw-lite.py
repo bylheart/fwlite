@@ -75,6 +75,8 @@ except ImportError:
 try:
     from repoze.lru import lru_cache
 except ImportError:
+    sys.stderr.write('Warning: repoze.lru is NOT installed!\n')
+
     def lru_cache(size=0, timeout=0):
         def decorator(func):
             return func
@@ -318,7 +320,7 @@ class ProxyHandler(HTTPRequestHandler):
         s = []
         if self.pproxy.startswith('http'):
             s.append('%s %s %s\r\n' % (self.command, self.path, self.request_version))
-            if self.pproxyparse.username and 'Proxy-Authorization' not in self.headers:
+            if self.pproxyparse.username:
                 a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
                 self.headers['Proxy-Authorization'] = 'Basic %s' % base64.b64encode(a.encode())
         else:
@@ -484,7 +486,7 @@ class ProxyHandler(HTTPRequestHandler):
 
         if self.pproxy.startswith('http'):
             s = ['%s %s %s\r\n' % (self.command, self.path, self.request_version), ]
-            if self.pproxyparse.username and 'Proxy-Authorization' not in self.headers:
+            if self.pproxyparse.username:
                 a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
                 self.headers['Proxy-Authorization'] = 'Basic %s' % base64.b64encode(a.encode())
             s.append('\r\n'.join(['%s: %s' % (key, value) for key, value in self.headers.items()]))
