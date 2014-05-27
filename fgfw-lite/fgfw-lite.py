@@ -20,7 +20,7 @@
 
 from __future__ import print_function, unicode_literals, division
 
-__version__ = '4.1.0'
+__version__ = '4.1.1'
 
 import sys
 import os
@@ -1185,14 +1185,19 @@ class goagentHandler(FGFWProxyHandler):
         if conf.userconf.dget('goagent', 'gaeappid', 'goagent') != 'goagent':
             goagent.set('gae', 'appid', conf.userconf.dget('goagent', 'gaeappid', 'goagent'))
             goagent.set("gae", "password", conf.userconf.dget('goagent', 'gaepassword', ''))
-            goagent.set('gae', 'obfuscate', conf.userconf.dget('goagent', 'obfuscate', '0'))
-            goagent.set('gae', 'validate', conf.userconf.dget('goagent', 'validate', '0'))
-            goagent.set('gae', 'options', conf.userconf.dget('goagent', 'options', ''))
         else:
             logging.warning('GoAgent APPID is NOT set! Fake APPID is used.')
             goagent.set('gae', 'appid', 'dummy')
         goagent.set('gae', 'profile', conf.userconf.dget('goagent', 'profile', 'auto'))
         goagent.set('gae', 'mode', conf.userconf.dget('goagent', 'mode', 'https'))
+        goagent.set('gae', 'obfuscate', conf.userconf.dget('goagent', 'obfuscate', '0'))
+        goagent.set('gae', 'validate', conf.userconf.dget('goagent', 'validate', '0'))
+        goagent.set('gae', 'options', conf.userconf.dget('goagent', 'options', ''))
+        goagent.set('gae', 'keepalive', conf.userconf.dget('goagent', 'keepalive', '0'))
+        if conf.userconf.dget('goagent', 'google_cn', ''):
+            goagent.set('iplist', 'google_cn', conf.userconf.dget('goagent', 'google_cn', ''))
+        if conf.userconf.dget('goagent', 'google_hk', ''):
+            goagent.set('iplist', 'google_hk', conf.userconf.dget('goagent', 'google_hk', ''))
         conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20')
 
         if conf.userconf.dget('goagent', 'phpfetchserver'):
