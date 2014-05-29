@@ -6,7 +6,7 @@
     "./fgfw-lite/fgfw-lite.py": "049f7d75553dbc99387e0abfd90206b80c2567c82d24dc4299a0f8d1c5cec393",
     "./goagent/GeoIP.dat": "642680a7c98da514dfbd1b4921cf590fca9a913141843fd773e7330145579d3c",
     "./goagent/cacert.pem": "eb1288b800cb2fdf7c5d8d14fb79a5c00a8b05722c7f2a08763919ef6df11dc3",
-    "./goagent/proxy.py": "f94ad6ce634880951c4eba8649d23422bf38e0cf91e7fbc895a55d9b31f327f7",
+    "./goagent/proxy.py": "d589abbac767257d160f8a93b2601f2ea91fb47833bb3dd0f0a62fbfde17d2cd",
     "./goagent/proxy.sample.ini": "192845c30543990abd8be96b54405f01197311c889cf573379562dadfdeb79f5",
     "./userconf.sample.ini": "ed4d1f6d8c96f24b829bd3db03c4cf0266f02f1087be53375b58917c3f3e0a5a"
 }
