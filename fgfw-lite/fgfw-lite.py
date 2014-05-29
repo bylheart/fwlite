@@ -245,7 +245,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _getparent(self, level=1):
         if self._proxylist is None:
-            self._proxylist = PARENT_PROXY.parentproxy(self.path, self.headers['Host'].rsplit(':', 1)[0], level)
+            self._proxylist = PARENT_PROXY.parentproxy(self.path, self.headers['Host'].rsplit(':', 1)[0], self.command, level)
         if not self._proxylist:
             return 1
         self.ppname = self._proxylist.pop(0)
@@ -989,11 +989,13 @@ class parent_proxy(object):
             return True
 
     @lru_cache(256, timeout=120)
-    def no_goagent(self, uri, host):
+    def no_goagent(self, uri, host, command):
         s = set(conf.parentdict.keys()) - set(['goagent', 'goagent-php', 'direct', 'local'])
         a = conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent'
         if s or a:  # two reasons not to use goagent
-            if re.match(r'^([^/]+):\d+$', uri):  # connect method
+            if command == 'OPTIONS':
+                return True
+            elif command == 'CONNECT':
                 if host in conf.FAKEHTTPS:
                     return True
                 if host in conf.WITHGAE:
@@ -1014,7 +1016,7 @@ class parent_proxy(object):
                     return False
                 return a
 
-    def parentproxy(self, uri, host, level=1):
+    def parentproxy(self, uri, host, command, level=1):
         '''
             decide which parentproxy to use.
             url:  'www.google.com:443'
@@ -1035,7 +1037,7 @@ class parent_proxy(object):
         random.shuffle(parentlist)
         parentlist = sorted(parentlist, key=lambda item: conf.parentdict[item][1])
 
-        if self.no_goagent(uri, host):
+        if self.no_goagent(uri, host, command):
             logging.debug('skip goagent')
             if 'goagent' in parentlist:
                 parentlist.remove('goagent')
