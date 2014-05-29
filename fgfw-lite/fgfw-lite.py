@@ -65,6 +65,7 @@ import shutil
 import socket
 import struct
 import ssl
+import traceback
 from threading import Thread
 import pygeoip
 try:
@@ -1145,10 +1146,13 @@ class FGFWProxyHandler(object):
         pass
 
     def start(self):
-        self.config()
-        if self.enable:
-            logging.info('starting %s' % self.cmd)
-            self.subpobj = subprocess.Popen(shlex.split(self.cmd), cwd=self.cwd, stdin=subprocess.PIPE)
+        try:
+            self.config()
+            if self.enable:
+                logging.info('starting %s' % self.cmd)
+                self.subpobj = subprocess.Popen(shlex.split(self.cmd), cwd=self.cwd, stdin=subprocess.PIPE)
+        except Exception:
+            sys.stderr.write(traceback.format_exc() + '\n')
 
     def restart(self):
         self.stop()

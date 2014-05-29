@@ -3,10 +3,10 @@
     "./README.md": "239498ddd5fb768971e1a2a62bfc59ef5988b64e49ee31437a7aef95fa46b5d3",
     "./fgfw-lite/cloud.txt": "5327b44c5af8c8a0da83bebd129bff4faee91817c4708a3777823c3b2680f220",
     "./fgfw-lite/encrypt.py": "e91651a43c8321876af8b40d5d3b8c3599ccbbc13f4d8d67dcdf550ebd84fc50",
-    "./fgfw-lite/fgfw-lite.py": "adbb5a4bc271038b7ef3ddc02ece2d00cecca6f24197d6fa0d4bda99927cebaf",
+    "./fgfw-lite/fgfw-lite.py": "049f7d75553dbc99387e0abfd90206b80c2567c82d24dc4299a0f8d1c5cec393",
     "./goagent/GeoIP.dat": "642680a7c98da514dfbd1b4921cf590fca9a913141843fd773e7330145579d3c",
     "./goagent/cacert.pem": "eb1288b800cb2fdf7c5d8d14fb79a5c00a8b05722c7f2a08763919ef6df11dc3",
     "./goagent/proxy.py": "f94ad6ce634880951c4eba8649d23422bf38e0cf91e7fbc895a55d9b31f327f7",
     "./goagent/proxy.sample.ini": "192845c30543990abd8be96b54405f01197311c889cf573379562dadfdeb79f5",
-    "./userconf.sample.ini": "ff6eccdb81ca35917684b379dfbfe71e564dbaf21c45cf4e0e0bb9c853f2ec29"
+    "./userconf.sample.ini": "ed4d1f6d8c96f24b829bd3db03c4cf0266f02f1087be53375b58917c3f3e0a5a"
 }
