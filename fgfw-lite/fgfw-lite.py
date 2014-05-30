@@ -997,9 +997,7 @@ class parent_proxy(object):
         s = set(conf.parentdict.keys()) - set(['goagent', 'goagent-php', 'direct', 'local'])
         a = conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent'
         if s or a:  # two reasons not to use goagent
-            if command == 'OPTIONS':
-                return True
-            elif command == 'CONNECT':
+            if command == 'CONNECT':
                 if host in conf.FAKEHTTPS:
                     return True
                 if host in conf.WITHGAE:
@@ -1045,8 +1043,10 @@ class parent_proxy(object):
             logging.debug('skip goagent')
             if 'goagent' in parentlist:
                 parentlist.remove('goagent')
-            if 'goagent-php' in parentlist and re.match(r'^([^/]+):\d+$', uri):
+            if 'goagent-php' in parentlist and command == 'CONNECT':
                 parentlist.remove('goagent-php')
+        if command == 'OPTIONS' and 'goagent' in parentlist:
+            parentlist.remove('goagent')
 
         if 'local' in parentlist:
             parentlist.remove('local')
