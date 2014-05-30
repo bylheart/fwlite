@@ -343,12 +343,12 @@ class ProxyHandler(HTTPRequestHandler):
             if content_length > 102400:
                 self.retryable = False
             if self.rbuffer:
-                for s in self.rbuffer:
-                    content_length -= len(s)
-                    try:
-                        remotesoc.sendall(s)
-                    except NetWorkIOError as e:
-                        return self.on_GET_Error(e)
+                s = b''.join(self.rbuffer)
+                content_length -= len(s)
+                try:
+                    remotesoc.sendall(s)
+                except NetWorkIOError as e:
+                    return self.on_GET_Error(e)
             while content_length:
                 data = self.rfile.read(min(8192, content_length))
                 if not data:
@@ -470,8 +470,7 @@ class ProxyHandler(HTTPRequestHandler):
             return self.send_error(403)
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
-        self.wfile.write(self.protocol_version.encode())
-        self.wfile.write(b" 200 Connection established\r\n\r\n")
+        self.wfile.write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
         self._do_CONNECT()
 
     def _do_CONNECT(self, retry=False):
@@ -501,8 +500,7 @@ class ProxyHandler(HTTPRequestHandler):
             while not data in (b'\r\n', b'\n', b''):
                 data = remoterfile.readline()
         if self.rbuffer:
-            for s in self.rbuffer:
-                remotesoc.sendall(s)
+            remotesoc.sendall(b''.join(self.rbuffer))
         if self._proxylist:
             for i in range(30):
                 try:
@@ -542,8 +540,9 @@ class ProxyHandler(HTTPRequestHandler):
             if self.wbuffer_size > 102400:
                 self.retryable = False
         else:
-            while self.wbuffer:
-                self.wfile.write(self.wbuffer.popleft())
+            if self.wbuffer:
+                self.wfile.write(b''.join(self.wbuffer))
+                self.wbuffer = deque()
             if data:
                 self.wfile.write(data)
 
@@ -599,6 +598,7 @@ class ProxyHandler(HTTPRequestHandler):
             return s
         elif self.pproxy.startswith('socks5://'):
             s = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or 10)
+            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s.sendall(b"\x05\x02\x00\x02" if self.pproxyparse.username else b"\x05\x01\x00")
             data = s.recv(2)
             if data == b'\x05\x02':  # basic auth
@@ -622,6 +622,7 @@ class ProxyHandler(HTTPRequestHandler):
             elif data[3] == b'\x04':  # read ipv6 addr
                 s.recv(16)
             s.recv(2)  # read port
+            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)
             return s
 
     def _read_write(self, soc, max_idling=20):
