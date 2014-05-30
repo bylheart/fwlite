@@ -335,7 +335,7 @@ class ProxyHandler(HTTPRequestHandler):
         try:
             remotesoc.sendall(''.join(s).encode('latin1'))
         except NetWorkIOError as e:
-            return self.on_GET_Error(e)
+            return self.on_GET_Error(e, remotesoc)
         logging.debug('sending request body')
         # send request body
         content_length = int(self.headers.get('Content-Length', 0))
@@ -348,7 +348,7 @@ class ProxyHandler(HTTPRequestHandler):
                 try:
                     remotesoc.sendall(s)
                 except NetWorkIOError as e:
-                    return self.on_GET_Error(e)
+                    return self.on_GET_Error(e, remotesoc)
             while content_length:
                 data = self.rfile.read(min(8192, content_length))
                 if not data:
@@ -359,7 +359,7 @@ class ProxyHandler(HTTPRequestHandler):
                 try:
                     remotesoc.sendall(data)
                 except NetWorkIOError as e:
-                    return self.on_GET_Error(e)
+                    return self.on_GET_Error(e, remotesoc)
             self.request_body_read = True
         # read response line
         logging.debug('reading response_line')
@@ -369,7 +369,7 @@ class ProxyHandler(HTTPRequestHandler):
             if not s:
                 raise ValueError('empty response line')
         except (socket.error, ssl.SSLError, OSError, ValueError) as e:
-            return self.on_GET_Error(e)
+            return self.on_GET_Error(e, remotesoc)
         protocol_version, _, response_status = response_line.rstrip(b'\r\n').partition(b' ')
         response_status, _, response_reason = response_status.partition(b' ')
         response_status = int(response_status)
@@ -383,7 +383,7 @@ class ProxyHandler(HTTPRequestHandler):
                 if line in (b'\r\n', b'\n', b''):
                     break
         except NetWorkIOError as e:
-            return self.on_GET_Error(e)
+            return self.on_GET_Error(e, remotesoc)
         header_data = b''.join(header_data)
         response_header = email.message_from_string(header_data.decode('latin1'))
         conntype = response_header.get('Connection', "")
@@ -416,7 +416,7 @@ class ProxyHandler(HTTPRequestHandler):
                 try:
                     trunk_lenth = remoterfile.readline()
                 except NetWorkIOError as e:
-                    return self.on_GET_Error(e)
+                    return self.on_GET_Error(e, remotesoc)
                 self.wfile_write(trunk_lenth)
                 trunk_lenth = int(trunk_lenth.strip(), 16) + 2
                 flag = trunk_lenth != 2
@@ -424,7 +424,7 @@ class ProxyHandler(HTTPRequestHandler):
                     try:
                         data = remotesoc.recv(min(4096, trunk_lenth))
                     except NetWorkIOError as e:
-                        return self.on_GET_Error(e)
+                        return self.on_GET_Error(e, remotesoc)
                     trunk_lenth -= len(data)
                     self.wfile_write(data)
         elif content_length is not None:
@@ -432,7 +432,7 @@ class ProxyHandler(HTTPRequestHandler):
                 try:
                     data = remotesoc.recv(min(4096, content_length))
                 except NetWorkIOError as e:
-                    return self.on_GET_Error(e)
+                    return self.on_GET_Error(e, remotesoc)
                 content_length -= len(data)
                 self.wfile_write(data)
         else:
@@ -455,7 +455,9 @@ class ProxyHandler(HTTPRequestHandler):
         else:
             remotesoc.close()
 
-    def on_GET_Error(self, e):
+    def on_GET_Error(self, e, r=None):
+        if r:
+            r.close()
         logging.warning('{} {} via {} failed! {}'.format(self.command, self.path, self.ppname, repr(e)))
         return self._do_GET(True)
 
@@ -525,6 +527,7 @@ class ProxyHandler(HTTPRequestHandler):
                     logging.warning('socket error: %s' % e)
                     break
             if self.retryable:
+                remotesoc.close()
                 logging.warning('{} {} failed! read timed out'.format(self.command, self.path))
                 return self._do_CONNECT(True)
         if self.retrycount:
@@ -639,8 +642,8 @@ class ProxyHandler(HTTPRequestHandler):
                         method = self.wfile.write if i is soc else soc.sendall
                         method(data)
                         count = 0
-                    else:
-                        break
+                    elif count < max_idling:
+                        count = max_idling  # make sure all data are read before we close the sockets
                 if count > max_idling:
                     break
                 count += 1
