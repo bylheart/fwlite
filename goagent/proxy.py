@@ -41,7 +41,7 @@
 #      v3aqb             <sgzz.cj@gmail.com>
 #      Oling Cat         <olingcat@gmail.com>
 
-__version__ = '3.1.14'
+__version__ = '3.1.15'
 
 import sys
 import os
@@ -428,26 +428,41 @@ class DetectMobileBrowser:
 
 
 class SSLConnection(object):
-
-    has_gevent = socket.socket is getattr(sys.modules.get('gevent.socket'), 'socket', None)
+    """SSL Connection"""
 
     def __init__(self, context, sock):
         self._context = context
         self._sock = sock
         self._connection = OpenSSL.SSL.Connection(context, sock)
         self._makefile_refs = 0
-        if self.has_gevent:
-            self._wait_read = gevent.socket.wait_read
-            self._wait_write = gevent.socket.wait_write
-            self._wait_readwrite = gevent.socket.wait_readwrite
-        else:
-            self._wait_read = lambda fd,t: select.select([fd], [], [fd], t)
-            self._wait_write = lambda fd,t: select.select([], [fd], [fd], t)
-            self._wait_readwrite = lambda fd,t: select.select([fd], [fd], [fd], t)
 
     def __getattr__(self, attr):
         if attr not in ('_context', '_sock', '_connection', '_makefile_refs'):
             return getattr(self._connection, attr)
+
+    def __apply_sock_io(self, sock, callback, *args, **kwargs):
+        timeout = self._sock.gettimeout() or 0.1
+        fd = self._sock.fileno()
+        while True:
+            try:
+                return callback(*args, **kwargs)
+            except (OpenSSL.SSL.WantReadError, OpenSSL.SSL.WantX509LookupError):
+                sys.exc_clear()
+                _, _, errors = select.select([fd], [], [fd], timeout)
+                if errors:
+                    break
+            except OpenSSL.SSL.WantWriteError:
+                sys.exc_clear()
+                _, _, errors = select.select([], [fd], [fd], timeout)
+                if errors:
+                    break
+            except OpenSSL.SSL.SysCallError as e:
+                if e[0] == -1 and args and not args[0]:
+                    # errors when writing empty strings are expected and can be ignored
+                    return 0
+                raise
+            except OpenSSL.SSL.ZeroReturnError:
+                return ''
 
     def accept(self):
         sock, addr = self._sock.accept()
@@ -455,62 +470,19 @@ class SSLConnection(object):
         return client, addr
 
     def do_handshake(self):
-        timeout = self._sock.gettimeout()
-        while True:
-            try:
-                self._connection.do_handshake()
-                break
-            except (OpenSSL.SSL.WantReadError, OpenSSL.SSL.WantX509LookupError, OpenSSL.SSL.WantWriteError):
-                sys.exc_clear()
-                self._wait_readwrite(self._sock.fileno(), timeout)
+        return self.__apply_sock_io(self._sock, self._connection.do_handshake)
 
     def connect(self, *args, **kwargs):
-        timeout = self._sock.gettimeout()
-        while True:
-            try:
-                self._connection.connect(*args, **kwargs)
-                break
-            except (OpenSSL.SSL.WantReadError, OpenSSL.SSL.WantX509LookupError):
-                sys.exc_clear()
-                self._wait_read(self._sock.fileno(), timeout)
-            except OpenSSL.SSL.WantWriteError:
-                sys.exc_clear()
-                self._wait_write(self._sock.fileno(), timeout)
+        return self.__apply_sock_io(self._sock, self._connection.connect, *args, **kwargs)
 
     def send(self, data, flags=0):
-        timeout = self._sock.gettimeout()
-        while True:
-            try:
-                self._connection.send(data, flags)
-                break
-            except (OpenSSL.SSL.WantReadError, OpenSSL.SSL.WantX509LookupError):
-                sys.exc_clear()
-                self._wait_read(self._sock.fileno(), timeout)
-            except OpenSSL.SSL.WantWriteError:
-                sys.exc_clear()
-                self._wait_write(self._sock.fileno(), timeout)
-            except OpenSSL.SSL.SysCallError as e:
-                if e[0] == -1 and not data:
-                    # errors when writing empty strings are expected and can be ignored
-                    return 0
-                raise
+        return self.__apply_sock_io(self._sock, self._connection.send, data, flags)
 
     def recv(self, bufsiz, flags=0):
-        timeout = self._sock.gettimeout()
         pending = self._connection.pending()
         if pending:
             return self._connection.recv(min(pending, bufsiz))
-        while True:
-            try:
-                return self._connection.recv(bufsiz, flags)
-            except (OpenSSL.SSL.WantReadError, OpenSSL.SSL.WantX509LookupError):
-                sys.exc_clear()
-                self._wait_read(self._sock.fileno(), timeout)
-            except OpenSSL.SSL.WantWriteError:
-                sys.exc_clear()
-                self._wait_write(self._sock.fileno(), timeout)
-            except OpenSSL.SSL.ZeroReturnError:
-                return ''
+        return self.__apply_sock_io(self._sock, self._connection.recv, bufsiz, flags)
 
     def read(self, bufsiz, flags=0):
         return self.recv(bufsiz, flags)
@@ -529,7 +501,6 @@ class SSLConnection(object):
     def makefile(self, mode='r', bufsize=-1):
         self._makefile_refs += 1
         return socket._fileobject(self, mode, bufsize, close=True)
-
 
 
 class ProxyUtil(object):
@@ -1489,6 +1460,7 @@ class AdvancedProxyHandler(SimpleProxyHandler):
     ssl_connection_cache = collections.defaultdict(Queue.PriorityQueue)
     ssl_connection_keepalive = False
     max_window = 4
+    openssl_context = OpenSSL.SSL.Context(OpenSSL.SSL.TLSv1_METHOD)
 
     def gethostbyname2(self, hostname):
         try:
@@ -1677,7 +1649,7 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 # set a short timeout to trigger timeout retry more quickly.
                 sock.settimeout(timeout or self.connect_timeout)
                 # pick up the certificate
-                server_hostname = b'www.google.com' if hostname.endswith('.appspot.com') else None
+                server_hostname = b'mail.google.com' if cache_key.startswith('google_') or hostname.endswith('.appspot.com') else None
                 ssl_sock = SSLConnection(self.openssl_context, sock)
                 ssl_sock.set_connect_state()
                 if server_hostname:
@@ -1748,7 +1720,7 @@ class AdvancedProxyHandler(SimpleProxyHandler):
             addrs = addresses[:window] + random.sample(addresses, window)
             queobj = gevent.queue.Queue() if gevent else Queue.Queue()
             for addr in addrs:
-                thread.start_new_thread(create_connection, (addr, timeout, queobj))
+                thread.start_new_thread(create_connection_withopenssl, (addr, timeout, queobj))
             for i in range(len(addrs)):
                 sock = queobj.get()
                 if not isinstance(sock, Exception):
@@ -3084,6 +3056,7 @@ def pre_start():
         GAEProxyHandler.ssl_connection_keepalive = True
     if common.GAE_SSLVERSION:
         GAEProxyHandler.ssl_version = getattr(ssl, 'PROTOCOL_%s' % common.GAE_SSLVERSION)
+        GAEProxyHandler.openssl_context = OpenSSL.SSL.Context(getattr(OpenSSL.SSL, '%s_METHOD' % common.GAE_SSLVERSION))
     if common.GAE_APPIDS[0] == 'goagent':
         logging.critical('please edit %s to add your appid to [gae] !', common.CONFIG_FILENAME)
         sys.exit(-1)
