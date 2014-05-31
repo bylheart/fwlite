@@ -672,10 +672,10 @@ class ProxyHandler(HTTPRequestHandler):
                     ftp.login(user, passwd)
                     lst = []
                     response = ftp.retrlines("LIST %s" % path, lst.append)
-                    if len(lst) > 1 or lst[0].split()[8] != path:
-                        return self.do_FTP_LIST(netloc, path, user, passwd)
                     if not lst:
                         return self.send_error(504, response)
+                    if len(lst) != 1 or lst[0].startswith('d'):
+                        return self.redirect('%s/' % self.path)
                     self.send_response(200)
                     self.send_header('Content-Length', lst[0].split()[4])
                     self.send_header('Connection', 'keep_alive')
