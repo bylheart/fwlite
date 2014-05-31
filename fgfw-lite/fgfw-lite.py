@@ -688,6 +688,15 @@ class ProxyHandler(HTTPRequestHandler):
         else:
             self.send_error(501)
 
+    def sizeof_fmt(self, num):
+        if num < 1024:
+            return "%dB" % num
+        for x in ['B', 'KB', 'MB', 'GB']:
+            if num < 1024.0:
+                return "%.1f%s" % (num, x)
+            num /= 1024.0
+        return "%.1f%s" % (num, 'TB')
+
     def do_FTP_LIST(self, netloc, path, user, passwd):
         if not path.endswith('/'):
             self.path += '/'
@@ -702,7 +711,7 @@ class ProxyHandler(HTTPRequestHandler):
                 line_split = line.split()
                 if line.startswith('d'):
                     line_split[8] += '/'
-                md += '|[%s](%s%s)|%s|%s %s %s|\r\n' % (line_split[8], self.path, line_split[8], line_split[4], line_split[5], line_split[6], line_split[7])
+                md += '|[%s](%s%s)|%s|%s %s %s|\r\n' % (line_split[8], self.path, line_split[8], line_split[4] if line.startswith('d') else self.sizeof_fmt(int(line_split[4])), line_split[5], line_split[6], line_split[7])
             md += '|================|==========|=============|\r\n'
             md += '\r\n%s\r\n' % response
         except Exception as e:
