@@ -196,9 +196,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_header('Date', self.date_time_string())
 
     def send_trunk(self, data):
-        self.wfile.write(b"%x\r\n" % len(data))
-        self.wfile.write(data)
-        self.wfile.write(b'\r\n')
+        self.wfile.write(b"%x\r\n%s\r\n" % (len(data), data))
 
     def end_trunk(self):
         self.wfile.write(b'0\r\n\r\n')
