@@ -539,6 +539,8 @@ class ProxyHandler(HTTPRequestHandler):
         self.connection.close()
 
     def wfile_write(self, data=None):
+        if data is None:
+            self.retryable = False
         if self.retryable and data:
             self.wbuffer.append(data)
             self.wbuffer_size += len(data)
