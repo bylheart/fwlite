@@ -1125,18 +1125,18 @@ def update(auto=False):
         import hashlib
         for path, v, in r.items():
             if v == conf.version.dget('Update', path.replace('./', '').replace('/', '-'), ''):
-                logging.info('{} NOT updated. Reason: Not Modified'.format(path))
+                logging.debug('{} Not Modified'.format(path))
                 continue
             fdata = urllib2.urlopen('https://github.com/v3aqb/fgfw-lite/raw/%s%s' % (branch, path[1:])).read()
             h = hashlib.new("sha256", fdata).hexdigest()
             if h != v:
-                logging.info('{} NOT updated. hash mismatch.'.format(path))
+                logging.warning('{} NOT updated. hash mismatch.'.format(path))
                 continue
             with open(path, 'wb') as localfile:
                 localfile.write(fdata)
             logging.info('%s Updated.' % path)
             conf.version.set('Update', path.replace('./', '').replace('/', '-'), h)
-            conf.confsave()
+        conf.confsave()
     restart()
 
 
