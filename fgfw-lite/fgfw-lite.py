@@ -330,7 +330,7 @@ class ProxyHandler(HTTPRequestHandler):
         for k, v in self.headers.items():
             if isinstance(v, bytes):
                 v = v.decode('latin1')
-            s.append("%s: %s\r\n" % (k, v))
+            s.append("%s: %s\r\n" % ("-".join([w.capitalize() for w in k.split("-")]), v))
         s.append("\r\n")
         try:
             self.remotesoc.sendall(''.join(s).encode('latin1'))
