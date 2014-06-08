@@ -27,6 +27,7 @@ import hashlib
 import string
 import struct
 import logging
+from collections import defaultdict, deque
 try:
     from repoze.lru import lru_cache
 except ImportError:
@@ -84,6 +85,10 @@ def EVP_BytesToKey(password, key_len, iv_len):
     return (key, iv)
 
 
+class sized_deque(deque):
+    def __init__(self):
+        deque.__init__(self, maxlen=1048576)
+
 method_supported = {
     'aes-128-cfb': (16, 16),
     'aes-192-cfb': (24, 16),
@@ -100,19 +105,30 @@ method_supported = {
     'seed-cfb': (16, 16),
 }
 
+USED_IV = defaultdict(sized_deque)
+
 
 class Encryptor(object):
-    def __init__(self, key, method=None):
+    def __init__(self, key, method=None, servermode=False):
         if method == 'table':
             method = None
         self.key = key
         self.method = method
+        self.servermode = servermode
         self.iv = None
         self.iv_sent = False
         self.cipher_iv = ''
         self.decipher = None
         if method is not None:
-            self.cipher = self.get_cipher(key, method, 1, iv=random_string(32))
+            if servermode:
+                self.cipher = self.get_cipher(key, method, 1, random_string(32))
+            else:
+                while True:
+                    iv = random_string(32)
+                    if iv not in USED_IV[self.key]:
+                        break
+                USED_IV[self.key].append(iv)
+                self.cipher = self.get_cipher(key, method, 1, iv)
         else:
             self.cipher = None
             self.decipher = 0
@@ -162,7 +178,11 @@ class Encryptor(object):
             if self.decipher is None:
                 decipher_iv_len = self.get_cipher_len(self.method)[1]
                 decipher_iv = buf[:decipher_iv_len]
-                self.decipher = self.get_cipher(self.key, self.method, 0, iv=decipher_iv)
+                if self.servermode:
+                    if decipher_iv in USED_IV[self.key]:
+                        raise ValueError('possible replay attrack')
+                    USED_IV[self.key].append(decipher_iv)
+                self.decipher = self.get_cipher(self.key, self.method, 0, decipher_iv)
                 buf = buf[decipher_iv_len:]
                 if len(buf) == 0:
                     return buf
