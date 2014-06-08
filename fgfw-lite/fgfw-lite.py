@@ -120,7 +120,8 @@ NetWorkIOError = (socket.error, ssl.SSLError, OSError)
 
 def prestart():
     s = 'FGFW_Lite ' + __version__
-    s += ' with gevent' if gevent else ''
+    if gevent:
+        s += ' with gevent %s' % gevent.__version__
     logging.info(s)
 
     if not os.path.isfile('./userconf.ini'):
@@ -749,7 +750,7 @@ class sssocket(object):
 
     def connect(self, address):
         p = urlparse.urlparse(self.ssServer)
-        _, sshost, ssport, ssmethod, sspassword = (p.scheme, p.hostname, p.port, p.username, p.password)
+        sshost, ssport, ssmethod, sspassword = (p.hostname, p.port, p.username, p.password)
         if not self.parentproxy:
             self._sock = socket.create_connection((sshost, ssport), self.timeout)
         elif self.parentproxy.startswith('http://'):
