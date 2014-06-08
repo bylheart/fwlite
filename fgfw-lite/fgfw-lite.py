@@ -228,11 +228,6 @@ class ProxyHandler(HTTPRequestHandler):
         if self.remotesoc:
             self.remotesoc.close()
 
-    def send_response(self, code, message=None):
-        if not self.request_body_read:
-            raise ValueError('request body not read, should close connection')
-        HTTPRequestHandler.send_response(self, code, message=None)
-
     def handle(self):
         ip, port = self.client_address
         logging.debug("Request from %s" % ip)
