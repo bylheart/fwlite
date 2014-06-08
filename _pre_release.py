@@ -35,7 +35,6 @@ if raw_input('update? y/n: ').lower().startswith('y'):
     with open('./goagent/proxy.py', 'rb') as f:
         t = f.read()
     with open('./goagent/proxy.py', 'wb') as f:
-        t = t.replace(b'sys.stdout.write', b'sys.stderr.write')
         t = t.replace(b"ctypes.windll.kernel32.SetConsoleTitleW(u'GoAgent v%s' % __version__)", b'pass')
         f.write(t)
 
@@ -51,6 +50,7 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          './goagent/proxy.sample.ini',
          './goagent/cacert.pem',
          './goagent/GeoIP.dat',
+         './goagent/proxy.bat',
          ]
 
 version = configparser.ConfigParser()

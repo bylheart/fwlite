@@ -1184,12 +1184,11 @@ class goagentHandler(FGFWProxyHandler):
     """docstring for ClassName"""
     def config(self):
         self.cwd = '%s/goagent' % WORKINGDIR
-        self.cmd = '{} {}/goagent/proxy.py'.format(PYTHON2, WORKINGDIR)
+        self.cmd = '{}/goagent/proxy.bat'.format(WORKINGDIR) if sys.platform.startswith('win') else '{} {}/goagent/proxy.py'.format(PYTHON2, WORKINGDIR)
         self.enable = conf.userconf.dgetbool('goagent', 'enable', True)
         with open('%s/goagent/proxy.py' % WORKINGDIR, 'rb') as f:
             t = f.read()
         with open('%s/goagent/proxy.py' % WORKINGDIR, 'wb') as f:
-            t = t.replace(b'sys.stdout.write', b'sys.stderr.write')
             t = t.replace(b"ctypes.windll.kernel32.SetConsoleTitleW(u'GoAgent v%s' % __version__)", b'pass')
             f.write(t)
         if self.enable:
