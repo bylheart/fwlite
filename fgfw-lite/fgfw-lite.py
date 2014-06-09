@@ -34,11 +34,7 @@ if ' ' in WORKINGDIR:
 os.chdir(WORKINGDIR)
 sys.path.append(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')))
 sys.path += glob.glob('%s/goagent/*.egg' % WORKINGDIR)
-try:
-    import uvent
-    uvent.install()
-except Exception:
-    pass
+gevent = None
 try:
     import gevent
     import gevent.socket
@@ -47,7 +43,7 @@ try:
     import gevent.monkey
     gevent.monkey.patch_all(subprocess=True)
 except ImportError:
-    gevent = None
+    pass
 except TypeError:
     gevent.monkey.patch_all()
     sys.stderr.write('Warning: Please update gevent to the latest 1.0 version!\n')
@@ -432,10 +428,12 @@ class ProxyHandler(HTTPRequestHandler):
             while content_length:
                 try:
                     data = self.remotesoc.recv(min(4096, content_length))
+                    if not data:
+                        raise ValueError('line 434 read empty')
+                    content_length -= len(data)
+                    self.wfile_write(data)
                 except NetWorkIOError as e:
                     return self.on_GET_Error(e)
-                content_length -= len(data)
-                self.wfile_write(data)
         else:
             self.close_connection = 1
             self.retryable = False
@@ -485,6 +483,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.retrycount += 1
         try:
             self.remotesoc = self._connect_via_proxy(self.path)
+            self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
             logging.warning('%s %s failed! %r' % (self.command, self.path, e))
             return self._do_CONNECT()
@@ -762,8 +761,10 @@ class sssocket(object):
         self.crypto = encrypt.Encryptor(sspassword, ssmethod)
         if not self.parentproxy:
             self._sock = socket.create_connection((sshost, ssport), self.timeout)
+            self.setsockopt = self._sock.setsockopt
         elif self.parentproxy.startswith('http://'):
             self._sock = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), self.timeout)
+            self.setsockopt = self._sock.setsockopt
             s = 'CONNECT %s:%s HTTP/1.1\r\nHost: %s\r\n' % (sshost, ssport, sshost)
             if self.pproxyparse.username:
                 a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
