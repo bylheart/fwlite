@@ -746,11 +746,15 @@ class sssocket(object):
         self.pproxyparse = urlparse.urlparse(parentproxy)
         self._sock = None
         self.crypto = None
+        self.__remote = None
+        self.connected = False
         self.__rbuffer = b''
 
     def connect(self, address):
+        self.__address = address
         p = urlparse.urlparse(self.ssServer)
         sshost, ssport, ssmethod, sspassword = (p.hostname, p.port, p.username, p.password)
+        self.crypto = encrypt.Encryptor(sspassword, ssmethod)
         if not self.parentproxy:
             self._sock = socket.create_connection((sshost, ssport), self.timeout)
         elif self.parentproxy.startswith('http://'):
@@ -770,15 +774,15 @@ class sssocket(object):
         else:
             logging.error('sssocket does not support parent proxy server: %s for now' % self.parentproxy)
             return 1
-        self.crypto = encrypt.Encryptor(sspassword, ssmethod)
-        host, port = address
-        data = b''.join([b'\x03',
-                        chr(len(host)).encode(),
-                        host.encode(),
-                        struct.pack(b">H", port)])
-        self.sendall(data)
 
     def recv(self, size):
+        if not self.connected:
+            host, port = self.__address
+            self._sock.sendall(b''.join([b'\x03',
+                               chr(len(host)).encode(),
+                               host.encode(),
+                               struct.pack(b">H", port)]))
+            self.connected = True
         if len(self.__rbuffer) < size:
             data = self.crypto.decrypt(self._sock.recv(max(size, 4096)))
             self.__rbuffer = b''.join([self.__rbuffer, data])
@@ -786,7 +790,16 @@ class sssocket(object):
         return result
 
     def sendall(self, data):
-        self._sock.sendall(self.crypto.encrypt(data))
+        if self.connected:
+            self._sock.sendall(self.crypto.encrypt(data))
+        else:
+            host, port = self.__address
+            e = b''.join([b'\x03',
+                          chr(len(host)).encode(),
+                          host.encode(),
+                          struct.pack(b">H", port)])
+            self._sock.sendall(self.crypto.encrypt(e + data))
+            self.connected = True
 
     def readline(self, bufsize=0):
         buf = b''
