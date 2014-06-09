@@ -1053,7 +1053,7 @@ class parent_proxy(object):
         random.shuffle(parentlist)
         parentlist = sorted(parentlist, key=lambda item: conf.parentdict[item][1])
 
-        if command == 'CONNECT' and self.no_goagent(uri, host):
+        if command == 'CONNECT' and 'goagent' in parentlist and self.no_goagent(uri, host):
             logging.debug('skip goagent')
             if 'goagent' in parentlist:
                 parentlist.remove('goagent')
