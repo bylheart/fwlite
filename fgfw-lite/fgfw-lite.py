@@ -1001,30 +1001,23 @@ class parent_proxy(object):
             return True
 
     @lru_cache(256, timeout=120)
-    def no_goagent(self, uri, host, command):
+    def no_goagent(self, uri, host):
         s = set(conf.parentdict.keys()) - set(['goagent', 'goagent-php', 'direct', 'local'])
         a = conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent'
         if s or a:  # two reasons not to use goagent
-            if command == 'CONNECT':
-                if host in conf.FAKEHTTPS:
-                    return True
-                if host in conf.WITHGAE:
-                    return True
-                if host in conf.HOST:
-                    return False
-                if host.endswith(conf.HOST_POSTFIX):
-                    return False
-                if host.endswith(conf.CONN_POSTFIX):
-                    return False
+            if host in conf.FAKEHTTPS:
                 return True
-            else:  # get method
-                if host in conf.WITHGAE:
-                    return a
-                if host in conf.HOST:
-                    return False
-                if host.endswith(conf.HOST_POSTFIX):
-                    return False
-                return a
+            if host.endswith(conf.FAKEHTTPS_POSTFIX):
+                return True
+            if host in conf.WITHGAE:
+                return True
+            if host in conf.HOST:
+                return False
+            if host.endswith(conf.HOST_POSTFIX):
+                return False
+            if host.endswith(conf.CONN_POSTFIX):
+                return False
+            return True
 
     def parentproxy(self, uri, host, command, level=1):
         '''
@@ -1047,12 +1040,15 @@ class parent_proxy(object):
         random.shuffle(parentlist)
         parentlist = sorted(parentlist, key=lambda item: conf.parentdict[item][1])
 
-        if self.no_goagent(uri, host, command):
+        if command == 'CONNECT' and self.no_goagent(uri, host):
             logging.debug('skip goagent')
             if 'goagent' in parentlist:
                 parentlist.remove('goagent')
-            if 'goagent-php' in parentlist and command == 'CONNECT':
+                parentlist.append('goagent')
+            if 'goagent-php' in parentlist:
                 parentlist.remove('goagent-php')
+                parentlist.append('goagent-php')
+
         if command == 'OPTIONS' and 'goagent' in parentlist:
             parentlist.remove('goagent')
 
@@ -1244,7 +1240,8 @@ class goagentHandler(FGFWProxyHandler):
         with open('./goagent/proxy.ini', 'w') as configfile:
             goagent.write(configfile)
 
-        conf.FAKEHTTPS = set(goagent.dget('ipv4/http', 'fakehttps').split('|'))
+        conf.FAKEHTTPS = tuple([k for k in goagent.dget('ipv4/http', 'fakehttps').split('|') if not k.startswith('.')])
+        conf.FAKEHTTPS_POSTFIX = tuple([k for k in goagent.dget('ipv4/http', 'fakehttps').split('|') if k.startswith('.')])
         conf.WITHGAE = set(goagent.dget('ipv4/http', 'withgae').split('|'))
         conf.HOST = ('upload.youtube.com', )
         conf.HOST_POSTFIX = tuple([k for k, v in goagent.items('ipv4/hosts') if '\\' not in k and ':' not in k and k.startswith('.')])
