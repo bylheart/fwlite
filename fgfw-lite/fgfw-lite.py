@@ -35,6 +35,11 @@ os.chdir(WORKINGDIR)
 sys.path.append(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')))
 sys.path += glob.glob('%s/goagent/*.egg' % WORKINGDIR)
 try:
+    import uvent
+    uvent.install()
+except Exception:
+    pass
+try:
     import gevent
     import gevent.socket
     import gevent.server
@@ -446,10 +451,10 @@ class ProxyHandler(HTTPRequestHandler):
         logging.debug('request finish')
         if self.retrycount and response_status < 400:
             PARENT_PROXY.add_temp_rule('|http://%s' % self.headers['Host'].split(':')[0])
-        if not self.close_connection and not self.is_connection_dropped(self.remotesoc):
-            UPSTREAM_POOL[self.upstream_name].append(self.remotesoc)
-        else:
+        if self.close_connection or self.is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
+        else:
+            UPSTREAM_POOL[self.upstream_name].append(self.remotesoc)
         self.remotesoc = None
 
     def on_GET_Error(self, e):
@@ -805,6 +810,8 @@ class sssocket(object):
         buf = b''
         while True:
             data = self.recv(1)
+            if not data:
+                break
             buf += data
             if bufsize and len(buf) == bufsize:
                 break
