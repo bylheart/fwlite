@@ -293,11 +293,11 @@ class ProxyHandler(HTTPRequestHandler):
         self._do_GET()
 
     def _do_GET(self, retry=False):
-        if self.getparent():
-            return self.send_error(504)
         if not self.retryable:
             self.close_connection = 1
             return
+        if self.getparent():
+            return self.send_error(504)
         if retry:
             self.retrycount += 1
         if self.pproxyparse.scheme in ('socks5', 'ss'):
