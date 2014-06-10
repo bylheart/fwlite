@@ -1089,9 +1089,9 @@ class parent_proxy(object):
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
         if 'direct' in failed_parents:
             if method == 'CONNECT':
-                rule = '|https://%s' % requesthost.rsplit(':', 1)[0] if requesthost.rsplit(':', 1)[1] == '80' else requesthost
+                rule = '|https://%s' % requesthost.rsplit(':', 1)[0]
             else:
-                rule = url
+                rule = '|http://%s' % requesthost.rsplit(':', 1)[0] if requesthost.rsplit(':', 1)[1] == '80' else requesthost
             if rule not in self.temp_rules:
                 logging.info('add autoproxy rule: %s' % rule)
                 self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * 10))
