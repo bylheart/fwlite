@@ -248,7 +248,6 @@ class ProxyHandler(HTTPRequestHandler):
         self.ppname = self._proxylist.pop(0)
         self.pproxy = conf.parentdict.get(self.ppname)[0]
         self.pproxyparse = urlparse.urlparse(self.pproxy)
-        logging.info('{} {} via {}'.format(self.command, self.path, self.ppname))
 
     def getparent(self, level=1):
         return self._getparent(level)
@@ -577,7 +576,7 @@ class ProxyHandler(HTTPRequestHandler):
             while pool:
                 sock = pool.popleft()
                 if not self.is_connection_dropped(sock):
-                    logging.debug('reuse connection')
+                    logging.info('{} {} via {} (pooled)'.format(self.command, self.path, self.ppname))
                     self._proxylist.insert(0, self.ppname)
                     return sock
                 else:
@@ -586,7 +585,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _connect_via_proxy(self, netloc):
         timeout = None if self._proxylist else 20
-
+        logging.info('{} {} via {}'.format(self.command, self.path, self.ppname))
         host, _, port = netloc.partition(':')
         port = int(port)
         logging.debug("Connect to %s:%s" % (host, port))
