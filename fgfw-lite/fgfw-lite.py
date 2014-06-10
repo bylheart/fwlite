@@ -482,7 +482,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
             logging.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
-            return self._do_CONNECT()
+            return self._do_CONNECT(True)
 
         if self.pproxy.startswith('http'):
             s = ['%s %s %s\r\n' % (self.command, self.path, self.request_version), ]
@@ -520,9 +520,6 @@ class ProxyHandler(HTTPRequestHandler):
                                 if self.retryable:
                                     self.rbuffer.append(data)
                                 self.remotesoc.sendall(data)
-                        else:
-                            logging.debug('data empty, should_break = True')
-                            should_break = True
                     if not self.retryable or should_break:
                         break
                 except socket.error as e:
@@ -789,8 +786,7 @@ class sssocket(object):
                                struct.pack(b">H", port)]))
             self.connected = True
         if len(self.__rbuffer) < size:
-            data = self.crypto.decrypt(self._sock.recv(max(size, 4096)))
-            self.__rbuffer = b''.join([self.__rbuffer, data])
+            self.__rbuffer += self.crypto.decrypt(self._sock.recv(max(size, 4096)))
         result, self.__rbuffer = self.__rbuffer[:size], self.__rbuffer[size:]
         return result
 
