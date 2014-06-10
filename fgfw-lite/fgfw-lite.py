@@ -586,7 +586,6 @@ class ProxyHandler(HTTPRequestHandler):
         logging.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
         host, _, port = netloc.partition(':')
         port = int(port)
-        logging.debug("Connect to %s:%s" % (host, port))
         if not self.pproxy:
             return socket.create_connection((host, port), timeout or 5)
         elif self.pproxy.startswith('http://'):
