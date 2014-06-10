@@ -218,8 +218,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.rbuffer = deque()  # client read buffer: store request body, ssl handshake package for retry. no pop method.
         self.wbuffer = deque()  # client write buffer: read only once, not used in connect method
         self.wbuffer_size = 0
-        self.retrycount = 0
-        self.failed_parent = []
+        self.failed_parents = []
         try:
             HTTPRequestHandler.handle_one_request(self)
         except socket.error as e:
@@ -244,6 +243,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self._proxylist is None:
             self._proxylist = PARENT_PROXY.parentproxy(self.path, self.headers['Host'].rsplit(':', 1)[0], self.command, level)
         if not self._proxylist:
+            self.ppname = ''
             return 1
         self.ppname = self._proxylist.pop(0)
         self.pproxy = conf.parentdict.get(self.ppname)[0]
@@ -293,13 +293,19 @@ class ProxyHandler(HTTPRequestHandler):
         self._do_GET()
 
     def _do_GET(self, retry=False):
+        if retry:
+            if self.remotesoc:
+                self.remotesoc.close()
+                self.remotesoc = None
+            self.failed_parents.append(self.ppname)
         if not self.retryable:
             self.close_connection = 1
+            PARENT_PROXY.notify(self.command, self.path, self.requesthost, False, self.failed_parents, self.ppname)
             return
         if self.getparent():
+            PARENT_PROXY.notify(self.command, self.path, self.requesthost, False, self.failed_parents, self.ppname)
             return self.send_error(504)
-        if retry:
-            self.retrycount += 1
+
         self.upstream_name = self.ppname if self.pproxy.startswith('http') else self.requesthost
         try:
             self.remotesoc = self._http_connect_via_proxy(self.requesthost)
@@ -440,19 +446,14 @@ class ProxyHandler(HTTPRequestHandler):
                     break
         self.wfile_write()
         logging.debug('request finish')
-        if self.retrycount and response_status < 400:
-            PARENT_PROXY.add_temp_rule('|http://%s' % self.headers['Host'].split(':')[0])
+        PARENT_PROXY.notify(self.command, self.path, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
         if self.close_connection or self.is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
         else:
-            UPSTREAM_POOL[self.upstream_name].append((self.remotesoc, self.ppname + '(pooled)'))
+            UPSTREAM_POOL[self.upstream_name].append((self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)'))
         self.remotesoc = None
 
     def on_GET_Error(self, e):
-        if self.remotesoc:
-            self.remotesoc.close()
-            self.remotesoc = None
-        self.failed_parent.append(self.ppname)
         logging.warning('{} {} via {} failed! {}'.format(self.command, self.path, self.ppname, repr(e)))
         return self._do_GET(True)
 
@@ -470,10 +471,11 @@ class ProxyHandler(HTTPRequestHandler):
         self._do_CONNECT()
 
     def _do_CONNECT(self, retry=False):
-        if not self.retryable or self.getparent():
-            return
         if retry:
-            self.retrycount += 1
+            self.failed_parents.append(self.ppname)
+        if not self.retryable or self.getparent():
+            PARENT_PROXY.notify(self.command, self.path, self.path, True, self.failed_parents, self.ppname)
+            return
         try:
             self.remotesoc = self._connect_via_proxy(self.path)
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -525,8 +527,7 @@ class ProxyHandler(HTTPRequestHandler):
                 self.remotesoc.close()
                 logging.warning('{} {} failed! read timed out'.format(self.command, self.path))
                 return self._do_CONNECT(True)
-        if self.retrycount:
-            PARENT_PROXY.add_temp_rule('|https://%s' % self.path.rsplit(':', 1)[0])
+        PARENT_PROXY.notify(self.command, self.path, self.path, True, self.failed_parents, self.ppname)
         self._read_write(self.remotesoc, 300)
         self.remotesoc.close()
         self.connection.close()
@@ -565,13 +566,14 @@ class ProxyHandler(HTTPRequestHandler):
                 return True
 
     def _http_connect_via_proxy(self, netloc):
-        if self.retrycount == 0:
+        if not self.failed_parents:
             pool = UPSTREAM_POOL.get(self.upstream_name)
             while pool:
                 sock, pproxy = pool.popleft()
                 if not self.is_connection_dropped(sock):
                     logging.info('{} {} via {}'.format(self.command, self.path, pproxy))
                     self._proxylist.insert(0, self.ppname)
+                    self.ppname = pproxy
                     return sock
                 else:
                     sock.close()
@@ -1077,11 +1079,18 @@ class parent_proxy(object):
                 return ['direct']
         return parentlist
 
-    def add_temp_rule(self, rule):
-        if rule not in self.temp_rules:
-            logging.info('add autoproxy rule: %s' % rule)
-            self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * 10))
-            self.temp_rules.add(rule)
+    def notify(self, method, url, requesthost, success, failed_parents, current_parent):
+        logging.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (method, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
+        failed_parents = [k for k in failed_parents if 'pooled' not in k]
+        if 'direct' in failed_parents:
+            if method == 'CONNECT':
+                rule = '|https://%s' % requesthost.rsplit(':', 1)[0] if requesthost.rsplit(':', 1)[1] == '80' else requesthost
+            else:
+                rule = url
+            if rule not in self.temp_rules:
+                logging.info('add autoproxy rule: %s' % rule)
+                self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * 10))
+                self.temp_rules.add(rule)
 
 
 def updater():
