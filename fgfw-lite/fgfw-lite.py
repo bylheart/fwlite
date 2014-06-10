@@ -364,8 +364,8 @@ class ProxyHandler(HTTPRequestHandler):
         try:
             s = response_line = remoterfile.readline()
             if not s:
-                raise ValueError('empty response line')
-        except (socket.error, ssl.SSLError, OSError, ValueError) as e:
+                raise OSError(0, 'empty response line')
+        except NetWorkIOError as e:
             return self.on_GET_Error(e)
         protocol_version, _, response_status = response_line.rstrip(b'\r\n').partition(b' ')
         response_status, _, response_reason = response_status.partition(b' ')
@@ -377,7 +377,7 @@ class ProxyHandler(HTTPRequestHandler):
             while True:
                 line = remoterfile.readline()
                 header_data.append(line)
-                if line in (b'\r\n', b'\n', b''):
+                if line in (b'\r\n', b'\n', b''):  # header ends with a empty line
                     break
         except NetWorkIOError as e:
             return self.on_GET_Error(e)
@@ -429,11 +429,11 @@ class ProxyHandler(HTTPRequestHandler):
                 try:
                     data = self.remotesoc.recv(min(4096, content_length))
                     if not data:
-                        raise ValueError('line 434 read empty')
-                    content_length -= len(data)
-                    self.wfile_write(data)
+                        raise OSError(0, 'socket read empty')
                 except NetWorkIOError as e:
                     return self.on_GET_Error(e)
+                content_length -= len(data)
+                self.wfile_write(data)
         else:
             self.close_connection = 1
             self.retryable = False
