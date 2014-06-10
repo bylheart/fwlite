@@ -219,6 +219,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.wbuffer = deque()  # client write buffer: read only once, not used in connect method
         self.wbuffer_size = 0
         self.retrycount = 0
+        self.failed_parent = []
         try:
             HTTPRequestHandler.handle_one_request(self)
         except socket.error as e:
@@ -454,6 +455,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.remotesoc:
             self.remotesoc.close()
             self.remotesoc = None
+        self.failed_parent.append(self.ppname)
         logging.warning('{} {} via {} failed! {}'.format(self.command, self.path, self.ppname, repr(e)))
         return self._do_GET(True)
 
