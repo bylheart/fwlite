@@ -300,10 +300,7 @@ class ProxyHandler(HTTPRequestHandler):
             return self.send_error(504)
         if retry:
             self.retrycount += 1
-        if self.pproxyparse.scheme in ('socks5', 'ss'):
-            self.upstream_name = '{}-{}'.format(self.ppname, self.requesthost)
-        else:
-            self.upstream_name = self.ppname if self.pproxy else self.requesthost
+        self.upstream_name = self.ppname if self.pproxy.startswith('http') else self.requesthost
         try:
             self.remotesoc = self._http_connect_via_proxy(self.requesthost)
         except NetWorkIOError as e:
