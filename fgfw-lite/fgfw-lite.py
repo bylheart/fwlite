@@ -215,7 +215,6 @@ class ProxyHandler(HTTPRequestHandler):
         self._proxylist = None
         self.remotesoc = None
         self.retryable = True
-        self.request_body_read = False
         self.rbuffer = deque()  # client read buffer: store request body, ssl handshake package for retry. no pop method.
         self.wbuffer = deque()  # client write buffer: read only once, not used in connect method
         self.wbuffer_size = 0
@@ -258,8 +257,6 @@ class ProxyHandler(HTTPRequestHandler):
         if self.path.lower().startswith('ftp://'):
             return self.do_FTP()
         # transparent proxy
-        if int(self.headers.get('Content-Length', 0)) == 0:
-            self.request_body_read = True
         if self.path.startswith('/') and 'Host' in self.headers:
             self.path = 'http://%s%s' % (self.headers['Host'], self.path)
         if self.path.startswith('/'):
@@ -356,7 +353,6 @@ class ProxyHandler(HTTPRequestHandler):
                     self.remotesoc.sendall(data)
                 except NetWorkIOError as e:
                     return self.on_GET_Error(e)
-            self.request_body_read = True
         # read response line
         logging.debug('reading response_line')
         remoterfile = self.remotesoc if isinstance(self.remotesoc, sssocket) else self.remotesoc.makefile('rb', 0)
@@ -465,7 +461,6 @@ class ProxyHandler(HTTPRequestHandler):
 
     def do_CONNECT(self):
         self.close_connection = 1
-        self.request_body_read = True  # no request body should to be there in CONNECT method
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
         if self.path.rsplit(':', 1)[0].lower() in self.LOCALHOST:
@@ -655,7 +650,6 @@ class ProxyHandler(HTTPRequestHandler):
                 break
 
     def do_FTP(self):
-        self.request_body_read = True  # no request body should to be there in FTP method
         logging.info('{} {}'.format(self.command, self.path))
         # fish out user and password information
         scm, netloc, path, params, query, fragment = urlparse.urlparse(
