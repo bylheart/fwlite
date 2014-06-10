@@ -218,6 +218,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.rbuffer = deque()  # client read buffer: store request body, ssl handshake package for retry. no pop method.
         self.wbuffer = deque()  # client write buffer: read only once, not used in connect method
         self.wbuffer_size = 0
+        self.shortpath = None
         self.failed_parents = []
         try:
             HTTPRequestHandler.handle_one_request(self)
@@ -286,7 +287,7 @@ class ProxyHandler(HTTPRequestHandler):
             # Send the html message
             self.wfile.write(msg)
             return
-
+        self.shortpath = '%s%s' % (self.path.split('?')[0], '?' if len(self.path.split('?')) > 1 else '')
         host, _, port = self.headers['Host'].partition(':')
         port = port or 80
         self.requesthost = '%s:%s' % (host, port)
@@ -300,10 +301,10 @@ class ProxyHandler(HTTPRequestHandler):
             self.failed_parents.append(self.ppname)
         if not self.retryable:
             self.close_connection = 1
-            PARENT_PROXY.notify(self.command, self.path, self.requesthost, False, self.failed_parents, self.ppname)
+            PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
             return
         if self.getparent():
-            PARENT_PROXY.notify(self.command, self.path, self.requesthost, False, self.failed_parents, self.ppname)
+            PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
             return self.send_error(504)
 
         self.upstream_name = self.ppname if self.pproxy.startswith('http') else self.requesthost
@@ -446,7 +447,7 @@ class ProxyHandler(HTTPRequestHandler):
                     break
         self.wfile_write()
         logging.debug('request finish')
-        PARENT_PROXY.notify(self.command, self.path, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
+        PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
         if self.close_connection or self.is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
         else:
@@ -454,7 +455,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.remotesoc = None
 
     def on_GET_Error(self, e):
-        logging.warning('{} {} via {} failed! {}'.format(self.command, self.path, self.ppname, repr(e)))
+        logging.warning('{} {} via {} failed! {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
         return self._do_GET(True)
 
     do_POST = do_DELETE = do_TRACE = do_HEAD = do_PUT = do_GET
@@ -571,7 +572,7 @@ class ProxyHandler(HTTPRequestHandler):
             while pool:
                 sock, pproxy = pool.popleft()
                 if not self.is_connection_dropped(sock):
-                    logging.info('{} {} via {}'.format(self.command, self.path, pproxy))
+                    logging.info('{} {} via {}'.format(self.command, self.shortpath, pproxy))
                     self._proxylist.insert(0, self.ppname)
                     self.ppname = pproxy
                     return sock
@@ -581,7 +582,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _connect_via_proxy(self, netloc):
         timeout = None if self._proxylist else 20
-        logging.info('{} {} via {}'.format(self.command, self.path, self.ppname))
+        logging.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
         host, _, port = netloc.partition(':')
         port = int(port)
         logging.debug("Connect to %s:%s" % (host, port))
