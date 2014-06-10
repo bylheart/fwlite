@@ -445,7 +445,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.close_connection or self.is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
         else:
-            UPSTREAM_POOL[self.upstream_name].append(self.remotesoc)
+            UPSTREAM_POOL[self.upstream_name].append((self.remotesoc, self.ppname + '(pooled)'))
         self.remotesoc = None
 
     def on_GET_Error(self, e):
@@ -568,9 +568,9 @@ class ProxyHandler(HTTPRequestHandler):
         if self.retrycount == 0:
             pool = UPSTREAM_POOL.get(self.upstream_name)
             while pool:
-                sock = pool.popleft()
+                sock, pproxy = pool.popleft()
                 if not self.is_connection_dropped(sock):
-                    logging.info('{} {} via {} (pooled)'.format(self.command, self.path, self.ppname))
+                    logging.info('{} {} via {}'.format(self.command, self.path, pproxy))
                     self._proxylist.insert(0, self.ppname)
                     return sock
                 else:
