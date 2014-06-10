@@ -481,7 +481,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.remotesoc = self._connect_via_proxy(self.path)
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
-            logging.warning('%s %s failed! %r' % (self.command, self.path, e))
+            logging.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT()
 
         if self.pproxy.startswith('http'):
@@ -530,7 +530,7 @@ class ProxyHandler(HTTPRequestHandler):
                     break
             if self.retryable:
                 self.remotesoc.close()
-                logging.warning('{} {} failed! read timed out'.format(self.command, self.path))
+                logging.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
                 return self._do_CONNECT(True)
         PARENT_PROXY.notify(self.command, self.path, self.path, True, self.failed_parents, self.ppname)
         self._read_write(self.remotesoc, 300)
