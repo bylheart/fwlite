@@ -230,16 +230,6 @@ class ProxyHandler(HTTPRequestHandler):
         if self.remotesoc:
             self.remotesoc.close()
 
-    def handle(self):
-        ip, port = self.client_address
-        logging.debug("Request from %s" % ip)
-        if self.allowed_clients and ip not in self.allowed_clients:
-            self.raw_requestline = self.rfile.readline()
-            if self.parse_request():
-                self.send_error(403)
-        else:
-            HTTPRequestHandler.handle(self)
-
     def _getparent(self, level=1):
         if self._proxylist is None:
             self._proxylist = PARENT_PROXY.parentproxy(self.path, self.headers['Host'].rsplit(':', 1)[0], self.command, level)
@@ -504,7 +494,6 @@ class ProxyHandler(HTTPRequestHandler):
         if self._proxylist:
             for i in range(30):
                 try:
-                    should_break = False
                     (ins, _, exs) = select.select([self.connection, self.remotesoc], [], [self.connection, self.remotesoc], 0.2)
                     if exs:
                         logging.debug('line 509')
@@ -520,7 +509,7 @@ class ProxyHandler(HTTPRequestHandler):
                                 if self.retryable:
                                     self.rbuffer.append(data)
                                 self.remotesoc.sendall(data)
-                    if not self.retryable or should_break:
+                    if not self.retryable:
                         break
                 except socket.error as e:
                     logging.warning('socket error: %s' % e)
