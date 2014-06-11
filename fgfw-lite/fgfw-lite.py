@@ -492,17 +492,17 @@ class ProxyHandler(HTTPRequestHandler):
         if self.rbuffer:
             self.remotesoc.sendall(b''.join(self.rbuffer))
         if self._proxylist:
-            for i in range(30):
+            for i in range(10):
                 try:
-                    (ins, _, exs) = select.select([self.connection, self.remotesoc], [], [self.connection, self.remotesoc], 0.2)
+                    (ins, _, exs) = select.select([self.connection, self.remotesoc], [], [self.connection, self.remotesoc], 0.4)
                     if exs:
                         logging.debug('line 509')
                         break
-                    for i in ins:
-                        data = i.recv(4096)
+                    for s in ins:
+                        data = s.recv(4096)
                         if data:
-                            if i is self.remotesoc:
-                                logging.debug('self.retryable = False')
+                            if s is self.remotesoc:
+                                logging.debug('self.retryable = False, i = %d' % i)
                                 self.retryable = False
                                 self.wfile.write(data)
                             else:
