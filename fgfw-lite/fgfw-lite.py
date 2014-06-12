@@ -350,7 +350,7 @@ class ProxyHandler(HTTPRequestHandler):
                     return self.on_GET_Error(e)
         # read response line
         logging.debug('reading response_line')
-        remoterfile = self.remotesoc if isinstance(self.remotesoc, sssocket) else self.remotesoc.makefile('rb', 0)
+        remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
         try:
             s = response_line = remoterfile.readline()
             if not s:
