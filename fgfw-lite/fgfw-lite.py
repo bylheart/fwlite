@@ -289,6 +289,8 @@ class ProxyHandler(HTTPRequestHandler):
                 self.remotesoc.close()
                 self.remotesoc = None
             self.failed_parents.append(self.ppname)
+            if len(self.failed_parents) > conf.maxretry:
+                self.retryable = False
         if not self.retryable:
             self.close_connection = 1
             PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
@@ -464,6 +466,8 @@ class ProxyHandler(HTTPRequestHandler):
     def _do_CONNECT(self, retry=False):
         if retry:
             self.failed_parents.append(self.ppname)
+            if len(self.failed_parents) > conf.maxretry:
+                self.retryable = False
         if not self.retryable or self.getparent():
             PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
             return
@@ -1436,6 +1440,8 @@ class Config(object):
         if self.userconf.dget('fgfwproxy', 'parentproxy', ''):
             self.addparentproxy('direct', '%s 0' % self.userconf.dget('fgfwproxy', 'parentproxy', ''))
             self.addparentproxy('local', 'direct 100')
+
+        self.maxretry = self.userconf.dgetint('fgfwproxy', 'maxretry', 4)
 
         for host, ip in self.userconf.items('hosts'):
             if ip not in HOSTS.get(host, []):
