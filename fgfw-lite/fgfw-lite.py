@@ -492,10 +492,10 @@ class ProxyHandler(HTTPRequestHandler):
         if self.rbuffer:
             self.remotesoc.sendall(b''.join(self.rbuffer))
         if self._proxylist:
-            for i in range(10):
+            for i in range(8):
                 try:
                     flag = False
-                    (ins, _, exs) = select.select([self.connection, self.remotesoc], [], [self.connection, self.remotesoc], 0.6)
+                    (ins, _, exs) = select.select([self.connection, self.remotesoc], [], [self.connection, self.remotesoc], 1)
                     if exs:
                         logging.debug('line 509')
                         break
