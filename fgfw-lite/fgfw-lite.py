@@ -1073,7 +1073,7 @@ class parent_proxy(object):
     def notify(self, method, url, requesthost, success, failed_parents, current_parent):
         logging.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (method, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
-        if 'direct' in failed_parents:
+        if 'direct' in failed_parents and success:
             if method == 'CONNECT':
                 rule = '|https://%s' % requesthost.rsplit(':', 1)[0]
             else:
