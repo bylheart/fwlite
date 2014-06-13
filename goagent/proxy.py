@@ -420,7 +420,7 @@ class CertUtil(object):
 
 class DetectMobileBrowser:
     """detect mobile function from http://detectmobilebrowsers.com"""
-    regex_match_a  = re.compile(r"(android|bb\\d+|meego).+mobile|avantgo|bada\\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\\.(browser|link)|vodafone|wap|windows (ce|phone)|xda|xiino", re.I|re.M).search
+    regex_match_a = re.compile(r"(android|bb\\d+|meego).+mobile|avantgo|bada\\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\\.(browser|link)|vodafone|wap|windows (ce|phone)|xda|xiino", re.I|re.M).search
     regex_match_b = re.compile(r"1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\\-(n|u)|c55\\/|capi|ccwa|cdm\\-|cell|chtm|cldc|cmd\\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\\-s|devi|dica|dmob|do(c|p)o|ds(12|\\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\\-|_)|g1 u|g560|gene|gf\\-5|g\\-mo|go(\\.w|od)|gr(ad|un)|haie|hcit|hd\\-(m|p|t)|hei\\-|hi(pt|ta)|hp( i|ip)|hs\\-c|ht(c(\\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\\-(20|go|ma)|i230|iac( |\\-|\\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\\/)|klon|kpt |kwc\\-|kyo(c|k)|le(no|xi)|lg( g|\\/(k|l|u)|50|54|\\-[a-w])|libw|lynx|m1\\-w|m3ga|m50\\/|ma(te|ui|xo)|mc(01|21|ca)|m\\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\\-2|po(ck|rt|se)|prox|psio|pt\\-g|qa\\-a|qc(07|12|21|32|60|\\-[2-7]|i\\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\\-|oo|p\\-)|sdk\\/|se(c(\\-|0|1)|47|mc|nd|ri)|sgh\\-|shar|sie(\\-|m)|sk\\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\\-|v\\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\\-|tdg\\-|tel(i|m)|tim\\-|t\\-mo|to(pl|sh)|ts(70|m\\-|m3|m5)|tx\\-9|up(\\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\\-|your|zeto|zte\\-", re.I|re.M).search
 
     @staticmethod
@@ -441,7 +441,7 @@ class SSLConnection(object):
         if attr not in ('_context', '_sock', '_connection', '_makefile_refs'):
             return getattr(self._connection, attr)
 
-    def __wait_sock_io(self, sock, io_func, *args, **kwargs):
+    def __wait_sock_io(self, io_func, *args, **kwargs):
         timeout = self._sock.gettimeout() or 0.1
         fd = self._sock.fileno()
         while True:
@@ -464,14 +464,14 @@ class SSLConnection(object):
         return client, addr
 
     def do_handshake(self):
-        return self.__wait_sock_io(self._sock, self._connection.do_handshake)
+        return self.__wait_sock_io(self._connection.do_handshake)
 
     def connect(self, *args, **kwargs):
-        return self.__wait_sock_io(self._sock, self._connection.connect, *args, **kwargs)
+        return self.__wait_sock_io(self._connection.connect, *args, **kwargs)
 
     def send(self, data, flags=0):
         try:
-            return self.__wait_sock_io(self._sock, self._connection.send, data, flags)
+            return self.__wait_sock_io(self._connection.send, data, flags)
         except OpenSSL.SSL.SysCallError as e:
             if e[0] == -1 and not data:
                 # errors when writing empty strings are expected and can be ignored
@@ -483,7 +483,7 @@ class SSLConnection(object):
         if pending:
             return self._connection.recv(min(pending, bufsiz))
         try:
-            return self.__wait_sock_io(self._sock, self._connection.recv, bufsiz, flags)
+            return self.__wait_sock_io(self._connection.recv, bufsiz, flags)
         except OpenSSL.SSL.ZeroReturnError:
             return ''
 
@@ -702,9 +702,19 @@ def get_dnsserver_list():
 
 def spawn_later(seconds, target, *args, **kwargs):
     def wrap(*args, **kwargs):
-        __import__('time').sleep(seconds)
+        time.sleep(seconds)
         return target(*args, **kwargs)
-    return __import__('thread').start_new_thread(wrap, args, kwargs)
+    return thread.start_new_thread(wrap, args, kwargs)
+
+
+def spawn_period(seconds, target, *args, **kwargs):
+    def wrap(*args, **kwargs):
+        try:
+            time.sleep(seconds)
+            target(*args, **kwargs)
+        except StandardError as e:
+            logging.warning('%r(%s, %s) error: %r', target, args, kwargs, e)
+    return thread.start_new_thread(wrap, args, kwargs)
 
 
 def is_clienthello(data):
@@ -721,6 +731,10 @@ def is_clienthello(data):
         return False
 
 
+def is_google_ip(ipaddr):
+    return ipaddr.startswith(('173.194.', '207.126.', '209.85.', '216.239.', '64.18.', '64.233.', '66.102.', '66.249.', '72.14.', '74.125.'))
+
+
 def extract_sni_name(packet):
     if packet.startswith('\x16\x03'):
         stream = io.BytesIO(packet)
@@ -730,7 +744,7 @@ def extract_sni_name(packet):
         cipher_suites_length, = struct.unpack('>h', stream.read(2))
         stream.read(cipher_suites_length+2)
         extensions_length, = struct.unpack('>h', stream.read(2))
-        extensions = {}
+        # extensions = {}
         while True:
             data = stream.read(2)
             if not data:
@@ -1795,7 +1809,7 @@ class AdvancedProxyHandler(SimpleProxyHandler):
             remain_window = 3 * window - len(addrs)
             if 0 < remain_window <= len(addresses):
                 addrs += random.sample(addresses, remain_window)
-            logging.debug('%s good_ipaddrs=%d, unkown_ipaddrs=%r, bad_ipaddrs=%r', cache_key, len(good_ipaddrs), len(unkown_ipaddrs),  len(bad_ipaddrs))
+            logging.debug('%s good_ipaddrs=%d, unkown_ipaddrs=%r, bad_ipaddrs=%r', cache_key, len(good_ipaddrs), len(unkown_ipaddrs), len(bad_ipaddrs))
             queobj = gevent.queue.Queue() if gevent else Queue.Queue()
             for addr in addrs:
                 thread.start_new_thread(create_connection_withopenssl, (addr, timeout, queobj))
@@ -2058,10 +2072,12 @@ class Common(object):
             assert isinstance(dnsserver, basestring)
             for dnslib_resolve in (dnslib_resolve_over_udp, dnslib_resolve_over_tcp):
                 try:
+                    time.sleep(random.random())
                     iplist = dnslib_record2iplist(dnslib_resolve(host, [dnsserver], timeout=4, blacklist=self.DNS_BLACKLIST))
                     queue.put((host, dnsserver, iplist))
                 except (socket.error, OSError) as e:
-                    logging.warning('%r remote host=%r failed: %s', dnslib_resolve.func_name, host, e)
+                    logging.warning('%r remote host=%r failed: %s', dnslib_resolve, host, e)
+                    time.sleep(1)
         result_queue = Queue.Queue()
         for host in hosts:
             for dnsserver in self.DNS_SERVERS:
@@ -2069,13 +2085,15 @@ class Common(object):
                 thread.start_new_thread(do_remote_resolve, (host, dnsserver, result_queue))
         for _ in xrange(len(self.DNS_SERVERS) * len(hosts) * 2):
             try:
-                host, dnsserver, iplist = result_queue.get(timeout=8)
+                host, dnsserver, iplist = result_queue.get(timeout=16)
                 logging.debug('%r remote host=%r return %s', dnsserver, host, iplist)
+                if host.endswith('.google.com'):
+                    iplist = [x for x in iplist if is_google_ip(x)]
                 new_iplist += iplist
             except Queue.Empty:
                 break
+        logging.info('extend_iplist finished, added %s', len(set(self.IPLIST_MAP[iplist_name])-set(new_iplist)))
         self.IPLIST_MAP[iplist_name] = list(set(self.IPLIST_MAP[iplist_name] + new_iplist))
-        logging.info('extend_iplist finished, added %s', len(set(new_iplist)))
 
     def resolve_iplist(self):
         # https://support.google.com/websearch/answer/186669?hl=zh-Hans
@@ -2100,11 +2118,14 @@ class Common(object):
             for _ in xrange(len(need_resolve_remote)):
                 try:
                     host, iplist = result_queue.get(timeout=8)
+                    if host.endswith('.google.com'):
+                        iplist = [x for x in iplist if is_google_ip(x)]
                     resolved_iplist += iplist
                 except Queue.Empty:
                     break
             if name == 'google_hk':
-                spawn_later(1, self.extend_iplist, name, need_resolve_remote)
+                for delay in (1, 60, 150, 240, 300, 450, 600, 900):
+                    spawn_later(delay, self.extend_iplist, name, need_resolve_remote)
             if name.startswith('google_') and name not in ('google_cn', 'google_hk') and resolved_iplist:
                 iplist_prefix = re.split(r'[\.:]', resolved_iplist[0])[0]
                 resolved_iplist = list(set(x for x in resolved_iplist if x.startswith(iplist_prefix)))
@@ -2462,7 +2483,7 @@ class GAEProxyHandler(AdvancedProxyHandler):
         return AdvancedProxyHandler.gethostbyname2(self, hostname)
 
     def handle_urlfetch_error(self, fetchserver, response):
-        gae_appid = urlparse.urlsplit(fetchserver).netloc.split('.')[-3]
+        gae_appid = urlparse.urlsplit(fetchserver).hostname.split('.')[-3]
         if response.app_status == 503:
             # appid over qouta, switch to next appid
             if gae_appid == common.GAE_APPIDS[0] and len(common.GAE_APPIDS) > 1:
@@ -2494,7 +2515,7 @@ class PHPProxyHandler(AdvancedProxyHandler):
             self.handler_filters.insert(-1, HostsFilter())
         if not common.PROXY_ENABLE:
             common.resolve_iplist()
-            fetchhost = re.sub(r':\d+$', '', urlparse.urlsplit(common.PHP_FETCHSERVER).netloc)
+            fetchhost = urlparse.urlsplit(common.PHP_FETCHSERVER).hostname
             logging.info('resolve common.PHP_FETCHSERVER domain=%r to iplist', fetchhost)
             if common.PHP_USEHOSTS and fetchhost in common.HOST_MAP:
                 hostname = common.HOST_MAP[fetchhost]
@@ -2749,9 +2770,9 @@ class PacUtil(object):
                 elif line.startswith('||'):
                     domain = line[2:].lstrip('*').rstrip('/')
                 elif line.startswith('|'):
-                    domain = urlparse.urlsplit(line[1:]).netloc.lstrip('*')
+                    domain = urlparse.urlsplit(line[1:]).hostname.lstrip('*')
                 elif line.startswith(('http://', 'https://')):
-                    domain = urlparse.urlsplit(line).netloc.lstrip('*')
+                    domain = urlparse.urlsplit(line).hostname.lstrip('*')
                 elif re.search(r'^([\w\-\_\.]+)([\*\/]|$)', line):
                     domain = re.split(r'[\*\/]', line)[0]
                 else:
