@@ -465,7 +465,7 @@ class ProxyHandler(HTTPRequestHandler):
         if retry:
             self.failed_parents.append(self.ppname)
         if not self.retryable or self.getparent():
-            PARENT_PROXY.notify(self.command, self.path, self.path, True, self.failed_parents, self.ppname)
+            PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
             return
         try:
             self.remotesoc = self._connect_via_proxy(self.path)
@@ -491,35 +491,34 @@ class ProxyHandler(HTTPRequestHandler):
                 data = remoterfile.readline()
         if self.rbuffer:
             self.remotesoc.sendall(b''.join(self.rbuffer))
-        if self._proxylist:
-            for i in range(8):
-                try:
-                    flag = False
-                    (ins, _, exs) = select.select([self.connection, self.remotesoc], [], [self.connection, self.remotesoc], 1)
-                    if exs:
-                        logging.debug('line 509')
-                        break
-                    for s in ins:
-                        data = s.recv(4096)
-                        if data:
-                            if s is self.remotesoc:
-                                flag = True
-                                self.wfile.write(data)
-                            else:
-                                if self.retryable:
-                                    self.rbuffer.append(data)
-                                self.remotesoc.sendall(data)
-                    if flag:
-                        logging.debug('self.retryable = False, i = %d' % i)
-                        self.retryable = False
-                        break
-                except socket.error as e:
-                    logging.warning('socket error: %s' % e)
+        for i in range(8):
+            try:
+                flag = False
+                (ins, _, exs) = select.select([self.connection, self.remotesoc], [], [self.connection, self.remotesoc], 1)
+                if exs:
+                    logging.debug('line 509')
                     break
-            if self.retryable:
-                self.remotesoc.close()
-                logging.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
-                return self._do_CONNECT(True)
+                for s in ins:
+                    data = s.recv(4096)
+                    if data:
+                        if s is self.remotesoc:
+                            flag = True
+                            self.wfile.write(data)
+                        else:
+                            if self.retryable:
+                                self.rbuffer.append(data)
+                            self.remotesoc.sendall(data)
+                if flag:
+                    logging.debug('self.retryable = False, i = %d' % i)
+                    self.retryable = False
+                    break
+            except socket.error as e:
+                logging.warning('socket error: %s' % e)
+                break
+        if self.retryable:
+            self.remotesoc.close()
+            logging.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
+            return self._do_CONNECT(True)
         PARENT_PROXY.notify(self.command, self.path, self.path, True, self.failed_parents, self.ppname)
         self._read_write(self.remotesoc, 300)
         self.remotesoc.close()
