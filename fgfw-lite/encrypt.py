@@ -28,13 +28,7 @@ import string
 import struct
 import logging
 from collections import defaultdict, deque
-try:
-    from repoze.lru import lru_cache
-except ImportError:
-    def lru_cache(size=0, timeout=0):
-        def decorator(func):
-            return func
-        return decorator
+from repoze.lru import lru_cache
 try:
     from M2Crypto.EVP import Cipher
     import M2Crypto.Rand

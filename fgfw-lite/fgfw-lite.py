@@ -66,23 +66,15 @@ import shutil
 import socket
 import struct
 import ssl
+import pygeoip
 import traceback
 from threading import Thread
-import pygeoip
+from repoze.lru import lru_cache
 try:
     import markdown
 except ImportError:
     markdown = None
     sys.stderr.write('Warning: python-Markdown is NOT installed!\n')
-try:
-    from repoze.lru import lru_cache
-except ImportError:
-    sys.stderr.write('Warning: repoze.lru is NOT installed!\n')
-
-    def lru_cache(size=0, timeout=0):
-        def decorator(func):
-            return func
-        return decorator
 try:
     import configparser
     import urllib.request as urllib2
