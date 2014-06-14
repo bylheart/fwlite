@@ -8,3 +8,4 @@
 ||google.com
 ||googleapis.com
 ||google.com.hk
+||ggpht.com
