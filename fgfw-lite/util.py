@@ -49,7 +49,7 @@ def create_connection(address, timeout=object(), source_address=None):
 
     host, port = address
     err = None
-    for res in getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+    for res in getaddrinfo(host, port):
         af, socktype, proto, canonname, sa = res
         sock = None
         try:
