@@ -137,6 +137,8 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
+    LOCALHOST = ('127.0.0.1', '::1', 'localhost')
+
     def _quote_html(self, html):
         return html.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -196,13 +198,17 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     def end_trunk(self):
         self.wfile.write(b'0\r\n\r\n')
 
+    def _request_localhost(self, req):
+        try:
+            return getaddrinfo(req[0], req[1])[0][4][0] in self.LOCALHOST
+        except Exception as e:
+            logging.error(repr(e))
+
 
 class ProxyHandler(HTTPRequestHandler):
     server_version = "FGFW-Lite/" + __version__
     protocol_version = "HTTP/1.1"
     timeout = 10
-    allowed_clients = ()
-    LOCALHOST = ('127.0.0.1', '::1', 'localhost')
 
     def handle_one_request(self):
         self._proxylist = None
@@ -260,7 +266,9 @@ class ProxyHandler(HTTPRequestHandler):
         if 'Host' not in self.headers:
             self.headers['Host'] = urlparse.urlparse(self.path).netloc
 
-        if self.headers['Host'].rsplit(':', 1)[0].lower() in self.LOCALHOST:
+        self.requesthost = parse_hostport(self.headers['Host'], 80)
+
+        if self._request_localhost(self.requesthost):
             self.send_response(200)
             msg = 'Hello World !'
             self.send_header('Content-type', 'text/html')
@@ -271,7 +279,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.wfile.write(msg)
             return
         self.shortpath = '%s%s' % (self.path.split('?')[0], '?' if len(self.path.split('?')) > 1 else '')
-        self.requesthost = parse_hostport(self.headers['Host'], 80)
+
         self._do_GET()
 
     def _do_GET(self, retry=False):
@@ -449,7 +457,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.requesthost = (host, int(port))
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
-        if getaddrinfo(host, int(port))[0][4][0] in self.LOCALHOST:
+        if self._request_localhost(self.requesthost):
             return self.send_error(403)
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
