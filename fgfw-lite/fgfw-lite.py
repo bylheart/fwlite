@@ -70,7 +70,7 @@ import traceback
 from threading import Thread
 from repoze.lru import lru_cache
 import encrypt
-from util import create_connection, getaddrinfo
+from util import create_connection, getaddrinfo, parse_hostport
 try:
     import markdown
 except ImportError:
@@ -225,7 +225,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _getparent(self, level=1):
         if self._proxylist is None:
-            self._proxylist = PARENT_PROXY.parentproxy(self.path, self.headers['Host'].rsplit(':', 1)[0], self.command, level)
+            self._proxylist = PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, level)
         if not self._proxylist:
             self.ppname = ''
             return 1
@@ -271,9 +271,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.wfile.write(msg)
             return
         self.shortpath = '%s%s' % (self.path.split('?')[0], '?' if len(self.path.split('?')) > 1 else '')
-        host, _, port = self.headers['Host'].partition(':')
-        port = port or 80
-        self.requesthost = '%s:%s' % (host, port)
+        self.requesthost = parse_hostport(self.headers['Host'], 80)
         self._do_GET()
 
     def _do_GET(self, retry=False):
@@ -453,6 +451,8 @@ class ProxyHandler(HTTPRequestHandler):
             return self.send_error(403)
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
+        host, _, port = self.path.partition(':')
+        self.requesthost = (host, int(port))
         self.wfile.write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
         self._do_CONNECT()
 
@@ -465,7 +465,7 @@ class ProxyHandler(HTTPRequestHandler):
             PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
             return
         try:
-            self.remotesoc = self._connect_via_proxy(self.path)
+            self.remotesoc = self._connect_via_proxy(self.requesthost)
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
             logging.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
@@ -571,10 +571,8 @@ class ProxyHandler(HTTPRequestHandler):
     def _connect_via_proxy(self, netloc):
         timeout = None if self._proxylist else 20
         logging.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
-        host, _, port = netloc.partition(':')
-        port = int(port)
         if not self.pproxy:
-            return create_connection((host, port), timeout or 5)
+            return create_connection(netloc, timeout or 5)
         elif self.pproxy.startswith('http://'):
             return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), timeout or 10)
         elif self.pproxy.startswith('https://'):
@@ -584,7 +582,7 @@ class ProxyHandler(HTTPRequestHandler):
             return s
         elif self.pproxy.startswith('ss://'):
             s = sssocket(self.pproxy, timeout, conf.parentdict.get('direct')[0])
-            s.connect((host, port))
+            s.connect(netloc)
             return s
         elif self.pproxy.startswith('socks5://'):
             s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or 10)
@@ -600,9 +598,9 @@ class ProxyHandler(HTTPRequestHandler):
                 data = s.recv(2)
             assert data[1] == b'\x00'  # no auth needed or auth passed
             s.sendall(b''.join([b"\x05\x01\x00\x03",
-                                chr(len(host)).encode(),
-                                host.encode(),
-                                struct.pack(b">H", port)]))
+                                chr(len(netloc[0])).encode(),
+                                netloc[0].encode(),
+                                struct.pack(b">H", netloc[1])]))
             data = s.recv(4)
             assert data[1] == b'\x00'
             if data[3] == b'\x01':  # read ipv4 addr
@@ -941,7 +939,7 @@ class parent_proxy(object):
             logging.warning('Bad autoproxy rule: %r' % line)
 
     @lru_cache(256, timeout=120)
-    def ifhost_in_local(self, host, port=80):
+    def ifhost_in_local(self, host, port):
         try:
             i = ip_from_string(getaddrinfo(host, port)[0][4][0])
             if any(a[0] <= i < a[1] for a in self.localnet):
@@ -951,9 +949,10 @@ class parent_proxy(object):
             logging.warning('resolve %s failed! %s' % (host, repr(e)))
 
     @lru_cache(256, timeout=120)
-    def ifhost_in_region(self, host):
+    def ifhost_in_region(self, host, port):
         try:
-            code = self.geoip.country_code_by_name(host)
+            addr = getaddrinfo(host, port)[0][4][0]
+            code = self.geoip.country_code_by_addr(addr)
             if code in conf.region:
                 logging.info('%s in %s' % (host, code))
                 return True
@@ -980,7 +979,7 @@ class parent_proxy(object):
                     self.gfwlist.insert(0, self.gfwlist.pop(i))
                 return True
 
-    def ifgfwed(self, uri, host, level=1):
+    def ifgfwed(self, uri, host, port, level=1):
         if level == 0:
             return False
         elif level == 2:
@@ -993,7 +992,7 @@ class parent_proxy(object):
         if any(rule.match(uri) for rule in self.override):
             return None
 
-        if not gfwlist_force and (HOSTS.get(host) or self.ifhost_in_region(host)):
+        if not gfwlist_force and (HOSTS.get(host) or self.ifhost_in_region(host, port)):
             return None
 
         if gfwlist_force or forceproxy or self.gfwlist_match(uri):
@@ -1023,17 +1022,18 @@ class parent_proxy(object):
             decide which parentproxy to use.
             url:  'www.google.com:443'
                   'http://www.inxian.com'
-            host: 'www.google.com' (no port number is allowed)
+            host: ('www.google.com', 443) (no port number is allowed)
             level: 0 -- direct
                    1 -- proxy if force, direct if ip in region or override, proxy if gfwlist
                    2 -- proxy if force, direct if ip in region or override, proxy if all
                    3 -- proxy if not override
         '''
+        host, port = host
 
-        if self.ifhost_in_local(host):
+        if self.ifhost_in_local(host, port):
             return ['local' if 'local' in conf.parentdict.keys() else 'direct']
 
-        f = self.ifgfwed(uri, host, level)
+        f = self.ifgfwed(uri, host, port, level)
 
         parentlist = list(conf.parentdict.keys())
         random.shuffle(parentlist)

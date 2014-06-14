@@ -20,14 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
+import re
 import socket
 from repoze.lru import lru_cache
 
 
 @lru_cache(4096, timeout=90)
-def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
-    """>>> socket.getaddrinfo("www.python.org", 80, 0, 0, socket.SOL_TCP)
+def getaddrinfo(host, port=None, family=0, socktype=0, proto=0, flags=0):
+    """return (family, socktype, proto, canonname, sockaddr)
+       >>> socket.getaddrinfo("www.python.org", 80, 0, 0, socket.SOL_TCP)
        [(2, 1, 6, '', ('82.94.164.162', 80)),
         (10, 1, 6, '', ('2001:888:2000:d::a2', 80, 0, 0))]"""
     return socket.getaddrinfo(host, port, family, socktype, proto, flags)
@@ -70,9 +71,17 @@ def create_connection(address, timeout=object(), source_address=None):
     else:
         raise socket.error("getaddrinfo returns an empty list")
 
+
+def parse_hostport(host, default_port=80):
+    m = re.match(r'(.+)[#](\d+)$', host)
+    if m:
+        return m.group(1).strip('[]'), int(m.group(2))
+    else:
+        return host.strip('[]'), default_port
+
 if __name__ == "__main__":
-    t = socket.getaddrinfo('www.baidu.com', 80, 0, socket.SOCK_STREAM)
-    r = getaddrinfo('www.baidu.com', 80, 0, socket.SOCK_STREAM)
+    t = socket.getaddrinfo('www.baidu.com', 80)
+    r = getaddrinfo('www.baidu.com')
     print t
     print r
     print r[0][4][0]
