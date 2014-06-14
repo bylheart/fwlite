@@ -42,6 +42,7 @@ BLOCKSIZE = 8192
 v = {}
 flist = ['./fgfw-lite/fgfw-lite.py',
          './fgfw-lite/encrypt.py',
+         './fgfw-lite/util.py',
          './fgfw-lite/cloud.txt',
          './userconf.sample.ini',
          './Python27/python27.zip',

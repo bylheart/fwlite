@@ -58,7 +58,6 @@ import atexit
 import platform
 import base64
 import ftplib
-import encrypt
 import logging
 import random
 import select
@@ -70,6 +69,8 @@ import pygeoip
 import traceback
 from threading import Thread
 from repoze.lru import lru_cache
+import encrypt
+from util import create_connection, getaddrinfo
 try:
     import markdown
 except ImportError:
@@ -573,11 +574,11 @@ class ProxyHandler(HTTPRequestHandler):
         host, _, port = netloc.partition(':')
         port = int(port)
         if not self.pproxy:
-            return socket.create_connection((host, port), timeout or 5)
+            return create_connection((host, port), timeout or 5)
         elif self.pproxy.startswith('http://'):
-            return socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), timeout or 10)
+            return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), timeout or 10)
         elif self.pproxy.startswith('https://'):
-            s = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or 10)
+            s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or 10)
             s = ssl.wrap_socket(s)
             s.do_handshake()
             return s
@@ -586,7 +587,7 @@ class ProxyHandler(HTTPRequestHandler):
             s.connect((host, port))
             return s
         elif self.pproxy.startswith('socks5://'):
-            s = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or 10)
+            s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or 10)
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s.sendall(b"\x05\x02\x00\x02" if self.pproxyparse.username else b"\x05\x01\x00")
             data = s.recv(2)
@@ -741,10 +742,10 @@ class sssocket(object):
         sshost, ssport, ssmethod, sspassword = (p.hostname, p.port, p.username, p.password)
         self.crypto = encrypt.Encryptor(sspassword, ssmethod)
         if not self.parentproxy:
-            self._sock = socket.create_connection((sshost, ssport), self.timeout)
+            self._sock = create_connection((sshost, ssport), self.timeout)
             self.setsockopt = self._sock.setsockopt
         elif self.parentproxy.startswith('http://'):
-            self._sock = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), self.timeout)
+            self._sock = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), self.timeout)
             self.setsockopt = self._sock.setsockopt
             s = 'CONNECT %s:%s HTTP/1.1\r\nHost: %s\r\n' % (sshost, ssport, sshost)
             if self.pproxyparse.username:
@@ -940,9 +941,9 @@ class parent_proxy(object):
             logging.warning('Bad autoproxy rule: %r' % line)
 
     @lru_cache(256, timeout=120)
-    def ifhost_in_local(self, host):
+    def ifhost_in_local(self, host, port=80):
         try:
-            i = ip_from_string(socket.gethostbyname(host))
+            i = ip_from_string(getaddrinfo(host, port)[0][4][0])
             if any(a[0] <= i < a[1] for a in self.localnet):
                 return True
             return False
@@ -989,9 +990,6 @@ class parent_proxy(object):
 
         gfwlist_force = self.if_gfwlist_force(uri, level)
 
-        if self.ifhost_in_local(host):
-            return False
-
         if any(rule.match(uri) for rule in self.override):
             return None
 
@@ -1032,10 +1030,10 @@ class parent_proxy(object):
                    3 -- proxy if not override
         '''
 
-        f = self.ifgfwed(uri, host, level)
-
-        if f is False:
+        if self.ifhost_in_local(host):
             return ['local' if 'local' in conf.parentdict.keys() else 'direct']
+
+        f = self.ifgfwed(uri, host, level)
 
         parentlist = list(conf.parentdict.keys())
         random.shuffle(parentlist)
