@@ -253,7 +253,7 @@ class CertUtil(object):
         ca.set_pubkey(key)
         ca.add_extensions([
             OpenSSL.crypto.X509Extension(b'basicConstraints', True, b'CA:TRUE'),
-            OpenSSL.crypto.X509Extension(b'nsCertType', True, b'sslCA'),
+            # OpenSSL.crypto.X509Extension(b'nsCertType', True, b'sslCA'),
             OpenSSL.crypto.X509Extension(b'extendedKeyUsage', True, b'serverAuth,clientAuth,emailProtection,timeStamping,msCodeInd,msCodeCom,msCTLSign,msSGC,msEFS,nsSGC'),
             OpenSSL.crypto.X509Extension(b'keyUsage', False, b'keyCertSign, cRLSign'),
             OpenSSL.crypto.X509Extension(b'subjectKeyIdentifier', False, b'hash', subject=ca), ])
@@ -685,7 +685,8 @@ def dnslib_record2iplist(record):
 
 def get_dnsserver_list():
     if os.name == 'nt':
-        import ctypes, ctypes.wintypes, struct, socket
+        import ctypes
+        import ctypes.wintypes
         DNS_CONFIG_DNS_SERVER_LIST = 6
         buf = ctypes.create_string_buffer(2048)
         ctypes.windll.dnsapi.DnsQueryConfig(DNS_CONFIG_DNS_SERVER_LIST, 0, None, None, ctypes.byref(buf), ctypes.byref(ctypes.wintypes.DWORD(len(buf))))
@@ -1707,7 +1708,7 @@ class AdvancedProxyHandler(SimpleProxyHandler):
                 # set a short timeout to trigger timeout retry more quickly.
                 sock.settimeout(timeout or self.connect_timeout)
                 # pick up the certificate
-                server_hostname = b'mail.google.com' if cache_key.startswith('google_') or hostname.endswith('.appspot.com') else None
+                server_hostname = b'www.googleapis.com' if cache_key.startswith('google_') or hostname.endswith('.appspot.com') else None
                 ssl_sock = SSLConnection(self.openssl_context, sock)
                 ssl_sock.set_connect_state()
                 if server_hostname and hasattr(ssl_sock, 'set_tlsext_host_name'):
@@ -2288,15 +2289,20 @@ class LocalProxyServer(SocketServer.ThreadingTCPServer):
 
 class UserAgentFilter(BaseProxyHandlerFilter):
     """user agent filter"""
+    def __init__(self, user_agent):
+        self.user_agent = user_agent
+
     def filter(self, handler):
-        if common.USERAGENT_ENABLE:
-            handler.headers['User-Agent'] = common.USERAGENT_STRING
+        handler.headers['User-Agent'] = self.user_agent
 
 
 class WithGAEFilter(BaseProxyHandlerFilter):
     """with gae filter"""
+    def __init__(self, withgae_sites):
+        self.withgae_sites = set(withgae_sites)
+
     def filter(self, handler):
-        if handler.host in common.HTTP_WITHGAE:
+        if handler.host in self.withgae_sites:
             logging.debug('WithGAEFilter metched %r %r', handler.path, handler.headers)
             # assume the last one handler is GAEFetchFilter
             return handler.handler_filters[-1].filter(handler)
@@ -2304,8 +2310,12 @@ class WithGAEFilter(BaseProxyHandlerFilter):
 
 class ForceHttpsFilter(BaseProxyHandlerFilter):
     """force https filter"""
+    def __init__(self, forcehttps_sites, noforcehttps_sites):
+        self.forcehttps_sites = tuple(forcehttps_sites)
+        self.noforcehttps_sites = set(noforcehttps_sites)
+
     def filter(self, handler):
-        if handler.command != 'CONNECT' and handler.host.endswith(common.HTTP_FORCEHTTPS) and handler.host not in common.HTTP_NOFORCEHTTPS:
+        if handler.command != 'CONNECT' and handler.host.endswith(self.forcehttps_sites) and handler.host not in self.noforcehttps_sites:
             if not handler.headers.get('Referer', '').startswith('https://') and not handler.path.startswith('https://'):
                 logging.debug('ForceHttpsFilter metched %r %r', handler.path, handler.headers)
                 headers = {'Location': handler.path.replace('http://', 'https://', 1), 'Connection': 'close'}
@@ -2314,10 +2324,31 @@ class ForceHttpsFilter(BaseProxyHandlerFilter):
 
 class FakeHttpsFilter(BaseProxyHandlerFilter):
     """fake https filter"""
+    def __init__(self, fakehttps_sites, nofakehttps_sites):
+        self.fakehttps_sites = tuple(fakehttps_sites)
+        self.nofakehttps_sites = set(nofakehttps_sites)
+
     def filter(self, handler):
-        if handler.command == 'CONNECT' and handler.host.endswith(common.HTTP_FAKEHTTPS) and handler.host not in common.HTTP_NOFAKEHTTPS:
+        if handler.command == 'CONNECT' and handler.host.endswith(self.fakehttps_sites) and handler.host not in self.nofakehttps_sites:
             logging.debug('FakeHttpsFilter metched %r %r', handler.path, handler.headers)
             return [handler.STRIP, True, None]
+
+
+
+class URLRewriteFilter(BaseProxyHandlerFilter):
+    """url rewrite filter"""
+    rules = {
+                'www.google.com': (r'^https?://www\.google\.com/url\?.*url=([^&]+)', lambda m: urllib.unquote_plus(m.group(1))),
+                'www.google.com.hk': (r'^https?://www\.google\.com\.hk/url\?.*url=([^&]+)', lambda m: urllib.unquote_plus(m.group(1))),
+            }
+    def filter(self, handler):
+        if handler.host in self.rules:
+            pattern, callback = self.rules[handler.host]
+            m = re.search(pattern, handler.path)
+            if m:
+                logging.debug('URLRewriteFilter metched %r', handler.path)
+                headers = {'Location': callback(m), 'Connection': 'close'}
+                return [handler.MOCK, 301, headers, '']
 
 
 class HostsFilter(BaseProxyHandlerFilter):
@@ -2392,6 +2423,9 @@ class DirectRegionFilter(BaseProxyHandlerFilter):
     geoip = pygeoip.GeoIP(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'GeoIP.dat')) if pygeoip and common.GAE_REGIONS else None
     region_cache = LRUCache(16*1024)
 
+    def __init__(self, regions):
+        self.regions = set(regions)
+
     def get_country_code(self, hostname, dnsservers):
         """http://dev.maxmind.com/geoip/legacy/codes/iso3166/"""
         try:
@@ -2415,7 +2449,7 @@ class DirectRegionFilter(BaseProxyHandlerFilter):
     def filter(self, handler):
         if self.geoip:
             country_code = self.get_country_code(handler.host, handler.dns_servers)
-            if country_code in common.GAE_REGIONS:
+            if country_code in self.regions:
                 if handler.command == 'CONNECT':
                     return [handler.FORWARD, handler.host, handler.port, handler.connect_timeout]
                 else:
@@ -2466,7 +2500,7 @@ class GAEFetchFilter(BaseProxyHandlerFilter):
 
 class GAEProxyHandler(AdvancedProxyHandler):
     """GAE Proxy Handler"""
-    handler_filters = [UserAgentFilter(), WithGAEFilter(), FakeHttpsFilter(), ForceHttpsFilter(), HostsFilter(), DirectRegionFilter(), AutoRangeFilter(), GAEFetchFilter()]
+    handler_filters = [GAEFetchFilter()]
 
     def first_run(self):
         """GAEProxyHandler setup, init domain/iplist map"""
@@ -2508,7 +2542,7 @@ class PHPFetchFilter(BaseProxyHandlerFilter):
 class PHPProxyHandler(AdvancedProxyHandler):
     """PHP Proxy Handler"""
     first_run_lock = threading.Lock()
-    handler_filters = [UserAgentFilter(), FakeHttpsFilter(), ForceHttpsFilter(), PHPFetchFilter()]
+    handler_filters = [PHPFetchFilter()]
 
     def first_run(self):
         if common.PHP_USEHOSTS:
@@ -3096,8 +3130,6 @@ class PACProxyHandler(SimpleProxyHandler):
 
 
 def get_process_list():
-    import os
-    import glob
     import ctypes
     import collections
     Process = collections.namedtuple('Process', 'pid name exe')
@@ -3222,7 +3254,26 @@ def pre_start():
     RangeFetch.maxsize = common.AUTORANGE_MAXSIZE
     RangeFetch.bufsize = common.AUTORANGE_BUFSIZE
     RangeFetch.waitsize = common.AUTORANGE_WAITSIZE
-    if common.LISTEN_USERNAME and common.LISTEN_PASSWORD:
+    if True:
+        GAEProxyHandler.handler_filters.insert(0, AutoRangeFilter())
+    if common.GAE_REGIONS:
+        GAEProxyHandler.handler_filters.insert(0, DirectRegionFilter(common.GAE_REGIONS))
+    if True:
+        GAEProxyHandler.handler_filters.insert(0, HostsFilter())
+    if True:
+        GAEProxyHandler.handler_filters.insert(0, URLRewriteFilter())
+    if common.HTTP_FAKEHTTPS:
+        GAEProxyHandler.handler_filters.insert(0, FakeHttpsFilter(common.HTTP_FAKEHTTPS, common.HTTP_NOFAKEHTTPS))
+        PHPProxyHandler.handler_filters.insert(0, FakeHttpsFilter(common.HTTP_FAKEHTTPS, common.HTTP_NOFAKEHTTPS))
+    if common.HTTP_FORCEHTTPS:
+        GAEProxyHandler.handler_filters.insert(0, ForceHttpsFilter(common.HTTP_FORCEHTTPS, common.HTTP_NOFORCEHTTPS))
+        PHPProxyHandler.handler_filters.insert(0, ForceHttpsFilter(common.HTTP_FORCEHTTPS, common.HTTP_NOFORCEHTTPS))
+    if common.HTTP_WITHGAE:
+        GAEProxyHandler.handler_filters.insert(0, WithGAEFilter(common.HTTP_WITHGAE))
+    if common.USERAGENT_ENABLE:
+        GAEProxyHandler.handler_filters.insert(0, UserAgentFilter(common.USERAGENT_STRING))
+        PHPProxyHandler.handler_filters.insert(0, UserAgentFilter(common.USERAGENT_STRING))
+    if common.LISTEN_USERNAME:
         GAEProxyHandler.handler_filters.insert(0, AuthFilter(common.LISTEN_USERNAME, common.LISTEN_PASSWORD))
 
 
