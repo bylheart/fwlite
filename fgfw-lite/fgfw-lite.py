@@ -445,14 +445,14 @@ class ProxyHandler(HTTPRequestHandler):
 
     def do_CONNECT(self):
         self.close_connection = 1
+        host, _, port = self.path.partition(':')
+        self.requesthost = (host, int(port))
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
-        if self.path.rsplit(':', 1)[0].lower() in self.LOCALHOST:
+        if getaddrinfo(host, int(port))[0][4][0] in self.LOCALHOST:
             return self.send_error(403)
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
-        host, _, port = self.path.partition(':')
-        self.requesthost = (host, int(port))
         self.wfile.write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
         self._do_CONNECT()
 
