@@ -516,7 +516,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.remotesoc.close()
             logging.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
             return self._do_CONNECT(True)
-        PARENT_PROXY.notify(self.command, self.path, self.path, True, self.failed_parents, self.ppname)
+        PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
         self._read_write(self.remotesoc, 300)
         self.remotesoc.close()
         self.connection.close()
@@ -1068,9 +1068,9 @@ class parent_proxy(object):
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
         if 'direct' in failed_parents and success:
             if method == 'CONNECT':
-                rule = '|https://%s' % requesthost.rsplit(':', 1)[0]
+                rule = '|https://%s' % requesthost[0]
             else:
-                rule = '|http://%s' % requesthost.rsplit(':', 1)[0] if requesthost.rsplit(':', 1)[1] == '80' else requesthost
+                rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
             if rule not in self.temp_rules:
                 logging.info('add autoproxy rule: %s' % rule)
                 self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * 10))
