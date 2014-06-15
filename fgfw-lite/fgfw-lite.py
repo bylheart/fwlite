@@ -137,7 +137,7 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
-    LOCALHOST = ('127.0.0.1', '::1', 'localhost')
+    LOCALHOST = ('127.0.0.1', '::1')
 
     def _quote_html(self, html):
         return html.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -269,15 +269,18 @@ class ProxyHandler(HTTPRequestHandler):
         self.requesthost = parse_hostport(self.headers['Host'], 80)
 
         if self._request_localhost(self.requesthost):
-            self.send_response(200)
-            msg = 'Hello World !'
-            self.send_header('Content-type', 'text/html')
-            self.send_header('Content-Length', str(len(msg)))
-            self.send_header('Connection', 'keep_alive')
-            self.end_headers()
-            # Send the html message
-            self.wfile.write(msg)
-            return
+            if self.client_address[0] in self.LOCALHOST and self.requesthost[1] in (conf.listen[1], conf.listen[1] + 1):
+                self.send_response(200)
+                msg = 'Hello World !'
+                self.send_header('Content-type', 'text/html')
+                self.send_header('Content-Length', str(len(msg)))
+                self.send_header('Connection', 'keep_alive')
+                self.end_headers()
+                # Send the html message
+                self.wfile.write(msg)
+                return
+            if self.client_address[0] not in self.LOCALHOST:
+                return self.send_error(403)
         self.shortpath = '%s%s' % (self.path.split('?')[0], '?' if len(self.path.split('?')) > 1 else '')
 
         self._do_GET()
@@ -458,7 +461,9 @@ class ProxyHandler(HTTPRequestHandler):
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
         if self._request_localhost(self.requesthost):
-            return self.send_error(403)
+            if (self.client_address[0] in self.LOCALHOST and self.requesthost[1] in (conf.listen[1], conf.listen[1] + 1)) or\
+                    self.client_address[0] not in self.LOCALHOST:
+                return self.send_error(403)
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
         self.wfile.write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
