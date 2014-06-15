@@ -70,7 +70,7 @@ import traceback
 from threading import Thread
 from repoze.lru import lru_cache
 import encrypt
-from util import create_connection, getaddrinfo, parse_hostport
+from util import create_connection, getaddrinfo, parse_hostport, is_connection_dropped
 try:
     import markdown
 except ImportError:
@@ -439,7 +439,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.wfile_write()
         logging.debug('request finish')
         PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
-        if self.close_connection or self.is_connection_dropped(self.remotesoc):
+        if self.close_connection or is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
         else:
             UPSTREAM_POOL[self.upstream_name].append((self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)'))
@@ -544,30 +544,12 @@ class ProxyHandler(HTTPRequestHandler):
             if data:
                 self.wfile.write(data)
 
-    def is_connection_dropped(self, sock):  # from urllib3
-        """
-        Returns True if the connection is dropped and should be closed.
-
-        """
-        if not hasattr(select, 'poll'):
-            try:
-                return select.select([sock], [], [], 0.0)[0]
-            except socket.error:
-                return True
-        # This version is better on platforms that support it.
-        p = select.poll()
-        p.register(sock, select.POLLIN)
-        for (fno, ev) in p.poll(0.0):
-            if fno == sock.fileno():
-                # Either data is buffered (bad), or the connection is dropped.
-                return True
-
     def _http_connect_via_proxy(self, netloc):
         if not self.failed_parents:
             pool = UPSTREAM_POOL.get(self.upstream_name)
             while pool:
                 sock, pproxy = pool.popleft()
-                if not self.is_connection_dropped(sock):
+                if not is_connection_dropped(sock):
                     logging.info('{} {} via {}'.format(self.command, self.shortpath, pproxy))
                     self._proxylist.insert(0, self.ppname)
                     self.ppname = pproxy

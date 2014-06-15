@@ -22,6 +22,7 @@
 
 import re
 import socket
+import select
 from repoze.lru import lru_cache
 
 
@@ -78,6 +79,26 @@ def parse_hostport(host, default_port=80):
         return m.group(1).strip('[]'), int(m.group(2))
     else:
         return host.strip('[]'), default_port
+
+
+def is_connection_dropped(sock):  # from urllib3
+    """
+    Returns True if the connection is dropped and should be closed.
+
+    """
+    if not hasattr(select, 'poll'):
+        try:
+            return select.select([sock], [], [], 0.0)[0]
+        except socket.error:
+            return True
+    # This version is better on platforms that support it.
+    p = select.poll()
+    p.register(sock, select.POLLIN)
+    for (fno, ev) in p.poll(0.0):
+        if fno == sock.fileno():
+            # Either data is buffered (bad), or the connection is dropped.
+            return True
+
 
 if __name__ == "__main__":
     t = socket.getaddrinfo('www.baidu.com', 80)
