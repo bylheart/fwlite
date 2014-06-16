@@ -29,9 +29,9 @@ FGFW-Lite是一个辅助突破网络审查的HTTP代理服务器。它能自动�
 
 ##快速开始
 
-FGFW-Lite是便携软件，直接[下载](https://github.com/v3aqb/fgfw-lite/archive/master.zip)，解压即用。注意，**路径只支持英文，不能有空格**。
+FGFW-Lite是便携软件，[下载](https://github.com/v3aqb/fgfw-lite/archive/master.zip)，解压即用。注意，**路径只支持英文，不能有空格**。
 
-配置文件userconf.ini，参考userconf.sample.ini，添加goagent appid和其他二级代理。
+修改配置文件userconf.ini（参考userconf.sample.ini），可设置自己的goagent appid和其他二级代理。
 
 windows系统：运行FGFW_Lite.exe
 
