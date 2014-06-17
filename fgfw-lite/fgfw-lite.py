@@ -291,8 +291,6 @@ class ProxyHandler(HTTPRequestHandler):
                 self.remotesoc.close()
                 self.remotesoc = None
             self.failed_parents.append(self.ppname)
-            if len(self.failed_parents) > conf.maxretry:
-                self.retryable = False
         if not self.retryable:
             self.close_connection = 1
             PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
@@ -472,8 +470,6 @@ class ProxyHandler(HTTPRequestHandler):
     def _do_CONNECT(self, retry=False):
         if retry:
             self.failed_parents.append(self.ppname)
-            if len(self.failed_parents) > conf.maxretry:
-                self.retryable = False
         if not self.retryable or self.getparent():
             PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
             return
@@ -1043,19 +1039,16 @@ class parent_proxy(object):
                 parentlist.remove('goagent-php')
                 parentlist.append('goagent-php')
 
-        if command == 'OPTIONS' and 'goagent' in parentlist:
-            parentlist.remove('goagent')
-
         if 'local' in parentlist:
             parentlist.remove('local')
 
         if f is True:
             parentlist.remove('direct')
-            if parentlist:
-                return parentlist
-            else:
+            if not parentlist:
                 logging.warning('No parent proxy available, direct connection is used')
                 return ['direct']
+        if len(parentlist) > conf.maxretry + 1:
+            parentlist = parentlist[:conf.maxretry + 1]
         return parentlist
 
     def notify(self, method, url, requesthost, success, failed_parents, current_parent):
