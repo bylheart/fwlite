@@ -33,7 +33,7 @@ FGFW-Lite是便携软件，[下载](https://github.com/v3aqb/fgfw-lite/archive/m
 
 修改配置文件userconf.ini（参考userconf.sample.ini），可设置自己的goagent appid和其他二级代理。
 
-设置浏览器代理服务器为：127.0.0.1:8118
+设置浏览器代理服务器为：127.0.0.1:8118（当代理服务器设为127.0.0.1:8119时，所有出国流量走代理）
 
 windows系统：运行FGFW_Lite.exe
 
