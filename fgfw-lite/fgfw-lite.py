@@ -83,6 +83,7 @@ try:
     urlquote = urlparse.quote
     from socketserver import ThreadingMixIn
     from http.server import BaseHTTPRequestHandler, HTTPServer
+    from ipaddress import ip_address
 except ImportError:
     import urllib2
     import urlparse
@@ -90,6 +91,7 @@ except ImportError:
     import ConfigParser as configparser
     from SocketServer import ThreadingMixIn
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+    from ipaddr import IPAddress as ip_address
 configparser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 
 logging.basicConfig(level=logging.INFO,
@@ -137,8 +139,6 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
-    LOCALHOST = ('127.0.0.1', '::1')
-
     def _quote_html(self, html):
         return html.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -200,7 +200,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 
     def _request_localhost(self, req):
         try:
-            return getaddrinfo(req[0], req[1])[0][4][0] in self.LOCALHOST
+            return ip_address(getaddrinfo(req[0], req[1])[0][4][0]).is_loopback
         except Exception as e:
             logging.error(repr(e))
 
@@ -269,7 +269,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.requesthost = parse_hostport(self.headers['Host'], 80)
 
         if self._request_localhost(self.requesthost):
-            if self.client_address[0] in self.LOCALHOST and self.requesthost[1] in (conf.listen[1], conf.listen[1] + 1):
+            if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (conf.listen[1], conf.listen[1] + 1):
                 self.send_response(200)
                 msg = 'Hello World !'
                 self.send_header('Content-type', 'text/html')
@@ -279,7 +279,7 @@ class ProxyHandler(HTTPRequestHandler):
                 # Send the html message
                 self.wfile.write(msg)
                 return
-            if self.client_address[0] not in self.LOCALHOST:
+            if not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
         self.shortpath = '%s%s' % (self.path.split('?')[0], '?' if len(self.path.split('?')) > 1 else '')
 
@@ -459,8 +459,8 @@ class ProxyHandler(HTTPRequestHandler):
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
         if self._request_localhost(self.requesthost):
-            if (self.client_address[0] in self.LOCALHOST and self.requesthost[1] in (conf.listen[1], conf.listen[1] + 1)) or\
-                    self.client_address[0] not in self.LOCALHOST:
+            if (ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (conf.listen[1], conf.listen[1] + 1)) or\
+                    not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
