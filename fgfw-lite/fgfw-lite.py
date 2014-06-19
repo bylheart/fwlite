@@ -67,6 +67,10 @@ import struct
 import ssl
 import pygeoip
 import traceback
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 from threading import Thread
 from repoze.lru import lru_cache
 import encrypt
@@ -704,6 +708,8 @@ class ForceProxyHandler(ProxyHandler):
 
 
 class sssocket(object):
+    BUFFERSIZE = 8192
+
     def __init__(self, ssServer, timeout=10, parentproxy=''):
         self.ssServer = ssServer
         self.timeout = timeout
@@ -713,7 +719,7 @@ class sssocket(object):
         self.crypto = None
         self.__remote = None
         self.connected = False
-        self.__rbuffer = b''
+        self.__rbuffer = StringIO()
 
     def connect(self, address):
         self.__address = address
@@ -750,10 +756,22 @@ class sssocket(object):
                                host.encode(),
                                struct.pack(b">H", port)]))
             self.connected = True
-        if len(self.__rbuffer) < size:
-            self.__rbuffer += self.crypto.decrypt(self._sock.recv(max(size, 4096)))
-        result, self.__rbuffer = self.__rbuffer[:size], self.__rbuffer[size:]
-        return result
+        buf = self.__rbuffer
+        buf.seek(0, 2)  # seek end
+        buf_len = buf.tell()
+        self.__rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
+        if buf_len < size:
+            # Not enough data in buffer?  Try to read.
+            data = self.crypto.decrypt(self._sock.recv(max(size - buf_len, self.BUFFERSIZE)))
+            if len(data) == size and not buf_len:
+                # Shortcut.  Avoid buffer data copies
+                return data
+            buf.write(data)
+            del data  # explicit free
+        buf.seek(0)
+        rv = buf.read(size)
+        self.__rbuffer.write(buf.read())
+        return rv
 
     def sendall(self, data):
         if self.connected:
@@ -767,20 +785,92 @@ class sssocket(object):
             self._sock.sendall(self.crypto.encrypt(e + data))
             self.connected = True
 
-    def readline(self, bufsize=0):
-        buf = b''
-        while True:
-            data = self.recv(1)
-            if not data:
-                break
-            buf += data
-            if bufsize and len(buf) == bufsize:
-                break
-            if b'\n' in buf:
-                break
-        return buf
+    def readline(self, size=-1):
+        buf = self.__rbuffer
+        buf.seek(0, 2)  # seek end
+        if buf.tell() > 0:
+            # check if we already have it in our buffer
+            buf.seek(0)
+            bline = buf.readline(size)
+            if bline.endswith('\n') or len(bline) == size:
+                self.__rbuffer = StringIO()
+                self.__rbuffer.write(buf.read())
+                return bline
+            del bline
+        if size < 0:
+            # Read until \n or EOF, whichever comes first
+            buf.seek(0, 2)  # seek end
+            self.__rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
+            while True:
+                try:
+                    data = self.recv(self.BUFFERSIZE)
+                except socket.error as e:
+                    if e.args[0] == errno.EINTR:
+                        continue
+                    raise
+                if not data:
+                    break
+                nl = data.find('\n')
+                if nl >= 0:
+                    nl += 1
+                    buf.write(data[:nl])
+                    self.__rbuffer.write(data[nl:])
+                    break
+                buf.write(data)
+            del data
+            return buf.getvalue()
+        else:
+            # Read until size bytes or \n or EOF seen, whichever comes first
+            buf.seek(0, 2)  # seek end
+            buf_len = buf.tell()
+            if buf_len >= size:
+                buf.seek(0)
+                rv = buf.read(size)
+                self.__rbuffer = StringIO()
+                self.__rbuffer.write(buf.read())
+                return rv
+            self.__rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
+            while True:
+                try:
+                    data = self.recv(self.BUFFERSIZE)
+                except socket.error as e:
+                    if e.args[0] == errno.EINTR:
+                        continue
+                    raise
+                if not data:
+                    break
+                left = size - buf_len
+                # did we just receive a newline?
+                nl = data.find('\n', 0, left)
+                if nl >= 0:
+                    nl += 1
+                    # save the excess data to _rbuf
+                    self.__rbuffer.write(data[nl:])
+                    if buf_len:
+                        buf.write(data[:nl])
+                        break
+                    else:
+                        # Shortcut.  Avoid data copy through buf when returning
+                        # a substring of our first recv().
+                        return data[:nl]
+                n = len(data)
+                if n == size and not buf_len:
+                    # Shortcut.  Avoid data copy through buf when
+                    # returning exactly all of our first recv().
+                    return data
+                if n >= left:
+                    buf.write(data[:left])
+                    self.__rbuffer.write(data[left:])
+                    break
+                buf.write(data)
+                buf_len += n
+                #assert buf_len == buf.tell()
+            return buf.getvalue()
 
     def close(self):
+        self._sock.close()
+
+    def __del__(self):
         self._sock.close()
 
     def fileno(self):

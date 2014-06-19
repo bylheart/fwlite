@@ -10,3 +10,4 @@
 /userconf.ini
 *.py[cod]
 /goagent/proxy.ini
+/Python27/python27/*
