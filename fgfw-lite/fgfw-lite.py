@@ -500,11 +500,10 @@ class ProxyHandler(HTTPRequestHandler):
         for i in range(8):
             try:
                 flag = False
-                (ins, _, exs) = select.select([self.connection, self.remotesoc], [], [self.connection, self.remotesoc], 1)
-                if exs:
-                    logging.debug('line 509')
-                    break
+                (ins, _, _) = select.select([self.connection, self.remotesoc], [], [], 1)
+                logging.debug(repr(ins))
                 for s in ins:
+                    logging.debug('read from %s' % ('remote' if s is self.remotesoc else 'local'))
                     data = s.recv(4096)
                     if data:
                         if s is self.remotesoc:
@@ -519,7 +518,8 @@ class ProxyHandler(HTTPRequestHandler):
                     self.retryable = False
                     break
             except socket.error as e:
-                logging.warning('socket error: %s' % e)
+                logging.warning('socket error: %r' % e)
+                sys.stderr.write(traceback.format_exc())
                 break
         if self.retryable:
             self.remotesoc.close()
@@ -609,9 +609,7 @@ class ProxyHandler(HTTPRequestHandler):
         count = 0
         while True:
             try:
-                (ins, _, exs) = select.select(iw, [], iw, 1)
-                if exs:
-                    break
+                (ins, _, _) = select.select(iw, [], [], 1)
                 for i in ins:
                     data = i.recv(4096)
                     if data:
