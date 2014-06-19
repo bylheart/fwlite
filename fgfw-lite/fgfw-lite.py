@@ -810,7 +810,7 @@ class sssocket(object):
                     raise
                 if not data:
                     break
-                nl = data.find('\n')
+                nl = data.find(b'\n')
                 if nl >= 0:
                     nl += 1
                     buf.write(data[:nl])
@@ -841,7 +841,7 @@ class sssocket(object):
                     break
                 left = size - buf_len
                 # did we just receive a newline?
-                nl = data.find('\n', 0, left)
+                nl = data.find(b'\n', 0, left)
                 if nl >= 0:
                     nl += 1
                     # save the excess data to _rbuf
