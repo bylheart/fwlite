@@ -111,7 +111,6 @@ else:
             break
 PYTHON = sys.executable.replace('\\', '/')
 
-UPSTREAM_POOL = defaultdict(deque)
 HOSTS = defaultdict(list)
 ctimer = []
 CTIMEOUT = 5
@@ -140,6 +139,38 @@ prestart()
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     pass
+
+
+class HTTPCONN_POOL(object):
+    POOL = defaultdict(deque)
+
+    @classmethod
+    def put(cls, upstream_name, soc, ppname):
+        cls.POOL[upstream_name].append((soc, ppname))
+
+    @classmethod
+    def get(cls, upstream_name):
+        lst = cls.POOL.get(upstream_name)
+        while lst:
+            sock, pproxy = lst.popleft()
+            if not is_connection_dropped(sock):
+                return (sock, pproxy)
+            sock.close()
+
+    @classmethod
+    def purge(cls):
+        pcount = count = 0
+        for k, v in cls.POOL.items():
+            count += len(v)
+            try:
+                for i in [pair for pair in v if pair[0] in select.select([item[0] for item in v], [], [], 0.0)[0]]:
+                    v.remove(i)
+                    pcount += 1
+            except Exception as e:
+                logging.warning('Exception caught in purge! %r' % e)
+        count -= pcount
+        if pcount or count:
+            logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] for k, v in cls.POOL.items() if v])))
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
@@ -447,7 +478,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.close_connection or is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
         else:
-            UPSTREAM_POOL[self.upstream_name].append((self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)'))
+            HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)')
         self.remotesoc = None
 
     def on_GET_Error(self, e):
@@ -551,16 +582,12 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _http_connect_via_proxy(self, netloc):
         if not self.failed_parents:
-            pool = UPSTREAM_POOL.get(self.upstream_name)
-            while pool:
-                sock, pproxy = pool.popleft()
-                if not is_connection_dropped(sock):
-                    logging.info('{} {} via {}'.format(self.command, self.shortpath, pproxy))
-                    self._proxylist.insert(0, self.ppname)
-                    self.ppname = pproxy
-                    return sock
-                else:
-                    sock.close()
+            res = HTTPCONN_POOL.get(self.upstream_name)
+            if res:
+                self._proxylist.insert(0, self.ppname)
+                sock, self.ppname = res
+                logging.info('{} {} via {}'.format(self.command, self.shortpath, self.ppname))
+                return sock
         return self._connect_via_proxy(netloc)
 
     def _connect_via_proxy(self, netloc):
@@ -1148,6 +1175,7 @@ class parent_proxy(object):
 def updater():
     while 1:
         time.sleep(30)
+        HTTPCONN_POOL.purge()
         if conf.userconf.dgetbool('FGFW_Lite', 'autoupdate'):
             lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
             if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
