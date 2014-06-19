@@ -628,25 +628,17 @@ class ProxyHandler(HTTPRequestHandler):
     def do_FTP(self):
         logging.info('{} {}'.format(self.command, self.path))
         # fish out user and password information
-        scm, netloc, path, params, query, fragment = urlparse.urlparse(
-            self.path, 'http')
-        if '@' in netloc:
-            login_info, netloc = netloc.split('@', 1)
-            try:
-                user, passwd = login_info.split(':', 1)
-            except ValueError:
-                user, passwd = "anonymous", None
-        else:
-            user, passwd = "anonymous", None
+        p = urlparse.urlparse(self.path, 'http')
+        user, passwd = p.username or "anonymous", p.password or None
         if self.command == "GET":
-            if path.endswith('/'):
-                return self.do_FTP_LIST(netloc, path, user, passwd)
+            if p.path.endswith('/'):
+                return self.do_FTP_LIST(p.netloc, p.path, user, passwd)
             else:
                 try:
-                    ftp = ftplib.FTP(netloc)
+                    ftp = ftplib.FTP(p.netloc)
                     ftp.login(user, passwd)
                     lst = []
-                    response = ftp.retrlines("LIST %s" % path, lst.append)
+                    response = ftp.retrlines("LIST %s" % p.path, lst.append)
                     if not lst:
                         return self.send_error(504, response)
                     if len(lst) != 1 or lst[0].startswith('d'):
@@ -655,10 +647,10 @@ class ProxyHandler(HTTPRequestHandler):
                     self.send_header('Content-Length', lst[0].split()[4])
                     self.send_header('Connection', 'keep_alive')
                     self.end_headers()
-                    ftp.retrbinary("RETR %s" % path, self.wfile.write, 8192)
+                    ftp.retrbinary("RETR %s" % p.path, self.wfile.write, 8192)
                     ftp.quit()
                 except Exception as e:  # Possibly no such file
-                    logging.warning("FTP Exception: %s" % e)
+                    logging.warning("FTP Exception: %r" % e)
                     self.send_error(504, repr(e))
         else:
             self.send_error(501)
