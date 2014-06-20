@@ -896,10 +896,11 @@ class sssocket(object):
             return buf.getvalue()
 
     def close(self):
-        self._sock.close()
+        if self._sock:
+            self._sock.close()
 
     def __del__(self):
-        self._sock.close()
+        self.close()
 
     def fileno(self):
         return self._sock.fileno()
