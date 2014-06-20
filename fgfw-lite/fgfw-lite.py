@@ -1113,8 +1113,6 @@ class parent_proxy(object):
                 return False
             if host.endswith(conf.HOST_POSTFIX):
                 return False
-            if host.endswith(conf.CONN_POSTFIX):
-                return False
             return True
 
     def parentproxy(self, uri, host, command, level=1):
@@ -1352,11 +1350,8 @@ class goagentHandler(FGFWProxyHandler):
         conf.FAKEHTTPS = tuple([k for k in goagent.dget('ipv4/http', 'fakehttps').split('|') if not k.startswith('.')])
         conf.FAKEHTTPS_POSTFIX = tuple([k for k in goagent.dget('ipv4/http', 'fakehttps').split('|') if k.startswith('.')])
         conf.WITHGAE = set(goagent.dget('ipv4/http', 'withgae').split('|'))
-        conf.HOST = ('upload.youtube.com', )
+        conf.HOST = tuple()
         conf.HOST_POSTFIX = tuple([k for k, v in goagent.items('ipv4/hosts') if '\\' not in k and ':' not in k and k.startswith('.')])
-        conf.CONN_POSTFIX = ('.box.com', '.copy.com')
-        for s in goagent.dget('ipv4/http', 'forcehttps').split('|'):
-            PARENT_PROXY.add_rule('|http://%s forcehttps' % s)
 
         if not os.path.isfile('./goagent/CA.crt'):
             self.createCA()
