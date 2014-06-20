@@ -30,7 +30,7 @@ class StreamCipher(object):
             cipher = strxor(self.__ivecb[:len(this_plaintext)], this_plaintext)
             self.__ivecb = self.__ivecb[len(this_plaintext):]
             result.append(cipher)
-            self.__lase_cipher = cipher if not self.__lase_cipher else self.__lase_cipher + cipher
+            self.__lase_cipher = cipher if not self.__lase_cipher else b''.join([self.__lase_cipher, cipher])
             if not self.__ivecb:
                 self.__ivecb, self.__lase_cipher = self.cipher.encrypt(self.__lase_cipher), b''
         return b''.join(result)
@@ -43,7 +43,7 @@ class StreamCipher(object):
             index += len(this_ciphertext)
             result.append(strxor(self.__ivecb[:len(this_ciphertext)], this_ciphertext))
             self.__ivecb = self.__ivecb[len(this_ciphertext):]
-            self.__lase_cipher = this_ciphertext if not self.__lase_cipher else self.__lase_cipher + this_ciphertext
+            self.__lase_cipher = this_ciphertext if not self.__lase_cipher else b''.join([self.__lase_cipher, this_ciphertext])
             if not self.__ivecb:
                 self.__ivecb, self.__lase_cipher = self.cipher.encrypt(self.__lase_cipher), b''
         return b''.join(result)
