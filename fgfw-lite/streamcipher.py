@@ -23,23 +23,27 @@ class StreamCipher(object):
 
     def _encrypt(self, data):
         result = []
-        while data:
-            this_plaintext, data = data[:len(self.__ivecb)], data[len(self.__ivecb):]
-            ivecb, self.__ivecb = self.__ivecb[:len(this_plaintext)], self.__ivecb[len(this_plaintext):]
-            cipher = strxor(ivecb, this_plaintext)
+        index = 0
+        while index < len(data):
+            this_plaintext = data[index:index + len(self.__ivecb)]
+            index += len(this_plaintext)
+            cipher = strxor(self.__ivecb[:len(this_plaintext)], this_plaintext)
+            self.__ivecb = self.__ivecb[len(this_plaintext):]
             result.append(cipher)
-            self.__lase_cipher += cipher
+            self.__lase_cipher = cipher if not self.__lase_cipher else self.__lase_cipher + cipher
             if not self.__ivecb:
                 self.__ivecb, self.__lase_cipher = self.cipher.encrypt(self.__lase_cipher), b''
         return b''.join(result)
 
     def _decrypt(self, data):
         result = []
-        while data:
-            this_ciphertext, data = data[:len(self.__ivecb)], data[len(self.__ivecb):]
-            ivecb, self.__ivecb = self.__ivecb[:len(this_ciphertext)], self.__ivecb[len(this_ciphertext):]
-            self.__lase_cipher += this_ciphertext
-            result.append(strxor(ivecb, this_ciphertext))
+        index = 0
+        while index < len(data):
+            this_ciphertext = data[index:index + len(self.__ivecb)]
+            index += len(this_ciphertext)
+            result.append(strxor(self.__ivecb[:len(this_ciphertext)], this_ciphertext))
+            self.__ivecb = self.__ivecb[len(this_ciphertext):]
+            self.__lase_cipher = this_ciphertext if not self.__lase_cipher else self.__lase_cipher + this_ciphertext
             if not self.__ivecb:
                 self.__ivecb, self.__lase_cipher = self.cipher.encrypt(self.__lase_cipher), b''
         return b''.join(result)
@@ -82,10 +86,10 @@ def main():
     print(repr(c))
     print(repr(d))
     print('encrypt and decrypt 2MB data')
-    s = os.urandom(1024)
+    s = os.urandom(1000)
     import time
     t = time.time()
-    for _ in range(1024):
+    for _ in range(1049):
         a = cipher.update(s)
         b = cipher.update(s)
         c = decipher.update(a)
@@ -95,7 +99,7 @@ def main():
     cipher = M2Crypto.EVP.Cipher(method, key, iv, 1)
     decipher = M2Crypto.EVP.Cipher(method, key, iv, 0)
     t = time.time()
-    for _ in range(1024):
+    for _ in range(1049):
         a = cipher.update(s)
         b = cipher.update(s)
         c = decipher.update(a)
