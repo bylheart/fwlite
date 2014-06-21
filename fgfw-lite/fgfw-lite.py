@@ -171,7 +171,7 @@ class HTTPCONN_POOL(object):
                 logging.warning('Exception caught in purge! %r' % e)
         count -= pcount
         if pcount or count:
-            logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] for k, v in cls.POOL.items() if v])))
+            logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in cls.POOL.items() if v])))
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
