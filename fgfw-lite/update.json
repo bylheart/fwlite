@@ -8,7 +8,7 @@
     "./goagent/GeoIP.dat": "642680a7c98da514dfbd1b4921cf590fca9a913141843fd773e7330145579d3c",
     "./goagent/cacert.pem": "eb1288b800cb2fdf7c5d8d14fb79a5c00a8b05722c7f2a08763919ef6df11dc3",
     "./goagent/proxy.bat": "8e11cf1502be2cb253d595064aee55ff379a72268618941b47c9dbf0936bcf74",
-    "./goagent/proxy.py": "94944216f7479646a63e9e86abc788962806166bd9d2a47c6522fa31c6d2bf38",
-    "./goagent/proxy.sample.ini": "0493ad490f629a800364de8c7039446b2f63704c8eb8a510978f2167b09529ab",
+    "./goagent/proxy.py": "8353d4a0bab6d34facd82b34bbd33a499a36b42a9dcc74789e6e1dbe3188511c",
+    "./goagent/proxy.sample.ini": "cf3db7e31208af6e4c277d63bc1af08350634e13a19f7e3bd88594132f28fc71",
     "./userconf.sample.ini": "d902ec2959848ac4fe15450e22a64b94f776245d6d56a714a419aaed8ff92e78"
 }
