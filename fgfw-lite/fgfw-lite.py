@@ -392,8 +392,8 @@ class ProxyHandler(HTTPRequestHandler):
         remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
         try:
             s = response_line = remoterfile.readline()
-            if not s:
-                raise OSError(0, 'empty response line')
+            if not s.startswith('HTTP'):
+                raise OSError(0, 'bad response line: %r' % response_line)
         except NetWorkIOError as e:
             return self.on_GET_Error(e)
         protocol_version, _, response_status = response_line.rstrip(b'\r\n').partition(b' ')
