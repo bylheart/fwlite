@@ -143,10 +143,11 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 class HTTPCONN_POOL(object):
     POOL = defaultdict(deque)
+    lastactive = {}
 
     @classmethod
     def put(cls, upstream_name, soc, ppname):
-        soc._lastactive = time.time()
+        cls.lastactive[soc.fileno()] = time.time()
         cls.POOL[upstream_name].append((soc, ppname))
 
     @classmethod
@@ -164,7 +165,7 @@ class HTTPCONN_POOL(object):
         for k, v in cls.POOL.items():
             count += len(v)
             try:
-                for i in [pair for pair in v if (pair[0] in select.select([item[0] for item in v], [], [], 0.0)[0]) or (pair[0]._lastactive < time.time() - 300)]:
+                for i in [pair for pair in v if (pair[0] in select.select([item[0] for item in v], [], [], 0.0)[0]) or (cls.lastactive[pair[0].fileno()] < time.time() - 300)]:
                     v.remove(i)
                     pcount += 1
             except Exception as e:
