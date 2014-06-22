@@ -508,6 +508,8 @@ class ProxyHandler(HTTPRequestHandler):
     def _do_CONNECT(self, retry=False):
         if retry:
             self.failed_parents.append(self.ppname)
+        if self.remotesoc:
+            self.remotesoc.close()
         if not self.retryable or self.getparent():
             PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
             return
@@ -534,25 +536,27 @@ class ProxyHandler(HTTPRequestHandler):
             while not data in (b'\r\n', b'\n', b''):
                 data = remoterfile.readline()
         if self.rbuffer:
+            logging.debug('remote write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))
-        for i in range(8):
+        while 1:
             try:
-                flag = False
-                (ins, _, _) = select.select([self.connection, self.remotesoc], [], [], 1)
-                logging.debug(repr(ins))
-                for s in ins:
-                    logging.debug('read from %s' % ('remote' if s is self.remotesoc else 'local'))
-                    data = s.recv(4096)
-                    if data:
-                        if s is self.remotesoc:
-                            flag = True
-                            self.wfile.write(data)
-                        else:
-                            if self.retryable:
-                                self.rbuffer.append(data)
-                            self.remotesoc.sendall(data)
-                if flag:
-                    logging.debug('self.retryable = False, i = %d' % i)
+                (ins, _, _) = select.select([self.connection, self.remotesoc], [], [], 5)
+                if not ins:
+                    break
+                if self.connection in ins:
+                    logging.debug('read from client')
+                    data = self.connection.recv(8192)
+                    if not data:
+                        return
+                    self.rbuffer.append(data)
+                    self.remotesoc.sendall(data)
+                if self.remotesoc in ins:
+                    logging.debug('read from remote')
+                    data = self.remotesoc.recv(8192)
+                    if not data:
+                        break
+                    self.wfile.write(data)
+                    logging.debug('self.retryable = False')
                     self.retryable = False
                     break
             except socket.error as e:
