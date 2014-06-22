@@ -80,7 +80,7 @@ def main():
     b = cipher.update(b'a long test string')
     c = decipher.update(a)
     d = decipher.update(b)
-    print(b == '\xc9\xc1h\xe4u\x9b\xa7\x94\x0c\xa6 \xbf\xc7au\xb10\x8a')
+    print(b == b'\xc9\xc1h\xe4u\x9b\xa7\x94\x0c\xa6 \xbf\xc7au\xb10\x8a')
     print(repr(a))
     print(repr(b))
     print(repr(c))

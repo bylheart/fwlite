@@ -25,7 +25,7 @@ __version__ = '4.1.4'
 import sys
 import os
 import glob
-reload(sys).setdefaultencoding('UTF-8')
+
 sys.dont_write_bytecode = True
 WORKINGDIR = '/'.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')).split('/')[:-1])
 if ' ' in WORKINGDIR:
@@ -70,7 +70,10 @@ import traceback
 try:
     from cStringIO import StringIO
 except ImportError:
-    from StringIO import StringIO
+    try:
+        from StringIO import StringIO
+    except ImportError:
+        from io import BytesIO as StringIO
 from threading import Thread
 from repoze.lru import lru_cache
 import encrypt
@@ -393,7 +396,7 @@ class ProxyHandler(HTTPRequestHandler):
         remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
         try:
             s = response_line = remoterfile.readline()
-            if not s.startswith('HTTP'):
+            if not s.startswith(b'HTTP'):
                 raise OSError(0, 'bad response line: %r' % response_line)
         except NetWorkIOError as e:
             return self.on_GET_Error(e)
@@ -554,6 +557,7 @@ class ProxyHandler(HTTPRequestHandler):
                     logging.debug('read from remote')
                     data = self.remotesoc.recv(8192)
                     if not data:
+                        logging.debug('not data')
                         break
                     self.wfile.write(data)
                     logging.debug('self.retryable = False')
@@ -775,7 +779,7 @@ class sssocket(object):
             remoterfile = self._sock.makefile('rb', 0)
             data = remoterfile.readline()
             if b'200' not in data:
-                logging.warning('connect to ssServer {} via proxy {} failed! {}'.format(self.ssServer, self.parentproxy, data))
+                raise IOError(0, 'bad response: %s' % data)
             while not data in (b'\r\n', b'\n', b''):
                 data = remoterfile.readline()
         else:
@@ -784,12 +788,7 @@ class sssocket(object):
 
     def recv(self, size):
         if not self.connected:
-            host, port = self.__address
-            self._sock.sendall(b''.join([b'\x03',
-                               chr(len(host)).encode(),
-                               host.encode(),
-                               struct.pack(b">H", port)]))
-            self.connected = True
+            self.sendall(b'')
         buf = self.__rbuffer
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
@@ -812,11 +811,11 @@ class sssocket(object):
             self._sock.sendall(self.crypto.encrypt(data))
         else:
             host, port = self.__address
-            e = b''.join([b'\x03',
-                          chr(len(host)).encode(),
-                          host.encode(),
-                          struct.pack(b">H", port)])
-            self._sock.sendall(self.crypto.encrypt(e + data))
+            self._sock.sendall(self.crypto.encrypt(b''.join([b'\x03',
+                                                   chr(len(host)).encode(),
+                                                   host.encode(),
+                                                   struct.pack(b">H", port),
+                                                   data])))
             self.connected = True
 
     def readline(self, size=-1):

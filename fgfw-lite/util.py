@@ -103,6 +103,6 @@ def is_connection_dropped(sock):  # from urllib3
 if __name__ == "__main__":
     t = socket.getaddrinfo('www.baidu.com', 80)
     r = getaddrinfo('www.baidu.com')
-    print t
-    print r
-    print r[0][4][0]
+    print(t)
+    print(r)
+    print(r[0][4][0])
