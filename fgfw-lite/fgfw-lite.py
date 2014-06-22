@@ -269,6 +269,7 @@ class ProxyHandler(HTTPRequestHandler):
     def _getparent(self, level=1):
         if self._proxylist is None:
             self._proxylist = PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, level)
+            logging.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
             return 1
