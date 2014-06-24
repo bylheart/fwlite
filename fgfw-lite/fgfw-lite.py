@@ -1000,7 +1000,7 @@ class parent_proxy(object):
         for line in open('./fgfw-lite/cloud.txt'):
             self.add_rule(line, force=True)
 
-        if conf.userconf.dgetbool('fgfwproxy', 'enable_gfwlist', True):
+        if conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True):
             try:
                 with open('./fgfw-lite/gfwlist.txt') as f:
                     data = f.read()
