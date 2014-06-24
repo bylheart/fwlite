@@ -324,6 +324,11 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(403)
         self.shortpath = '%s%s' % (self.path.split('?')[0], '?' if len(self.path.split('?')) > 1 else '')
 
+        if conf.xheaders:
+            ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
+            ipl.append(self.client_address[0])
+            self.headers['X-Forwarded-For'] = ', '.join(ipl)
+
         self._do_GET()
 
     def _do_GET(self, retry=False):
@@ -1529,6 +1534,8 @@ class Config(object):
             self.listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
 
         self.region = set(x.upper() for x in self.userconf.dget('fgfwproxy', 'region', 'cn').split('|') if x.strip())
+
+        self.xheaders = self.userconf.dgetbool('fgfwproxy', 'xheaders', False)
 
         if self.userconf.dget('fgfwproxy', 'parentproxy', ''):
             self.addparentproxy('direct', '%s 0' % self.userconf.dget('fgfwproxy', 'parentproxy', ''))
