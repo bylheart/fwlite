@@ -248,6 +248,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 class ProxyHandler(HTTPRequestHandler):
     server_version = "FGFW-Lite/" + __version__
     protocol_version = "HTTP/1.1"
+    bufsize = 8192
     timeout = 10
 
     def handle_one_request(self):
@@ -386,7 +387,7 @@ class ProxyHandler(HTTPRequestHandler):
                 except NetWorkIOError as e:
                     return self.on_GET_Error(e)
             while content_length:
-                data = self.rfile.read(min(8192, content_length))
+                data = self.rfile.read(min(self.bufsize, content_length))
                 if not data:
                     break
                 content_length -= len(data)
@@ -457,7 +458,7 @@ class ProxyHandler(HTTPRequestHandler):
                 flag = trunk_lenth != 2
                 while trunk_lenth:
                     try:
-                        data = self.remotesoc.recv(min(4096, trunk_lenth))
+                        data = self.remotesoc.recv(min(self.bufsize, trunk_lenth))
                     except NetWorkIOError as e:
                         return self.on_GET_Error(e)
                     trunk_lenth -= len(data)
@@ -465,7 +466,7 @@ class ProxyHandler(HTTPRequestHandler):
         elif content_length is not None:
             while content_length:
                 try:
-                    data = self.remotesoc.recv(min(4096, content_length))
+                    data = self.remotesoc.recv(min(self.bufsize, content_length))
                     if not data:
                         raise OSError(0, 'socket read empty')
                 except NetWorkIOError as e:
@@ -477,7 +478,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.retryable = False
             while 1:
                 try:
-                    data = self.remotesoc.recv(4096)
+                    data = self.remotesoc.recv(self.bufsize)
                     if not data:
                         raise
                     self.wfile_write(data)
@@ -553,14 +554,14 @@ class ProxyHandler(HTTPRequestHandler):
                     break
                 if self.connection in ins:
                     logging.debug('read from client')
-                    data = self.connection.recv(8192)
+                    data = self.connection.recv(self.bufsize)
                     if not data:
                         return
                     self.rbuffer.append(data)
                     self.remotesoc.sendall(data)
                 if self.remotesoc in ins:
                     logging.debug('read from remote')
-                    data = self.remotesoc.recv(8192)
+                    data = self.remotesoc.recv(self.bufsize)
                     if not data:
                         logging.debug('not data')
                         break
@@ -658,7 +659,7 @@ class ProxyHandler(HTTPRequestHandler):
             try:
                 (ins, _, _) = select.select(iw, [], [], 1)
                 for i in ins:
-                    data = i.recv(4096)
+                    data = i.recv(self.bufsize)
                     if data:
                         method = self.wfile.write if i is soc else soc.sendall
                         method(data)
@@ -694,7 +695,7 @@ class ProxyHandler(HTTPRequestHandler):
                     self.send_header('Content-Length', lst[0].split()[4])
                     self.send_header('Connection', 'keep_alive')
                     self.end_headers()
-                    ftp.retrbinary("RETR %s" % p.path, self.wfile.write, 8192)
+                    ftp.retrbinary("RETR %s" % p.path, self.wfile.write, self.bufsize)
                     ftp.quit()
                 except Exception as e:  # Possibly no such file
                     logging.warning("FTP Exception: %r" % e)
@@ -751,7 +752,7 @@ class ForceProxyHandler(ProxyHandler):
 
 
 class sssocket(object):
-    BUFFERSIZE = 8192
+    bufsize = 8192
 
     def __init__(self, ssServer, timeout=10, parentproxy=''):
         self.ssServer = ssServer
@@ -800,7 +801,7 @@ class sssocket(object):
         self.__rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
         if buf_len < size:
             # Not enough data in buffer?  Try to read.
-            data = self.crypto.decrypt(self._sock.recv(max(size - buf_len, self.BUFFERSIZE)))
+            data = self.crypto.decrypt(self._sock.recv(max(size - buf_len, self.bufsize)))
             if len(data) == size and not buf_len:
                 # Shortcut.  Avoid buffer data copies
                 return data
@@ -841,7 +842,7 @@ class sssocket(object):
             self.__rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
             while True:
                 try:
-                    data = self.recv(self.BUFFERSIZE)
+                    data = self.recv(self.bufsize)
                 except socket.error as e:
                     if e.args[0] == errno.EINTR:
                         continue
@@ -870,7 +871,7 @@ class sssocket(object):
             self.__rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
             while True:
                 try:
-                    data = self.recv(self.BUFFERSIZE)
+                    data = self.recv(self.bufsize)
                 except socket.error as e:
                     if e.args[0] == errno.EINTR:
                         continue
