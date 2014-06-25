@@ -1577,10 +1577,11 @@ class Config(object):
         proxy, _, priority = proxy.partition(' ')
         if proxy == 'direct':
             proxy = ''
+        priority = int(priority) if priority else (0 if name == 'direct' else 99)
         if proxy and not '//' in proxy:
             proxy = 'http://%s' % proxy
         logging.info('adding parent proxy: %s: %s' % (name, proxy))
-        self.parentdict[name] = (proxy, int(priority) if priority else 99)
+        self.parentdict[name] = (proxy, priority)
 
 REDIRECTOR = redirector()
 PARENT_PROXY = parent_proxy()
