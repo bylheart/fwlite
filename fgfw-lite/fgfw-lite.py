@@ -985,18 +985,12 @@ class redirector(object):
                 return result
 
 
-def ip_from_string(ip):
-    # https://github.com/fqrouter/fqsocks/blob/master/fqsocks/china_ip.py#L35
-    return struct.unpack(b'!i', socket.inet_aton(ip))[0]
-
-
 class parent_proxy(object):
     """docstring for parent_proxy"""
     def config(self):
         self.gfwlist = []
         self.override = []
         self.gfwlist_force = []
-        self.localnet = []
         self.temp_rules = set()
         REDIRECTOR.lst = []
 
@@ -1019,11 +1013,6 @@ class parent_proxy(object):
                         self.add_rule(line)
             except TypeError:
                 logging.warning('./fgfw-lite/gfwlist.txt is corrupted!')
-
-        self.localnet.append((ip_from_string('192.168.0.0'), ip_from_string('192.168.0.0') + 2 ** (32 - 16)))
-        self.localnet.append((ip_from_string('172.16.0.0'), ip_from_string('172.16.0.0') + 2 ** (32 - 12)))
-        self.localnet.append((ip_from_string('10.0.0.0'), ip_from_string('10.0.0.0') + 2 ** (32 - 8)))
-        self.localnet.append((ip_from_string('127.0.0.0'), ip_from_string('127.0.0.0') + 2 ** (32 - 8)))
 
         self.geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
 
@@ -1052,10 +1041,7 @@ class parent_proxy(object):
     @lru_cache(256, timeout=120)
     def ifhost_in_local(self, host, port):
         try:
-            i = ip_from_string(getaddrinfo(host, port)[0][4][0])
-            if any(a[0] <= i < a[1] for a in self.localnet):
-                return True
-            return False
+            return ip_address(getaddrinfo(host, port)[0][4][0]).is_private
         except socket.error as e:
             logging.warning('resolve %s failed! %s' % (host, repr(e)))
 
