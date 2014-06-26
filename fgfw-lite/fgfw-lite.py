@@ -772,10 +772,8 @@ class sssocket(object):
         self.crypto = encrypt.Encryptor(sspassword, ssmethod)
         if not self.parentproxy:
             self._sock = create_connection((sshost, ssport), self.timeout)
-            self.setsockopt = self._sock.setsockopt
         elif self.parentproxy.startswith('http://'):
             self._sock = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), self.timeout)
-            self.setsockopt = self._sock.setsockopt
             s = 'CONNECT %s:%s HTTP/1.1\r\nHost: %s\r\n' % (sshost, ssport, sshost)
             if self.pproxyparse.username:
                 a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
@@ -791,6 +789,8 @@ class sssocket(object):
         else:
             logging.error('sssocket does not support parent proxy server: %s for now' % self.parentproxy)
             return 1
+        self.setsockopt = self._sock.setsockopt
+        self.fileno = self._sock.fileno
 
     def recv(self, size):
         if not self.connected:
@@ -912,9 +912,6 @@ class sssocket(object):
 
     def __del__(self):
         self.close()
-
-    def fileno(self):
-        return self._sock.fileno()
 
 
 class ExpiredError(Exception):
