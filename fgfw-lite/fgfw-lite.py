@@ -421,7 +421,7 @@ class ProxyHandler(HTTPRequestHandler):
         except NetWorkIOError as e:
             return self.on_GET_Error(e)
         header_data = b''.join(header_data)
-        response_header = email.message_from_string(header_data.decode('latin1'))
+        response_header = email.message_from_string(header_data)
         conntype = response_header.get('Connection', "")
         if protocol_version >= b"HTTP/1.1":
             self.close_connection = conntype.lower() == 'close'
