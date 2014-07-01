@@ -140,10 +140,6 @@ def prestart():
 prestart()
 
 
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-    pass
-
-
 class HTTPCONN_POOL(object):
     POOL = defaultdict(deque)
     lastactive = {}
@@ -176,6 +172,10 @@ class HTTPCONN_POOL(object):
         count -= pcount
         if pcount or count:
             logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in cls.POOL.items() if v])))
+
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    pass
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
