@@ -1097,16 +1097,16 @@ class parent_proxy(object):
         s = set(conf.parentdict.keys()) - set(['goagent', 'goagent-php', 'direct', 'local'])
         a = conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent'
         if s or a:  # two reasons not to use goagent
-            if host in conf.FAKEHTTPS:
-                return True
-            if host.endswith(conf.FAKEHTTPS_POSTFIX):
-                return True
-            if host in conf.WITHGAE:
-                return True
-            if host in conf.HOST:
-                return False
-            if host.endswith(conf.HOST_POSTFIX):
-                return False
+            # if host in conf.FAKEHTTPS:
+            #     return True
+            # if host.endswith(conf.FAKEHTTPS_POSTFIX):
+            #     return True
+            # if host in conf.WITHGAE:
+            #     return True
+            # if host in conf.HOST:
+            #     return False
+            # if host.endswith(conf.HOST_POSTFIX):
+            #     return False
             return True
 
     def parentproxy(self, uri, host, command, level=1):
