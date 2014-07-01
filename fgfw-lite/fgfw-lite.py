@@ -1193,18 +1193,21 @@ class parent_proxy(object):
         logging.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (command, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
         for fpp in failed_parents:
-            STATS.log(command, requesthost, url, fpp, 0)
+            STATS.log(command, requesthost[0], url, fpp, 0)
         if current_parent:
-            STATS.log(command, requesthost, url, current_parent, success)
+            STATS.log(command, requesthost[0], url, current_parent, success)
         if 'direct' in failed_parents and success:
             if command == 'CONNECT':
                 rule = '|https://%s' % requesthost[0]
             else:
                 rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
             if rule not in self.temp_rules:
-                logging.info('add autoproxy rule: %s' % rule)
-                self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * 10))
-                self.temp_rules.add(rule)
+                direct_sr = STATS.srbhp(requesthost[0], 'direct')
+                if direct_sr[0] < 0.1 and direct_sr[1] > 1:
+                    exp = min(direct_sr[1], 60)
+                    logging.info('add autoproxy rule: %s expire in %d min' % (rule, exp))
+                    self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * exp))
+                    self.temp_rules.add(rule)
 
 
 def updater():
