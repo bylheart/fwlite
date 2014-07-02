@@ -151,21 +151,33 @@ class STATS(object):
             cls.con.execute('insert into log values (?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success))
 
     @classmethod
-    def srbh(cls, hostname, sincetime=0):
+    def srbh(cls, hostname, sincetime=None):
         '''success rate by hostname'''
+        if sincetime is None:
+            sincetime = time.time() - 24 * 60 * 60
         r = cls.con.execute('select count(*), sum(success) from log where hostname = (?) and timestamp >= (?)', (hostname, sincetime)).next()
+        if r[0] == 0:
+            return(0, 0)
         return (r[1] / r[0], r[0])
 
     @classmethod
-    def srbp(cls, ppname, sincetime=0):
+    def srbp(cls, ppname, sincetime=None):
         '''success rate by ppname'''
+        if sincetime is None:
+            sincetime = time.time() - 24 * 60 * 60
         r = cls.con.execute('select count(*), sum(success) from log where ppname = (?) and timestamp >= (?)', (ppname, sincetime)).next()
+        if r[0] == 0:
+            return(0, 0)
         return (r[1] / r[0], r[0])
 
     @classmethod
-    def srbhp(cls, hostname, ppname, sincetime=0):
+    def srbhp(cls, hostname, ppname, sincetime=None):
         '''success rate by hostname and ppname'''
+        if sincetime is None:
+            sincetime = time.time() - 24 * 60 * 60
         r = cls.con.execute('select count(*), sum(success) from log where hostname = (?) and ppname = (?) and timestamp >= (?)', (hostname, ppname, sincetime)).next()
+        if r[0] == 0:
+            return(0, 0)
         return (r[1] / r[0], r[0])
 
     @classmethod
