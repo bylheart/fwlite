@@ -1225,10 +1225,10 @@ def updater():
     while 1:
         time.sleep(30)
         HTTPCONN_POOL.purge()
-        if conf.userconf.dgetbool('FGFW_Lite', 'autoupdate'):
-            lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
-            if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
-                update(auto=True)
+        lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
+        if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
+            STATS.purge()
+            update(auto=True)
         global CTIMEOUT, ctimer
         if ctimer:
             logging.info('max connection time: %ss in %s' % (max(ctimer), len(ctimer)))
@@ -1238,6 +1238,8 @@ def updater():
 
 
 def update(auto=False):
+    if auto and conf.userconf.dgetbool('FGFW_Lite', 'autoupdate') is False:
+        return
     conf.version.set('Update', 'LastUpdate', str(time.time()))
     filelist = [('https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt', './fgfw-lite/gfwlist.txt'), ]
     for url, path in filelist:
