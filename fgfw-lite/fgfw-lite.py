@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, see <http://www.gnu.org/licenses>.
 
-from __future__ import print_function
+from __future__ import print_function, division
 
 __version__ = '4.1.4'
 
@@ -52,6 +52,7 @@ import subprocess
 import shlex
 import time
 import re
+import datetime
 import errno
 import email
 import atexit
@@ -65,6 +66,7 @@ import shutil
 import socket
 import struct
 import ssl
+import sqlite3
 import pygeoip
 import traceback
 try:
@@ -140,8 +142,39 @@ def prestart():
 prestart()
 
 
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-    pass
+class STATS(object):
+    con = sqlite3.connect(":memory:")
+    con.execute("create table log (timestamp real, date text, command text, hostname text, url text, ppname text, success integer)")
+
+    @classmethod
+    def log(cls, command, hostname, url, ppname, success):
+        with cls.con:
+            cls.con.execute('insert into log values (?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success))
+
+    @classmethod
+    def srbh(cls, hostname, sincetime=0):
+        '''success rate by hostname'''
+        r = cls.con.execute('select count(*), sum(success) from log where hostname = (?) and timestamp >= (?)', (hostname, sincetime)).next()
+        return (r[1] / r[0], r[0])
+
+    @classmethod
+    def srbp(cls, ppname, sincetime=0):
+        '''success rate by ppname'''
+        r = cls.con.execute('select count(*), sum(success) from log where ppname = (?) and timestamp >= (?)', (ppname, sincetime)).next()
+        return (r[1] / r[0], r[0])
+
+    @classmethod
+    def srbhp(cls, hostname, ppname, sincetime=0):
+        '''success rate by hostname and ppname'''
+        r = cls.con.execute('select count(*), sum(success) from log where hostname = (?) and ppname = (?) and timestamp >= (?)', (hostname, ppname, sincetime)).next()
+        return (r[1] / r[0], r[0])
+
+    @classmethod
+    def purge(cls, befortime=None):
+        if not befortime:
+            befortime = time.time() - 24 * 60 * 60
+        with cls.con:
+            cls.con.execute('delete from log where timestamp < (?)', (befortime))
 
 
 class HTTPCONN_POOL(object):
@@ -176,6 +209,10 @@ class HTTPCONN_POOL(object):
         count -= pcount
         if pcount or count:
             logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in cls.POOL.items() if v])))
+
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    pass
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
@@ -1152,18 +1189,25 @@ class parent_proxy(object):
             parentlist = parentlist[:conf.maxretry + 1]
         return parentlist
 
-    def notify(self, method, url, requesthost, success, failed_parents, current_parent):
-        logging.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (method, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
+    def notify(self, command, url, requesthost, success, failed_parents, current_parent):
+        logging.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (command, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
+        for fpp in failed_parents:
+            STATS.log(command, requesthost[0], url, fpp, 0)
+        if current_parent:
+            STATS.log(command, requesthost[0], url, current_parent, success)
         if 'direct' in failed_parents and success:
-            if method == 'CONNECT':
+            if command == 'CONNECT':
                 rule = '|https://%s' % requesthost[0]
             else:
                 rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
             if rule not in self.temp_rules:
-                logging.info('add autoproxy rule: %s' % rule)
-                self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * 10))
-                self.temp_rules.add(rule)
+                direct_sr = STATS.srbhp(requesthost[0], 'direct')
+                if direct_sr[0] < 0.1 and direct_sr[1] > 1:
+                    exp = min(direct_sr[1], 60)
+                    logging.info('add autoproxy rule: %s expire in %d min' % (rule, exp))
+                    self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * exp))
+                    self.temp_rules.add(rule)
 
 
 def updater():
