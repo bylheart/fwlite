@@ -141,85 +141,81 @@ def prestart():
 prestart()
 
 
-class STATS(object):
+class stats(object):
     con = sqlite3.connect(":memory:")
     con.execute("create table log (timestamp real, date text, command text, hostname text, url text, ppname text, success integer)")
 
-    @classmethod
-    def log(cls, command, hostname, url, ppname, success):
-        with cls.con:
-            cls.con.execute('insert into log values (?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success))
+    def log(self, command, hostname, url, ppname, success):
+        with self.con:
+            self.con.execute('insert into log values (?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success))
 
-    @classmethod
-    def srbh(cls, hostname, sincetime=None):
+    def srbh(self, hostname, sincetime=None):
         '''success rate by hostname'''
         if sincetime is None:
             sincetime = time.time() - 24 * 60 * 60
-        r = cls.con.execute('select count(*), sum(success) from log where hostname = (?) and timestamp >= (?)', (hostname, sincetime)).next()
+        r = self.con.execute('select count(*), sum(success) from log where hostname = (?) and timestamp >= (?)', (hostname, sincetime)).next()
         if r[0] == 0:
             return(0, 0)
         return (r[1] / r[0], r[0])
 
-    @classmethod
-    def srbp(cls, ppname, sincetime=None):
+    def srbp(self, ppname, sincetime=None):
         '''success rate by ppname'''
         if sincetime is None:
             sincetime = time.time() - 24 * 60 * 60
-        r = cls.con.execute('select count(*), sum(success) from log where ppname = (?) and timestamp >= (?)', (ppname, sincetime)).next()
+        r = self.con.execute('select count(*), sum(success) from log where ppname = (?) and timestamp >= (?)', (ppname, sincetime)).next()
         if r[0] == 0:
             return(0, 0)
         return (r[1] / r[0], r[0])
 
-    @classmethod
-    def srbhp(cls, hostname, ppname, sincetime=None):
+    def srbhp(self, hostname, ppname, sincetime=None):
         '''success rate by hostname and ppname'''
         if sincetime is None:
             sincetime = time.time() - 24 * 60 * 60
-        r = cls.con.execute('select count(*), sum(success) from log where hostname = (?) and ppname = (?) and timestamp >= (?)', (hostname, ppname, sincetime)).next()
+        r = self.con.execute('select count(*), sum(success) from log where hostname = (?) and ppname = (?) and timestamp >= (?)', (hostname, ppname, sincetime)).next()
         if r[0] == 0:
             return(0, 0)
         return (r[1] / r[0], r[0])
 
-    @classmethod
-    def purge(cls, befortime=None):
+    def purge(self, befortime=None):
         if not befortime:
             befortime = time.time() - 24 * 60 * 60
-        with cls.con:
-            cls.con.execute('delete from log where timestamp < (?)', (befortime))
+        with self.con:
+            self.con.execute('delete from log where timestamp < ?', (befortime, ))
+
+STATS = stats()
 
 
-class HTTPCONN_POOL(object):
+class httpconn_pool(object):
     POOL = defaultdict(deque)
     lastactive = {}
 
-    @classmethod
-    def put(cls, upstream_name, soc, ppname):
-        cls.lastactive[soc.fileno()] = time.time()
-        cls.POOL[upstream_name].append((soc, ppname))
+    def put(self, upstream_name, soc, ppname):
+        self.lastactive[soc.fileno()] = time.time()
+        self.POOL[upstream_name].append((soc, ppname))
 
-    @classmethod
-    def get(cls, upstream_name):
-        lst = cls.POOL.get(upstream_name)
+    def get(self, upstream_name):
+        lst = self.POOL.get(upstream_name)
         while lst:
             sock, pproxy = lst.popleft()
             if not is_connection_dropped(sock):
                 return (sock, pproxy)
             sock.close()
 
-    @classmethod
-    def purge(cls):
+    def purge(self):
         pcount = count = 0
-        for k, v in cls.POOL.items():
+        for k, v in self.POOL.items():
             count += len(v)
             try:
-                for i in [pair for pair in v if (pair[0] in select.select([item[0] for item in v], [], [], 0.0)[0]) or (cls.lastactive[pair[0].fileno()] < time.time() - 300)]:
+                for i in [pair for pair in v if (pair[0] in select.select([item[0] for item in v], [], [], 0.0)[0]) or (self.lastactive[pair[0].fileno()] < time.time() - 300)]:
                     v.remove(i)
                     pcount += 1
             except Exception as e:
                 logging.warning('Exception caught in purge! %r' % e)
         count -= pcount
         if pcount or count:
-            logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in cls.POOL.items() if v])))
+            logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
+
+HTTPCONN_POOL = httpconn_pool()
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
