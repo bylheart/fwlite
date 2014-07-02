@@ -10,5 +10,5 @@
     "./goagent/proxy.bat": "8e11cf1502be2cb253d595064aee55ff379a72268618941b47c9dbf0936bcf74",
     "./goagent/proxy.py": "8353d4a0bab6d34facd82b34bbd33a499a36b42a9dcc74789e6e1dbe3188511c",
     "./goagent/proxy.sample.ini": "cf3db7e31208af6e4c277d63bc1af08350634e13a19f7e3bd88594132f28fc71",
-    "./userconf.sample.ini": "101d3a2c983a43923f802018aca572843c6258a306624bf5521a260281503585"
+    "./userconf.sample.ini": "0922a7394920b675370fec93a62c0db3480ca78f1b263f933a9e6282cd8c8aea"
 }
