@@ -598,7 +598,10 @@ class ProxyHandler(HTTPRequestHandler):
                     break
                 if self.connection in ins:
                     logging.debug('read from client')
-                    data = self.connection.recv(self.bufsize)
+                    try:
+                        data = self.connection.recv(self.bufsize)
+                    except:
+                        return
                     if not data:
                         return
                     self.rbuffer.append(data)
@@ -615,10 +618,8 @@ class ProxyHandler(HTTPRequestHandler):
                     break
             except socket.error as e:
                 logging.warning('socket error: %r' % e)
-                sys.stderr.write(traceback.format_exc())
                 break
         if self.retryable:
-            self.remotesoc.close()
             logging.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
             return self._do_CONNECT(True)
         PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
