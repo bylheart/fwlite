@@ -2,12 +2,12 @@ FGFW-Lite
 =========
 一个辅助突破网络审查的HTTP代理服务器。它能自动检查网站是否被墙，使用二级代理。
 
-不用PAC，无需各种浏览器插件，用最简单的设置享受自由的网络。
+Inspired by [COW]
 
 ##功能
 
 - 符合HTTP1.1标准的HTTP代理服务器
-- 自动设置系统代理(仅限Windows)
+- 自动设置系统代理(Windows only)
 - 支持需要设置代理的局域网环境
 - 地址栏搜索
 - 自动升级到最新的稳定版本
@@ -25,9 +25,9 @@ FGFW-Lite
   - HTTP代理
   - HTTPS代理
   - Socks5代理
-  - GoAgent
-  - Shadowsocks
-  - Snova(不支持GAE模式)
+  - [GoAgent]
+  - [Shadowsocks]
+  - [snova](PAAS only)
 
 ##快速开始
 
@@ -76,14 +76,12 @@ forcehttps
     ||bbc.co.uk shadowsocks-uk
     ||weibo.com direct
 
-##其他相关
+##License
 
-cow https://github.com/cyfdecyf/cow
+GPLv2
 
-goagent https://code.google.com/p/goagent/
-
-shadowsocks https://github.com/clowwindy/shadowsocks
-
-snova https://code.google.com/p/snova/
-
-pybuild https://github.com/goagent/pybuild
+[COW]:https://github.com/cyfdecyf/cow
+[GoAgent]:https://code.google.com/p/goagent/
+[Shadowsocks]:https://github.com/clowwindy/shadowsocks
+[snova]:https://code.google.com/p/snova/
+[pybuild]:https://github.com/goagent/pybuild
