@@ -9,3 +9,5 @@
 ||googleapis.com
 ||google.com.hk
 ||ggpht.com
+/^http://userscripts.org$/ http://userscripts.org:8080
+/^http://userscripts.org/(.*)$/ /http://userscripts.org:8080/\1/
