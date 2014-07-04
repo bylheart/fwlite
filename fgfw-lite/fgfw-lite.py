@@ -339,7 +339,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.path.startswith('/'):
             return self.send_error(403)
         # redirector
-        new_url = REDIRECTOR.get(self.path)
+        new_url = PARENT_PROXY.redirect(self.path)
         if new_url:
             logging.debug('redirecting to %s' % new_url)
             if new_url.isdigit() and 400 <= int(new_url) < 600:
@@ -1002,31 +1002,6 @@ class autoproxy_rule(object):
         return self._ptrn.search(uri)
 
 
-class redirector(object):
-    """docstring for redirector"""
-    def __init__(self):
-        self.lst = []
-
-    def get(self, uri, host=None):
-        searchword = re.match(r'^http://([\w-]+)/$', uri)
-        if searchword:
-            q = searchword.group(1)
-            if 'xn--' in q:
-                q = q.encode().decode('idna')
-            logging.debug('Match redirect rule addressbar-search')
-            return 'https://www.google.com/search?q=%s&ie=utf-8&oe=utf-8&aq=t&rls=org.mozilla:zh-CN:official' % urlquote(q.encode('utf-8'))
-        for rule, result in self.lst:
-            if rule.match(uri):
-                logging.debug('Match redirect rule {}, {}'.format(rule.rule, result))
-                if rule.override:
-                    return None
-                if result == 'forcehttps':
-                    return uri.replace('http://', 'https://', 1)
-                if result.startswith('/') and result.endswith('/'):
-                    return rule._ptrn.sub(result[1:-1], uri)
-                return result
-
-
 class parent_proxy(object):
     """docstring for parent_proxy"""
     def config(self):
@@ -1034,7 +1009,7 @@ class parent_proxy(object):
         self.override = []
         self.gfwlist_force = []
         self.temp_rules = set()
-        REDIRECTOR.lst = []
+        self.redirlst = []
 
         for line in open('./fgfw-lite/local.txt'):
             self.add_rule(line, force=True)
@@ -1063,7 +1038,7 @@ class parent_proxy(object):
         if len(rule) == 2:  # |http://www.google.com/url forcehttps
             try:
                 rule, result = rule
-                REDIRECTOR.lst.append((autoproxy_rule(rule), result))
+                self.redirlst.append((autoproxy_rule(rule), result))
             except TypeError as e:
                 logging.debug('create autoproxy rule failed: %s' % e)
         elif len(rule) == 1:
@@ -1079,6 +1054,25 @@ class parent_proxy(object):
                 logging.debug('create autoproxy rule failed: %s' % e)
         elif rule and '!' not in line:
             logging.warning('Bad autoproxy rule: %r' % line)
+
+    def redirect(self, uri, host=None):
+        searchword = re.match(r'^http://([\w-]+)/$', uri)
+        if searchword:
+            q = searchword.group(1)
+            if 'xn--' in q:
+                q = q.encode().decode('idna')
+            logging.debug('Match redirect rule addressbar-search')
+            return 'https://www.google.com/search?q=%s&ie=utf-8&oe=utf-8&aq=t&rls=org.mozilla:zh-CN:official' % urlquote(q.encode('utf-8'))
+        for rule, result in self.redirlst:
+            if rule.match(uri):
+                logging.debug('Match redirect rule {}, {}'.format(rule.rule, result))
+                if rule.override:
+                    return None
+                if result == 'forcehttps':
+                    return uri.replace('http://', 'https://', 1)
+                if result.startswith('/') and result.endswith('/'):
+                    return rule._ptrn.sub(result[1:-1], uri)
+                return result
 
     @lru_cache(256, timeout=120)
     def ifhost_in_local(self, host, port):
@@ -1582,7 +1576,6 @@ class Config(object):
         logging.info('adding parent proxy: %s: %s' % (name, proxy))
         self.parentdict[name] = (proxy, priority)
 
-REDIRECTOR = redirector()
 PARENT_PROXY = parent_proxy()
 conf = Config()
 PARENT_PROXY.config()
