@@ -1010,6 +1010,7 @@ class parent_proxy(object):
         self.gfwlist_force = []
         self.temp_rules = set()
         self.redirlst = []
+        self.ignore = []
 
         for line in open('./fgfw-lite/local.txt'):
             self.add_rule(line, force=True)
@@ -1038,6 +1039,9 @@ class parent_proxy(object):
         if len(rule) == 2:  # |http://www.google.com/url forcehttps
             try:
                 rule, result = rule
+                if result.lower() == 'ignore':
+                    self.ignore.append(autoproxy_rule(rule))
+                    return
                 self.redirlst.append((autoproxy_rule(rule), result))
             except TypeError as e:
                 logging.debug('create autoproxy rule failed: %s' % e)
@@ -1052,7 +1056,7 @@ class parent_proxy(object):
                     self.gfwlist.append(o)
             except TypeError as e:
                 logging.debug('create autoproxy rule failed: %s' % e)
-        elif rule and '!' not in line:
+        elif rule and not line.startswith(('!', '#')):
             logging.warning('Bad autoproxy rule: %r' % line)
 
     def redirect(self, uri, host=None):
@@ -1122,8 +1126,11 @@ class parent_proxy(object):
 
         gfwlist_force = self.if_gfwlist_force(uri, level)
 
-        if any(rule.match(uri) for rule in self.override):
+        if any(rule.match(uri) for rule in self.ignore):
             return None
+
+        if any(rule.match(uri) for rule in self.override):
+            return False
 
         if not gfwlist_force and (HOSTS.get(host) or self.ifhost_in_region(host, port)):
             return None

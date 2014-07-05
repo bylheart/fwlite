@@ -51,9 +51,9 @@ requirements under openSUSE:
 
 FGFW-Lite兼容[autoproxy规则](https://autoproxy.org/zh-CN/Rules)，不同之处：
 
-对特定网址不使用规则。用于阻止对国内的网站误用代理，以及gfwlist中可直连的网站。
+对特定网址不使用规则。用于gfwlist中可直连的网站。
 
-    @@||example.com
+    ||example.com ignore
 
 forcehttps
 
