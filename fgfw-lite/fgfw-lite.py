@@ -1205,11 +1205,17 @@ class parent_proxy(object):
                 rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
             if rule not in self.temp_rules:
                 direct_sr = STATS.srbhp(requesthost[0], 'direct')
-                if direct_sr[0] < 0.1 and direct_sr[1] > 1:
-                    exp = min(direct_sr[1], 60)
-                    logging.info('add autoproxy rule: %s expire in %d min' % (rule, exp))
-                    self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * exp))
-                    self.temp_rules.add(rule)
+                if direct_sr[1] < 2:
+                    exp = 1
+                elif direct_sr[0] < 0.1:
+                    exp = min(pow(direct_sr[1], 1.5), 60)
+                elif direct_sr[0] < 0.5:
+                    exp = min(direct_sr[1], 10)
+                else:
+                    exp = 1
+                logging.info('add autoproxy rule: %s expire in %.1f min' % (rule, exp))
+                self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * exp))
+                self.temp_rules.add(rule)
 
 
 def updater():
