@@ -1039,7 +1039,7 @@ class parent_proxy(object):
         if len(rule) == 2:  # |http://www.google.com/url forcehttps
             try:
                 rule, result = rule
-                if result.lower() == 'ignore':
+                if result.lower() == 'auto':
                     self.ignore.append(autoproxy_rule(rule))
                     return
                 self.redirlst.append((autoproxy_rule(rule), result))

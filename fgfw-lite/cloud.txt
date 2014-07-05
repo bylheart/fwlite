@@ -4,6 +4,6 @@
 ||google.com.hk
 ||ggpht.com
 ||googlevideo.com
-||twimg.com ignore
+||twimg.com auto
 /^http://userscripts.org$/ http://userscripts.org:8080
 /^http://userscripts.org/(.*)$/ /http://userscripts.org:8080/\1/
