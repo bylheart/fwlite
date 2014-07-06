@@ -74,7 +74,6 @@ forcehttps
 为特定网站指定二级代理
 
     ||bbc.co.uk shadowsocks-uk
-    ||weibo.com direct
 
 ##License
 
