@@ -57,6 +57,7 @@ import errno
 import email
 import atexit
 import base64
+import itertools
 import ftplib
 import logging
 import random
@@ -187,11 +188,13 @@ STATS = stats()
 
 class httpconn_pool(object):
     POOL = defaultdict(deque)
-    lastactive = {}
+    timerwheel = defaultdict(list)
+    timerwheel_index_iter = itertools.cycle(range(10))
+    timerwheel_index = timerwheel_index_iter.next()
 
     def put(self, upstream_name, soc, ppname):
-        self.lastactive[soc.fileno()] = time.time()
         self.POOL[upstream_name].append((soc, ppname))
+        self.timerwheel[self.timerwheel_index].append((upstream_name, (soc, ppname)))
 
     def get(self, upstream_name):
         lst = self.POOL.get(upstream_name)
@@ -205,12 +208,17 @@ class httpconn_pool(object):
         pcount = count = 0
         for k, v in self.POOL.items():
             count += len(v)
-            try:
-                for i in [pair for pair in v if (pair[0] in select.select([item[0] for item in v], [], [], 0.0)[0]) or (self.lastactive[pair[0].fileno()] < time.time() - 300)]:
-                    v.remove(i)
-                    pcount += 1
-            except Exception as e:
-                logging.warning('Exception caught in purge! %r' % e)
+            for i in [pair for pair in v if pair[0] in select.select([item[0] for item in v], [], [], 0.0)[0]]:
+                i[0].close()
+                v.remove(i)
+                pcount += 1
+        self.timerwheel_index = self.timerwheel_index_iter.next()
+        for upsname, soc in self.timerwheel[self.timerwheel_index]:
+            if soc in self.POOL[upsname]:
+                soc[0].close()
+                self.POOL[upsname].remove(soc)
+                pcount += 1
+        self.timerwheel[self.timerwheel_index] = []
         count -= pcount
         if pcount or count:
             logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
