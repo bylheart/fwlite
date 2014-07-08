@@ -220,7 +220,7 @@ class httpconn_pool(object):
                 pcount += 1
         self.timerwheel[self.timerwheel_index] = []
         count -= pcount
-        if pcount or count:
+        if pcount:
             logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
 
 HTTPCONN_POOL = httpconn_pool()
