@@ -376,6 +376,7 @@ class ProxyHandler(HTTPRequestHandler):
             if not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
         self.shortpath = '%s%s' % (self.path.split('?')[0], '?' if len(self.path.split('?')) > 1 else '')
+        self.shortpath = '%s%s' % (':'.join(self.shortpath.split(':')[:2]), ':' if len(self.shortpath.split(':')) > 2 else '')
 
         if conf.xheaders:
             ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
