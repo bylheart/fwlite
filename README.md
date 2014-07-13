@@ -43,7 +43,8 @@ Linux系统：运行fgfwlite-gtk.pyw
 
 requirements under openSUSE:
 
-    zypper install python-pyOpenSSL python-M2Crypto python-pycrypto python-Markdown python-repoze.lru python-ipaddr
+    zypper install python-M2Crypto python-Markdown python-repoze.lru python-ipaddr
+    zypper install python-pyOpenSSL python-pycrypto  # for goagent
     zypper install python-gevent  # for better performance
     zypper install python-vte  # gui
 
