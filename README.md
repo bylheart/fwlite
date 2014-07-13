@@ -53,7 +53,7 @@ FGFW-Lite兼容[autoproxy规则](https://autoproxy.org/zh-CN/Rules)，不同之�
 
 对特定网址不使用规则。用于gfwlist中可直连的网站。
 
-    ||example.com auto
+    ||twimg.com auto
 
 forcehttps
 
