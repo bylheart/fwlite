@@ -321,7 +321,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def getparent(self):
         if self._proxylist is None:
-            self._proxylist = PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
+            self._proxylist = conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
             logging.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
@@ -341,7 +341,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.path.startswith('/'):
             return self.send_error(403)
         # redirector
-        new_url = PARENT_PROXY.redirect(self.path)
+        new_url = conf.PARENT_PROXY.redirect(self.path)
         if new_url:
             logging.debug('redirecting to %s' % new_url)
             if new_url.isdigit() and 400 <= int(new_url) < 600:
@@ -387,10 +387,10 @@ class ProxyHandler(HTTPRequestHandler):
             self.failed_parents.append(self.ppname)
         if not self.retryable:
             self.close_connection = 1
-            PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
+            conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
             return
         if self.getparent():
-            PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
+            conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
             return self.send_error(504)
 
         self.upstream_name = self.ppname if self.pproxy.startswith('http') else self.requesthost
@@ -533,7 +533,7 @@ class ProxyHandler(HTTPRequestHandler):
                     break
         self.wfile_write()
         logging.debug('request finish')
-        PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
+        conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
         if self.close_connection or is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
         else:
@@ -567,7 +567,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.remotesoc:
             self.remotesoc.close()
         if not self.retryable or self.getparent():
-            PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
+            conf.PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
             return
         try:
             self.remotesoc = self._connect_via_proxy(self.requesthost)
@@ -625,7 +625,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.retryable:
             logging.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
             return self._do_CONNECT(True)
-        PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
+        conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
         self._read_write(self.remotesoc, 300)
         self.remotesoc.close()
         self.connection.close()
@@ -1002,6 +1002,10 @@ class autoproxy_rule(object):
 
 class parent_proxy(object):
     """docstring for parent_proxy"""
+    def __init__(self, enable_gfwlist=True):
+        self.enable_gfwlist = enable_gfwlist
+        self.config()
+
     def config(self):
         self.gfwlist = []
         self.override = []
@@ -1016,7 +1020,7 @@ class parent_proxy(object):
         for line in open('./fgfw-lite/cloud.txt'):
             self.add_rule(line, force=True)
 
-        if conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True):
+        if self.enable_gfwlist:
             try:
                 with open('./fgfw-lite/gfwlist.txt') as f:
                     data = f.read()
@@ -1301,7 +1305,7 @@ def restart():
     conf.confsave()
     for item in FGFWProxyHandler.ITEMS:
         item.restart()
-    PARENT_PROXY.config()
+    conf.PARENT_PROXY.config()
 
 
 class FGFWProxyHandler(object):
@@ -1570,6 +1574,8 @@ class Config(object):
                     except Exception as e:
                         logging.warning('%s %s' % (e, line))
 
+        self.PARENT_PROXY = parent_proxy(enable_gfwlist=self.userconf.dgetbool('fgfwproxy', 'gfwlist', True))
+
     def reload(self):
         self.version.read('version.ini')
         self.userconf.read('userconf.ini')
@@ -1595,9 +1601,7 @@ class Config(object):
         logging.info('adding parent proxy: %s: %s' % (name, proxy))
         self.parentdict[name] = (proxy, priority)
 
-PARENT_PROXY = parent_proxy()
 conf = Config()
-PARENT_PROXY.config()
 
 
 @atexit.register
