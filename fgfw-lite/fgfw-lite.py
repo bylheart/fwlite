@@ -227,7 +227,9 @@ HTTPCONN_POOL = httpconn_pool()
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-    pass
+    def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True, level=1):
+        self.proxy_level = level
+        HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
@@ -322,9 +324,9 @@ class ProxyHandler(HTTPRequestHandler):
         if self.remotesoc:
             self.remotesoc.close()
 
-    def _getparent(self, level=1):
+    def getparent(self):
         if self._proxylist is None:
-            self._proxylist = PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, level)
+            self._proxylist = PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
             logging.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
@@ -332,9 +334,6 @@ class ProxyHandler(HTTPRequestHandler):
         self.ppname = self._proxylist.pop(0)
         self.pproxy = conf.parentdict.get(self.ppname)[0]
         self.pproxyparse = urlparse.urlparse(self.pproxy)
-
-    def getparent(self, level=1):
-        return self._getparent(level)
 
     def do_GET(self):
         if isinstance(self.path, bytes):
@@ -800,11 +799,6 @@ class ProxyHandler(HTTPRequestHandler):
             self.end_trunk()
 
 
-class ForceProxyHandler(ProxyHandler):
-    def getparent(self, level=3):
-        return self._getparent(level)
-
-
 class sssocket(object):
     bufsize = 8192
 
@@ -1128,10 +1122,10 @@ class parent_proxy(object):
     def ifgfwed(self, uri, host, port, level=1):
         if level == 0:
             return False
-        elif level == 2:
-            forceproxy = True
-        else:
-            forceproxy = False
+        forceproxy = level == 2
+
+        if ip_address(getaddrinfo(host, port)[0][4][0]).is_loopback:
+            return False
 
         if self.if_gfwlist_force(uri, level):
             return True
@@ -1183,6 +1177,9 @@ class parent_proxy(object):
 
         f = self.ifgfwed(uri, host, port, level)
 
+        if f is False:
+            return ['direct']
+
         parentlist = list(conf.parentdict.keys())
         random.shuffle(parentlist)
         parentlist = sorted(parentlist, key=lambda item: conf.parentdict[item][1])
@@ -1199,11 +1196,12 @@ class parent_proxy(object):
         if 'local' in parentlist:
             parentlist.remove('local')
 
-        if f is True:
+        if f is True or level == 3:
             parentlist.remove('direct')
             if not parentlist:
                 logging.warning('No parent proxy available, direct connection is used')
                 return ['direct']
+
         if len(parentlist) > conf.maxretry + 1:
             parentlist = parentlist[:conf.maxretry + 1]
         return parentlist
@@ -1623,7 +1621,7 @@ def main():
     updatedaemon.start()
     server = ThreadingHTTPServer(conf.listen, ProxyHandler)
     Thread(target=server.serve_forever).start()
-    server2 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ForceProxyHandler)
+    server2 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ProxyHandler, level=3)
     server2.serve_forever()
 
 if __name__ == "__main__":
