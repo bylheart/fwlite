@@ -79,7 +79,7 @@ except ImportError:
 from threading import Thread
 from repoze.lru import lru_cache
 import encrypt
-from util import create_connection, getaddrinfo, parse_hostport, is_connection_dropped, get_ip_address
+from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address
 try:
     import markdown
 except ImportError:
@@ -1082,17 +1082,9 @@ class parent_proxy(object):
                 return result
 
     @lru_cache(256, timeout=120)
-    def ifhost_in_local(self, host, port):
+    def ifhost_in_region(self, host, ip):
         try:
-            return get_ip_address(host, port).is_private
-        except socket.error as e:
-            logging.warning('resolve %s failed! %s' % (host, repr(e)))
-
-    @lru_cache(256, timeout=120)
-    def ifhost_in_region(self, host, port):
-        try:
-            addr = getaddrinfo(host, port)[0][4][0]
-            code = self.geoip.country_code_by_addr(addr)
+            code = self.geoip.country_code_by_addr(str(ip))
             if code in conf.region:
                 logging.info('%s in %s' % (host, code))
                 return True
@@ -1119,18 +1111,15 @@ class parent_proxy(object):
                     self.gfwlist.insert(0, self.gfwlist.pop(i))
                 return True
 
-    def ifgfwed(self, uri, host, port, level=1):
+    def ifgfwed(self, uri, host, port, ip, level=1):
         if level == 0:
             return False
         forceproxy = level == 2
 
-        try:
-            ip = get_ip_address(host, port)
-        except:
-            logging.warning('resolve hostname %s failed!' % host)
+        if ip is None:
             return True
 
-        if ip.is_loopback:
+        if any((ip.is_loopback, ip.is_private)):
             return False
 
         if self.if_gfwlist_force(uri, level):
@@ -1142,7 +1131,7 @@ class parent_proxy(object):
         if any(rule.match(uri) for rule in self.override):
             return False
 
-        if HOSTS.get(host) or self.ifhost_in_region(host, port):
+        if HOSTS.get(host) or self.ifhost_in_region(host, ip):
             return None
 
         if forceproxy or self.gfwlist_match(uri):
@@ -1178,12 +1167,17 @@ class parent_proxy(object):
         '''
         host, port = host
 
-        if self.ifhost_in_local(host, port):
-            return ['local' if 'local' in conf.parentdict.keys() else 'direct']
+        try:
+            ip = get_ip_address(host, port)
+        except Exception as e:
+            logging.warning('resolve %s failed! %s' % (host, repr(e)))
+            ip = None
 
-        f = self.ifgfwed(uri, host, port, level)
+        f = self.ifgfwed(uri, host, port, ip, level)
 
         if f is False:
+            if ip.is_private:
+                return ['local' if 'local' in conf.parentdict.keys() else 'direct']
             return ['direct']
 
         parentlist = list(conf.parentdict.keys())
