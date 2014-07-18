@@ -79,7 +79,7 @@ except ImportError:
 from threading import Thread
 from repoze.lru import lru_cache
 import encrypt
-from util import create_connection, getaddrinfo, parse_hostport, is_connection_dropped
+from util import create_connection, getaddrinfo, parse_hostport, is_connection_dropped, get_ip_address
 try:
     import markdown
 except ImportError:
@@ -292,11 +292,11 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     def end_trunk(self):
         self.wfile.write(b'0\r\n\r\n')
 
-    def _request_localhost(self, req):
+    def _request_is_localhost(self, req):
         try:
-            return ip_address(getaddrinfo(req[0], req[1])[0][4][0]).is_loopback
-        except Exception as e:
-            logging.error(repr(e))
+            return get_ip_address(req[0], req[1]).is_loopback
+        except Exception:
+            pass
 
 
 class ProxyHandler(HTTPRequestHandler):
@@ -361,7 +361,7 @@ class ProxyHandler(HTTPRequestHandler):
 
         self.requesthost = parse_hostport(self.headers['Host'], 80)
 
-        if self._request_localhost(self.requesthost):
+        if self._request_is_localhost(self.requesthost):
             if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (conf.listen[1], conf.listen[1] + 1):
                 self.send_response(200)
                 msg = 'Hello World !'
@@ -557,7 +557,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.requesthost = (host, int(port))
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
-        if self._request_localhost(self.requesthost):
+        if self._request_is_localhost(self.requesthost):
             if (ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (conf.listen[1], conf.listen[1] + 1)) or\
                     not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
@@ -1084,7 +1084,7 @@ class parent_proxy(object):
     @lru_cache(256, timeout=120)
     def ifhost_in_local(self, host, port):
         try:
-            return ip_address(getaddrinfo(host, port)[0][4][0]).is_private
+            return get_ip_address(host, port).is_private
         except socket.error as e:
             logging.warning('resolve %s failed! %s' % (host, repr(e)))
 
@@ -1124,7 +1124,13 @@ class parent_proxy(object):
             return False
         forceproxy = level == 2
 
-        if ip_address(getaddrinfo(host, port)[0][4][0]).is_loopback:
+        try:
+            ip = get_ip_address(host, port)
+        except:
+            logging.warning('resolve hostname %s failed!' % host)
+            return True
+
+        if ip.is_loopback:
             return False
 
         if self.if_gfwlist_force(uri, level):

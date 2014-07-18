@@ -24,6 +24,10 @@ import re
 import socket
 import select
 from repoze.lru import lru_cache
+try:
+    from ipaddress import ip_address
+except ImportError:
+    from ipaddr import IPAddress as ip_address
 
 
 @lru_cache(4096, timeout=90)
@@ -33,6 +37,14 @@ def getaddrinfo(host, port=None, family=0, socktype=0, proto=0, flags=0):
        [(2, 1, 6, '', ('82.94.164.162', 80)),
         (10, 1, 6, '', ('2001:888:2000:d::a2', 80, 0, 0))]"""
     return socket.getaddrinfo(host, port, family, socktype, proto, flags)
+
+
+@lru_cache(1024, timeout=90)
+def get_ip_address(host, port=80):
+    try:
+        return ip_address(host)
+    except Exception:
+        return ip_address(getaddrinfo(host, port)[0][4][0])
 
 
 def create_connection(address, timeout=object(), source_address=None):
@@ -73,6 +85,7 @@ def create_connection(address, timeout=object(), source_address=None):
         raise socket.error("getaddrinfo returns an empty list")
 
 
+@lru_cache(1024)
 def parse_hostport(host, default_port=80):
     m = re.match(r'(.+):(\d+)$', host)
     if m:
