@@ -116,7 +116,6 @@ else:
             break
 PYTHON = sys.executable.replace('\\', '/')
 
-HOSTS = defaultdict(list)
 ctimer = []
 CTIMEOUT = 5
 NetWorkIOError = (socket.error, ssl.SSLError, OSError)
@@ -183,8 +182,6 @@ class stats(object):
         with self.con:
             self.con.execute('delete from log where timestamp < ?', (befortime, ))
 
-STATS = stats()
-
 
 class httpconn_pool(object):
     POOL = defaultdict(deque)
@@ -222,8 +219,6 @@ class httpconn_pool(object):
         count -= pcount
         if pcount:
             logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
-
-HTTPCONN_POOL = httpconn_pool()
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -542,7 +537,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.close_connection or is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
         else:
-            HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)')
+            conf.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)')
         self.remotesoc = None
 
     def on_GET_Error(self, e):
@@ -652,7 +647,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _http_connect_via_proxy(self, netloc):
         if not self.failed_parents:
-            res = HTTPCONN_POOL.get(self.upstream_name)
+            res = conf.HTTPCONN_POOL.get(self.upstream_name)
             if res:
                 self._proxylist.insert(0, self.ppname)
                 sock, self.ppname = res
@@ -1131,7 +1126,7 @@ class parent_proxy(object):
         if any(rule.match(uri) for rule in self.override):
             return False
 
-        if HOSTS.get(host) or self.ifhost_in_region(host, str(ip)):
+        if conf.HOSTS.get(host) or self.ifhost_in_region(host, str(ip)):
             return None
 
         if forceproxy or self.gfwlist_match(uri):
@@ -1210,16 +1205,16 @@ class parent_proxy(object):
         logging.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (command, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
         for fpp in failed_parents:
-            STATS.log(command, requesthost[0], url, fpp, 0)
+            conf.STATS.log(command, requesthost[0], url, fpp, 0)
         if current_parent:
-            STATS.log(command, requesthost[0], url, current_parent, success)
+            conf.STATS.log(command, requesthost[0], url, current_parent, success)
         if 'direct' in failed_parents and success:
             if command == 'CONNECT':
                 rule = '|https://%s' % requesthost[0]
             else:
                 rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
             if rule not in self.temp_rules:
-                direct_sr = STATS.srbhp(requesthost[0], 'direct')
+                direct_sr = conf.STATS.srbhp(requesthost[0], 'direct')
                 if direct_sr[1] < 2:
                     exp = 1
                 elif direct_sr[0] < 0.1:
@@ -1236,10 +1231,10 @@ class parent_proxy(object):
 def updater():
     while 1:
         time.sleep(30)
-        HTTPCONN_POOL.purge()
+        conf.HTTPCONN_POOL.purge()
         lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
         if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
-            STATS.purge()
+            conf.STATS.purge()
             update(auto=True)
         global CTIMEOUT, ctimer
         if ctimer:
@@ -1531,11 +1526,14 @@ class SConfigParser(configparser.ConfigParser):
 
 class Config(object):
     def __init__(self):
+        self.STATS = stats()
+        self.HTTPCONN_POOL = httpconn_pool()
         self.version = SConfigParser()
         self.userconf = SConfigParser()
         self.reload()
         self.UPDATE_INTV = 6
         self.parentdict = {'direct': ('', 0), }
+        self.HOSTS = defaultdict(list)
         self.FAKEHTTPS = set()
         self.WITHGAE = set()
         self.HOST = tuple()
@@ -1558,8 +1556,8 @@ class Config(object):
         self.maxretry = self.userconf.dgetint('fgfwproxy', 'maxretry', 4)
 
         for host, ip in self.userconf.items('hosts'):
-            if ip not in HOSTS.get(host, []):
-                HOSTS[host].append(ip)
+            if ip not in self.HOSTS.get(host, []):
+                self.HOSTS[host].append(ip)
 
         if os.path.isfile('./fgfw-lite/hosts'):
             for line in open('./fgfw-lite/hosts'):
@@ -1567,8 +1565,8 @@ class Config(object):
                 if line and not line.startswith('#'):
                     try:
                         ip, host = line.split()
-                        if ip not in HOSTS.get(host, []):
-                            HOSTS[host].append(ip)
+                        if ip not in self.HOSTS.get(host, []):
+                            self.HOSTS[host].append(ip)
                     except Exception as e:
                         logging.warning('%s %s' % (e, line))
 
