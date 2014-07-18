@@ -1084,7 +1084,7 @@ class parent_proxy(object):
     @lru_cache(256, timeout=120)
     def ifhost_in_region(self, host, ip):
         try:
-            code = self.geoip.country_code_by_addr(str(ip))
+            code = self.geoip.country_code_by_addr(ip)
             if code in conf.region:
                 logging.info('%s in %s' % (host, code))
                 return True
@@ -1114,7 +1114,7 @@ class parent_proxy(object):
     def ifgfwed(self, uri, host, port, ip, level=1):
         if level == 0:
             return False
-        forceproxy = level == 2
+        forceproxy = level >= 2
 
         if ip is None:
             return True
@@ -1131,7 +1131,7 @@ class parent_proxy(object):
         if any(rule.match(uri) for rule in self.override):
             return False
 
-        if HOSTS.get(host) or self.ifhost_in_region(host, ip):
+        if HOSTS.get(host) or self.ifhost_in_region(host, str(ip)):
             return None
 
         if forceproxy or self.gfwlist_match(uri):
@@ -1621,7 +1621,7 @@ def main():
     updatedaemon.start()
     server = ThreadingHTTPServer(conf.listen, ProxyHandler)
     Thread(target=server.serve_forever).start()
-    server2 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ProxyHandler, level=3)
+    server2 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ProxyHandler, level=2)
     server2.serve_forever()
 
 if __name__ == "__main__":
