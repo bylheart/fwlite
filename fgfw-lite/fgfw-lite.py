@@ -114,7 +114,6 @@ else:
         if subprocess.call(shlex.split('which %s' % cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
             PYTHON2 = cmd
             break
-PYTHON = sys.executable.replace('\\', '/')
 
 ctimer = []
 CTIMEOUT = 5
@@ -222,8 +221,9 @@ class httpconn_pool(object):
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-    def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True, level=1):
+    def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True, level=1, conf=None):
         self.proxy_level = level
+        self.conf = conf
         HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
 
@@ -321,13 +321,13 @@ class ProxyHandler(HTTPRequestHandler):
 
     def getparent(self):
         if self._proxylist is None:
-            self._proxylist = conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
+            self._proxylist = self.server.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
             logging.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
             return 1
         self.ppname = self._proxylist.pop(0)
-        self.pproxy = conf.parentdict.get(self.ppname)[0]
+        self.pproxy = self.server.conf.parentdict.get(self.ppname)[0]
         self.pproxyparse = urlparse.urlparse(self.pproxy)
 
     def do_GET(self):
@@ -341,12 +341,12 @@ class ProxyHandler(HTTPRequestHandler):
         if self.path.startswith('/'):
             return self.send_error(403)
         # redirector
-        new_url = conf.PARENT_PROXY.redirect(self.path)
+        new_url = self.server.conf.PARENT_PROXY.redirect(self.path)
         if new_url:
             logging.debug('redirecting to %s' % new_url)
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
-            elif new_url in conf.parentdict.keys():
+            elif new_url in self.server.conf.parentdict.keys():
                 self._proxylist = [new_url]
             else:
                 return self.redirect(new_url)
@@ -357,7 +357,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.requesthost = parse_hostport(self.headers['Host'], 80)
 
         if self._request_is_localhost(self.requesthost):
-            if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (conf.listen[1], conf.listen[1] + 1):
+            if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.server.conf.listen[1], self.server.conf.listen[1] + 1):
                 self.send_response(200)
                 msg = 'Hello World !'
                 self.send_header('Content-type', 'text/html')
@@ -372,7 +372,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.shortpath = '%s%s' % (self.path.split('?')[0], '?' if len(self.path.split('?')) > 1 else '')
         self.shortpath = '%s%s' % (':'.join(self.shortpath.split(':')[:2]), ':' if len(self.shortpath.split(':')) > 2 else '')
 
-        if conf.xheaders:
+        if self.server.conf.xheaders:
             ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
             ipl.append(self.client_address[0])
             self.headers['X-Forwarded-For'] = ', '.join(ipl)
@@ -387,10 +387,10 @@ class ProxyHandler(HTTPRequestHandler):
             self.failed_parents.append(self.ppname)
         if not self.retryable:
             self.close_connection = 1
-            conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
+            self.server.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
             return
         if self.getparent():
-            conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
+            self.server.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
             return self.send_error(504)
 
         self.upstream_name = self.ppname if self.pproxy.startswith('http') else self.requesthost
@@ -533,11 +533,11 @@ class ProxyHandler(HTTPRequestHandler):
                     break
         self.wfile_write()
         logging.debug('request finish')
-        conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
+        self.server.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
         if self.close_connection or is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
         else:
-            conf.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)')
+            self.server.conf.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)')
         self.remotesoc = None
 
     def on_GET_Error(self, e):
@@ -553,7 +553,7 @@ class ProxyHandler(HTTPRequestHandler):
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
         if self._request_is_localhost(self.requesthost):
-            if (ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (conf.listen[1], conf.listen[1] + 1)) or\
+            if (ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.server.conf.listen[1], self.server.conf.listen[1] + 1)) or\
                     not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
         if 'Host' not in self.headers:
@@ -567,7 +567,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.remotesoc:
             self.remotesoc.close()
         if not self.retryable or self.getparent():
-            conf.PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
+            self.server.conf.PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
             return
         try:
             self.remotesoc = self._connect_via_proxy(self.requesthost)
@@ -625,7 +625,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.retryable:
             logging.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
             return self._do_CONNECT(True)
-        conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
+        self.server.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
         self._read_write(self.remotesoc, 300)
         self.remotesoc.close()
         self.connection.close()
@@ -647,7 +647,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _http_connect_via_proxy(self, netloc):
         if not self.failed_parents:
-            res = conf.HTTPCONN_POOL.get(self.upstream_name)
+            res = self.server.conf.HTTPCONN_POOL.get(self.upstream_name)
             if res:
                 self._proxylist.insert(0, self.ppname)
                 sock, self.ppname = res
@@ -668,7 +668,7 @@ class ProxyHandler(HTTPRequestHandler):
             s.do_handshake()
             return s
         elif self.pproxy.startswith('ss://'):
-            s = sssocket(self.pproxy, timeout, conf.parentdict.get('direct')[0])
+            s = sssocket(self.pproxy, timeout, self.server.conf.parentdict.get('direct')[0])
             s.connect(netloc)
             return s
         elif self.pproxy.startswith('socks5://'):
@@ -1002,8 +1002,9 @@ class autoproxy_rule(object):
 
 class parent_proxy(object):
     """docstring for parent_proxy"""
-    def __init__(self, enable_gfwlist=True):
+    def __init__(self, conf, enable_gfwlist=True):
         self.enable_gfwlist = enable_gfwlist
+        self.conf = conf
         self.config()
 
     def config(self):
@@ -1084,7 +1085,7 @@ class parent_proxy(object):
     def ifhost_in_region(self, host, ip):
         try:
             code = self.geoip.country_code_by_addr(ip)
-            if code in conf.region:
+            if code in self.conf.region:
                 logging.info('%s in %s' % (host, code))
                 return True
             return False
@@ -1130,7 +1131,7 @@ class parent_proxy(object):
         if any(rule.match(uri) for rule in self.override):
             return False
 
-        if conf.HOSTS.get(host) or self.ifhost_in_region(host, str(ip)):
+        if self.conf.HOSTS.get(host) or self.ifhost_in_region(host, str(ip)):
             return None
 
         if forceproxy or self.gfwlist_match(uri):
@@ -1138,8 +1139,8 @@ class parent_proxy(object):
 
     @lru_cache(256, timeout=120)
     def no_goagent(self, uri, host):
-        s = set(conf.parentdict.keys()) - set(['goagent', 'goagent-php', 'direct', 'local'])
-        a = conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent'
+        s = set(self.conf.parentdict.keys()) - set(['goagent', 'goagent-php', 'direct', 'local'])
+        a = self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent'
         if s or a:  # two reasons not to use goagent
             # if host in conf.FAKEHTTPS:
             #     return True
@@ -1176,12 +1177,12 @@ class parent_proxy(object):
 
         if f is False:
             if ip.is_private:
-                return ['local' if 'local' in conf.parentdict.keys() else 'direct']
+                return ['local' if 'local' in self.conf.parentdict.keys() else 'direct']
             return ['direct']
 
-        parentlist = list(conf.parentdict.keys())
+        parentlist = list(self.conf.parentdict.keys())
         random.shuffle(parentlist)
-        parentlist = sorted(parentlist, key=lambda item: conf.parentdict[item][1])
+        parentlist = sorted(parentlist, key=lambda item: self.conf.parentdict[item][1])
 
         if command == 'CONNECT' and 'goagent' in parentlist and self.no_goagent(uri, host):
             logging.debug('skip goagent')
@@ -1201,24 +1202,24 @@ class parent_proxy(object):
                 logging.warning('No parent proxy available, direct connection is used')
                 return ['direct']
 
-        if len(parentlist) > conf.maxretry + 1:
-            parentlist = parentlist[:conf.maxretry + 1]
+        if len(parentlist) > self.conf.maxretry + 1:
+            parentlist = parentlist[:self.conf.maxretry + 1]
         return parentlist
 
     def notify(self, command, url, requesthost, success, failed_parents, current_parent):
         logging.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (command, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
         for fpp in failed_parents:
-            conf.STATS.log(command, requesthost[0], url, fpp, 0)
+            self.conf.STATS.log(command, requesthost[0], url, fpp, 0)
         if current_parent:
-            conf.STATS.log(command, requesthost[0], url, current_parent, success)
+            self.conf.STATS.log(command, requesthost[0], url, current_parent, success)
         if 'direct' in failed_parents and success:
             if command == 'CONNECT':
                 rule = '|https://%s' % requesthost[0]
             else:
                 rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
             if rule not in self.temp_rules:
-                direct_sr = conf.STATS.srbhp(requesthost[0], 'direct')
+                direct_sr = self.conf.STATS.srbhp(requesthost[0], 'direct')
                 if direct_sr[1] < 2:
                     exp = 1
                 elif direct_sr[0] < 0.1:
@@ -1232,14 +1233,14 @@ class parent_proxy(object):
                 self.temp_rules.add(rule)
 
 
-def updater():
+def updater(conf):
     while 1:
         time.sleep(30)
         conf.HTTPCONN_POOL.purge()
         lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
         if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
             conf.STATS.purge()
-            update(auto=True)
+            update(conf, auto=True)
         global CTIMEOUT, ctimer
         if ctimer:
             logging.info('max connection time: %ss in %s' % (max(ctimer), len(ctimer)))
@@ -1248,7 +1249,7 @@ def updater():
             ctimer = []
 
 
-def update(auto=False):
+def update(conf, auto=False):
     if auto and conf.userconf.dgetbool('FGFW_Lite', 'autoupdate') is False:
         return
     conf.version.set('Update', 'LastUpdate', str(time.time()))
@@ -1298,10 +1299,10 @@ def update(auto=False):
             except Exception as e:
                 logging.error('update failed! %r\n%s' % (e, traceback.format_exc()))
         conf.confsave()
-    restart()
+    restart(conf)
 
 
-def restart():
+def restart(conf):
     conf.confsave()
     for item in FGFWProxyHandler.ITEMS:
         item.restart()
@@ -1312,8 +1313,9 @@ class FGFWProxyHandler(object):
     """docstring for FGFWProxyHandler"""
     ITEMS = []
 
-    def __init__(self):
+    def __init__(self, conf):
         FGFWProxyHandler.ITEMS.append(self)
+        self.conf = conf
         self.subpobj = None
         self.cmd = ''
         self.cwd = ''
@@ -1351,7 +1353,7 @@ class goagentHandler(FGFWProxyHandler):
     def config(self):
         self.cwd = '%s/goagent' % WORKINGDIR
         self.cmd = '{}/goagent/proxy.bat'.format(WORKINGDIR) if sys.platform.startswith('win') else '{} {}/goagent/proxy.py'.format(PYTHON2, WORKINGDIR)
-        self.enable = conf.userconf.dgetbool('goagent', 'enable', True)
+        self.enable = self.conf.userconf.dgetbool('goagent', 'enable', True)
         with open('%s/goagent/proxy.py' % WORKINGDIR, 'rb') as f:
             t = f.read()
         with open('%s/goagent/proxy.py' % WORKINGDIR, 'wb') as f:
@@ -1364,38 +1366,38 @@ class goagentHandler(FGFWProxyHandler):
         goagent = SConfigParser()
         goagent.read('./goagent/proxy.sample.ini')
 
-        if conf.userconf.dget('goagent', 'gaeappid', 'goagent') != 'goagent':
-            goagent.set('gae', 'appid', conf.userconf.dget('goagent', 'gaeappid', 'goagent'))
-            goagent.set("gae", "password", conf.userconf.dget('goagent', 'gaepassword', ''))
+        if self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') != 'goagent':
+            goagent.set('gae', 'appid', self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'))
+            goagent.set("gae", "password", self.conf.userconf.dget('goagent', 'gaepassword', ''))
         else:
             logging.warning('GoAgent APPID is NOT set! Fake APPID is used.')
             goagent.set('gae', 'appid', 'dummy')
-        goagent.set('gae', 'profile', conf.userconf.dget('goagent', 'profile', 'ipv4'))
-        goagent.set('gae', 'mode', conf.userconf.dget('goagent', 'mode', 'https'))
-        goagent.set('gae', 'obfuscate', conf.userconf.dget('goagent', 'obfuscate', '0'))
-        goagent.set('gae', 'validate', conf.userconf.dget('goagent', 'validate', '1'))
-        goagent.set('gae', 'options', conf.userconf.dget('goagent', 'options', ''))
-        goagent.set('gae', 'keepalive', conf.userconf.dget('goagent', 'keepalive', '0'))
-        goagent.set('gae', 'sslversion', conf.userconf.dget('goagent', 'options', 'TLSv1'))
-        if conf.userconf.dget('goagent', 'google_cn', ''):
-            goagent.set('iplist', 'google_cn', conf.userconf.dget('goagent', 'google_cn', ''))
-        if conf.userconf.dget('goagent', 'google_hk', ''):
-            goagent.set('iplist', 'google_hk', conf.userconf.dget('goagent', 'google_hk', ''))
-        conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20')
+        goagent.set('gae', 'profile', self.conf.userconf.dget('goagent', 'profile', 'ipv4'))
+        goagent.set('gae', 'mode', self.conf.userconf.dget('goagent', 'mode', 'https'))
+        goagent.set('gae', 'obfuscate', self.conf.userconf.dget('goagent', 'obfuscate', '0'))
+        goagent.set('gae', 'validate', self.conf.userconf.dget('goagent', 'validate', '1'))
+        goagent.set('gae', 'options', self.conf.userconf.dget('goagent', 'options', ''))
+        goagent.set('gae', 'keepalive', self.conf.userconf.dget('goagent', 'keepalive', '0'))
+        goagent.set('gae', 'sslversion', self.conf.userconf.dget('goagent', 'options', 'TLSv1'))
+        if self.conf.userconf.dget('goagent', 'google_cn', ''):
+            goagent.set('iplist', 'google_cn', self.conf.userconf.dget('goagent', 'google_cn', ''))
+        if self.conf.userconf.dget('goagent', 'google_hk', ''):
+            goagent.set('iplist', 'google_hk', self.conf.userconf.dget('goagent', 'google_hk', ''))
+        self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20')
 
-        if conf.userconf.dget('goagent', 'phpfetchserver'):
+        if self.conf.userconf.dget('goagent', 'phpfetchserver'):
             goagent.set('php', 'enable', '1')
-            goagent.set('php', 'password', conf.userconf.dget('goagent', 'phppassword', '123456'))
-            goagent.set('php', 'fetchserver', conf.userconf.dget('goagent', 'phpfetchserver', 'http://.com/'))
-            conf.addparentproxy('goagent-php', 'http://127.0.0.1:8088')
+            goagent.set('php', 'password', self.conf.userconf.dget('goagent', 'phppassword', '123456'))
+            goagent.set('php', 'fetchserver', self.conf.userconf.dget('goagent', 'phpfetchserver', 'http://.com/'))
+            self.conf.addparentproxy('goagent-php', 'http://127.0.0.1:8088')
         else:
             goagent.set('php', 'enable', '0')
 
         goagent.set('pac', 'enable', '0')
 
         goagent.set('proxy', 'autodetect', '0')
-        if conf.parentdict.get('direct')[0].startswith('http://'):
-            p = urlparse.urlparse(conf.parentdict.get('direct')[0])
+        if self.conf.parentdict.get('direct')[0].startswith('http://'):
+            p = urlparse.urlparse(self.conf.parentdict.get('direct')[0])
             goagent.set('proxy', 'enable', '1')
             goagent.set('proxy', 'host', p.hostname)
             goagent.set('proxy', 'port', p.port)
@@ -1409,11 +1411,11 @@ class goagentHandler(FGFWProxyHandler):
         with open('./goagent/proxy.ini', 'w') as configfile:
             goagent.write(configfile)
 
-        conf.FAKEHTTPS = tuple([k for k in goagent.dget('ipv4/http', 'fakehttps').split('|') if not k.startswith('.')])
-        conf.FAKEHTTPS_POSTFIX = tuple([k for k in goagent.dget('ipv4/http', 'fakehttps').split('|') if k.startswith('.')])
-        conf.WITHGAE = set(goagent.dget('ipv4/http', 'withgae').split('|'))
-        conf.HOST = tuple()
-        conf.HOST_POSTFIX = tuple([k for k, v in goagent.items('ipv4/hosts') if '\\' not in k and ':' not in k and k.startswith('.')])
+        self.conf.FAKEHTTPS = tuple([k for k in goagent.dget('ipv4/http', 'fakehttps').split('|') if not k.startswith('.')])
+        self.conf.FAKEHTTPS_POSTFIX = tuple([k for k in goagent.dget('ipv4/http', 'fakehttps').split('|') if k.startswith('.')])
+        self.conf.WITHGAE = set(goagent.dget('ipv4/http', 'withgae').split('|'))
+        self.conf.HOST = tuple()
+        self.conf.HOST_POSTFIX = tuple([k for k, v in goagent.items('ipv4/hosts') if '\\' not in k and ':' not in k and k.startswith('.')])
 
         if not os.path.isfile('./goagent/CA.crt'):
             self.createCA()
@@ -1457,7 +1459,7 @@ class snovaHandler(FGFWProxyHandler):
     def config(self):
         self.cmd = '%s/snova/bin/start.%s' % (WORKINGDIR, 'bat' if sys.platform.startswith('win') else 'sh')
         self.cwd = '%s/snova' % WORKINGDIR
-        self.enable = conf.userconf.dgetbool('snova', 'enable', False)
+        self.enable = self.conf.userconf.dgetbool('snova', 'enable', False)
         self.enableupdate = False
         if self.enable:
             self._config()
@@ -1469,18 +1471,18 @@ class snovaHandler(FGFWProxyHandler):
 
         proxy.set('GAE', 'Enable', '0')
 
-        worknodes = conf.userconf.dget('snova', 'C4worknodes')
+        worknodes = self.conf.userconf.dget('snova', 'C4worknodes')
         if worknodes:
             worknodes = worknodes.split('|')
             for i, v in enumerate(worknodes):
                 proxy.set('C4', 'WorkerNode[%s]' % i, v)
             proxy.set('C4', 'Enable', '1')
-            conf.addparentproxy('snova-c4', 'http://127.0.0.1:48102')
+            self.conf.addparentproxy('snova-c4', 'http://127.0.0.1:48102')
         else:
             proxy.set('C4', 'Enable', '0')
 
         proxy.set('SPAC', 'Enable', '0')
-        proxy.set('Misc', 'RC4Key', conf.userconf.dget('snova', 'RC4Key', '8976501f8451f03c5c4067b47882f2e5'))
+        proxy.set('Misc', 'RC4Key', self.conf.userconf.dget('snova', 'RC4Key', '8976501f8451f03c5c4067b47882f2e5'))
         with open('./snova/conf/snova.conf', 'w') as configfile:
             proxy.write(configfile)
 
@@ -1574,7 +1576,7 @@ class Config(object):
                     except Exception as e:
                         logging.warning('%s %s' % (e, line))
 
-        self.PARENT_PROXY = parent_proxy(enable_gfwlist=self.userconf.dgetbool('fgfwproxy', 'gfwlist', True))
+        self.PARENT_PROXY = parent_proxy(self, enable_gfwlist=self.userconf.dgetbool('fgfwproxy', 'gfwlist', True))
 
     def reload(self):
         self.version.read('version.ini')
@@ -1601,8 +1603,6 @@ class Config(object):
         logging.info('adding parent proxy: %s: %s' % (name, proxy))
         self.parentdict[name] = (proxy, priority)
 
-conf = Config()
-
 
 @atexit.register
 def atexit_do():
@@ -1614,16 +1614,17 @@ def main():
     if os.name == 'nt':
         import ctypes
         ctypes.windll.kernel32.SetConsoleTitleW(u'FGFW-Lite v%s' % __version__)
+    conf = Config()
     for k, v in conf.userconf.items('parents'):
         conf.addparentproxy(k, v)
-    goagentHandler()
-    snovaHandler()
-    updatedaemon = Thread(target=updater)
+    goagentHandler(conf)
+    snovaHandler(conf)
+    updatedaemon = Thread(target=updater, args=([conf]))
     updatedaemon.daemon = True
     updatedaemon.start()
-    server = ThreadingHTTPServer(conf.listen, ProxyHandler)
+    server = ThreadingHTTPServer(conf.listen, ProxyHandler, conf=conf)
     Thread(target=server.serve_forever).start()
-    server2 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ProxyHandler, level=2)
+    server2 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ProxyHandler, conf=conf, level=2)
     server2.serve_forever()
 
 if __name__ == "__main__":
