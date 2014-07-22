@@ -1,3 +1,11 @@
+2014.7.22 v4.2
+options to add xheaders
+add statistics of connection success rate
+add keyword "auto" to ignore gfwlist rules
+use timerwheel to purge connection pool
+reduce logging info
+other bug fix and improvements
+
 2014.6.21 v4.1.4
 new connection pool design
 performance improvement
