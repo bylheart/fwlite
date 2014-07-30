@@ -224,6 +224,7 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True, level=1, conf=None):
         self.proxy_level = level
         self.conf = conf
+        logging.info('starting server at %s:%s' % server_address)
         HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
 
@@ -1122,6 +1123,9 @@ class parent_proxy(object):
         if any((ip.is_loopback, ip.is_private)):
             return False
 
+        if level == 4:
+            return True
+
         if self.if_gfwlist_force(uri, level):
             return True
 
@@ -1163,7 +1167,8 @@ class parent_proxy(object):
             level: 0 -- direct
                    1 -- proxy if force, direct if ip in region or override, proxy if gfwlist
                    2 -- proxy if force, direct if ip in region or override, proxy if all
-                   3 -- proxy if not override
+                   3 -- proxy if not local or override
+                   4 -- proxy if not local
         '''
         host, port = host
 
@@ -1622,10 +1627,13 @@ def main():
     updatedaemon = Thread(target=updater, args=([conf]))
     updatedaemon.daemon = True
     updatedaemon.start()
-    server = ThreadingHTTPServer(conf.listen, ProxyHandler, conf=conf)
+    server = ThreadingHTTPServer((conf.listen[0], conf.listen[1] - 1), ProxyHandler, conf=conf, level=4)
     Thread(target=server.serve_forever).start()
-    server2 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ProxyHandler, conf=conf, level=2)
-    server2.serve_forever()
+    server2 = ThreadingHTTPServer(conf.listen, ProxyHandler, conf=conf)
+    Thread(target=server2.serve_forever).start()
+    server3 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ProxyHandler, conf=conf, level=2)
+    server3.serve_forever()
+
 
 if __name__ == "__main__":
     try:
