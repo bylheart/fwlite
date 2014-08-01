@@ -52,6 +52,11 @@ requirements under openSUSE:
 
 FGFW-Lite兼容[autoproxy规则](https://autoproxy.org/zh-CN/Rules)，不同之处：
 
+以某关键字结尾的url规则，用于防止无良ISP（长城宽带）的挟持：
+
+    .exe|
+    .apk|
+
 对特定网址不使用规则。用于gfwlist中可直连的网站。
 
     ||twimg.com auto
