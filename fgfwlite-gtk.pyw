@@ -91,7 +91,7 @@ class GoAgentGTK:
 
         spawn_later(0.5, self.show_startup_notify)
 
-        logo_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)), './fgfw-lite/taskbar.ico')
+        logo_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)), './fgfw-lite/ui/taskbar.ico')
         self.window.set_icon_from_file(logo_filename)
 
         if appindicator:

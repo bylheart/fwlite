@@ -4,6 +4,7 @@
 import os
 import hashlib
 import json
+import glob
 try:
     import configparser
 except ImportError:
@@ -57,6 +58,11 @@ flist = ['./fgfw-lite/fgfw-lite.py',
 version = configparser.ConfigParser()
 version.optionxform = str
 version.read('version.ini')
+
+for f in glob.glob('./fgfw-lite/ui/*.ui'):
+    fname = f.replace('\\', '/').split('/')[-1].split('.')[0]
+    os.system('pyside-uic %s -o ./fgfw-lite/ui_%s.py' % (f, fname))
+    flist.append('./fgfw-lite/ui_%s.py' % fname)
 
 for f in flist:
     print 'hashing %s' % f

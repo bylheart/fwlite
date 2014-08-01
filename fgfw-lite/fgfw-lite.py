@@ -141,7 +141,7 @@ prestart()
 
 
 class stats(object):
-    con = sqlite3.connect(":memory:")
+    con = sqlite3.connect(":memory:", check_same_thread=False)
     con.execute("create table log (timestamp real, date text, command text, hostname text, url text, ppname text, success integer)")
 
     def log(self, command, hostname, url, ppname, success):
