@@ -30,6 +30,7 @@ class MainWindow(QtGui.QMainWindow):
             font = QtGui.QFont()
             font.setFamily("Droid Sans Mono")
             self.ui.console.setFont(font)
+        self.ui.console.setWordWrapMode(QtGui.QTextOption.WrapAnywhere)
         self._lock = threading.Lock()
         self.setWindowIcon(QtGui.QIcon(TRAY_ICON))
         self.center()
