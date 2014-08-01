@@ -188,6 +188,9 @@ class httpconn_pool(object):
     timerwheel_index_iter = itertools.cycle(range(10))
     timerwheel_index = timerwheel_index_iter.next()
 
+    def __init__(self, logger=logging):
+        self.logger = logger
+
     def put(self, upstream_name, soc, ppname):
         self.POOL[upstream_name].append((soc, ppname))
         self.timerwheel[self.timerwheel_index].append((upstream_name, (soc, ppname)))
@@ -217,14 +220,15 @@ class httpconn_pool(object):
         self.timerwheel[self.timerwheel_index] = []
         count -= pcount
         if pcount:
-            logging.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
+            self.logger.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True, level=1, conf=None):
         self.proxy_level = level
         self.conf = conf
-        logging.info('starting server at %s:%s' % server_address)
+        self.logger = self.conf.logger
+        self.logger.info('starting server at %s:%s' % server_address)
         HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
 
@@ -323,7 +327,7 @@ class ProxyHandler(HTTPRequestHandler):
     def getparent(self):
         if self._proxylist is None:
             self._proxylist = self.server.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
-            logging.debug(repr(self._proxylist))
+            self.server.logger.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
             return 1
@@ -344,7 +348,7 @@ class ProxyHandler(HTTPRequestHandler):
         # redirector
         new_url = self.server.conf.PARENT_PROXY.redirect(self.path)
         if new_url:
-            logging.debug('redirecting to %s' % new_url)
+            self.server.logger.debug('redirecting to %s' % new_url)
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
             elif new_url in self.server.conf.parentdict.keys():
@@ -402,7 +406,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.wbuffer = deque()
         self.wbuffer_size = 0
         # send request header
-        logging.debug('sending request header')
+        self.server.logger.debug('sending request header')
         s = []
         if self.pproxy.startswith('http'):
             s.append('%s %s %s\r\n' % (self.command, self.path, self.request_version))
@@ -421,7 +425,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.remotesoc.sendall(''.join(s).encode('latin1'))
         except NetWorkIOError as e:
             return self.on_GET_Error(e)
-        logging.debug('sending request body')
+        self.server.logger.debug('sending request body')
         # send request body
         content_length = int(self.headers.get('Content-Length', 0))
         if content_length:
@@ -446,7 +450,7 @@ class ProxyHandler(HTTPRequestHandler):
                 except NetWorkIOError as e:
                     return self.on_GET_Error(e)
         # read response line
-        logging.debug('reading response_line')
+        self.server.logger.debug('reading response_line')
         remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
         try:
             s = response_line = remoterfile.readline()
@@ -458,7 +462,7 @@ class ProxyHandler(HTTPRequestHandler):
         response_status, _, response_reason = response_status.partition(b' ')
         response_status = int(response_status)
         # read response headers
-        logging.debug('reading response header')
+        self.server.logger.debug('reading response header')
         header_data = []
         try:
             while True:
@@ -475,7 +479,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.close_connection = conntype.lower() == 'close'
         else:
             self.close_connection = conntype.lower() != 'keep_alive'
-        logging.debug('reading response body')
+        self.server.logger.debug('reading response body')
         if "Content-Length" in response_header:
             if "," in response_header["Content-Length"]:
                 # Proxies sometimes cause Content-Length headers to get
@@ -533,7 +537,7 @@ class ProxyHandler(HTTPRequestHandler):
                 except Exception:
                     break
         self.wfile_write()
-        logging.debug('request finish')
+        self.server.logger.debug('request finish')
         self.server.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
         if self.close_connection or is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
@@ -542,7 +546,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.remotesoc = None
 
     def on_GET_Error(self, e):
-        logging.warning('{} {} via {} failed! {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
+        self.server.logger.warning('{} {} via {} failed! {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
         return self._do_GET(True)
 
     do_POST = do_DELETE = do_TRACE = do_HEAD = do_PUT = do_GET
@@ -574,7 +578,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.remotesoc = self._connect_via_proxy(self.requesthost)
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
-            logging.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
+            self.server.logger.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT(True)
 
         if self.pproxy.startswith('http'):
@@ -588,12 +592,12 @@ class ProxyHandler(HTTPRequestHandler):
             remoterfile = self.remotesoc.makefile('rb', 0)
             data = remoterfile.readline()
             if b'200' not in data:
-                logging.warning('{} {} failed! 200 not in response'.format(self.command, self.path))
+                self.server.logger.warning('{} {} failed! 200 not in response'.format(self.command, self.path))
                 return self._do_CONNECT(True)
             while not data in (b'\r\n', b'\n', b''):
                 data = remoterfile.readline()
         if self.rbuffer:
-            logging.debug('remote write rbuffer')
+            self.server.logger.debug('remote write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))
         while 1:
             try:
@@ -601,7 +605,7 @@ class ProxyHandler(HTTPRequestHandler):
                 if not ins:
                     break
                 if self.connection in ins:
-                    logging.debug('read from client')
+                    self.server.logger.debug('read from client')
                     try:
                         data = self.connection.recv(self.bufsize)
                     except:
@@ -611,20 +615,20 @@ class ProxyHandler(HTTPRequestHandler):
                     self.rbuffer.append(data)
                     self.remotesoc.sendall(data)
                 if self.remotesoc in ins:
-                    logging.debug('read from remote')
+                    self.server.logger.debug('read from remote')
                     data = self.remotesoc.recv(self.bufsize)
                     if not data:
-                        logging.debug('not data')
+                        self.server.logger.debug('not data')
                         break
                     self.wfile.write(data)
-                    logging.debug('self.retryable = False')
+                    self.server.logger.debug('self.retryable = False')
                     self.retryable = False
                     break
             except socket.error as e:
-                logging.warning('socket error: %r' % e)
+                self.server.logger.warning('socket error: %r' % e)
                 break
         if self.retryable:
-            logging.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
+            self.server.logger.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
             return self._do_CONNECT(True)
         self.server.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
         self._read_write(self.remotesoc, 300)
@@ -652,13 +656,13 @@ class ProxyHandler(HTTPRequestHandler):
             if res:
                 self._proxylist.insert(0, self.ppname)
                 sock, self.ppname = res
-                logging.info('{} {} via {}'.format(self.command, self.shortpath, self.ppname))
+                self.server.logger.info('{} {} via {}'.format(self.command, self.shortpath, self.ppname))
                 return sock
         return self._connect_via_proxy(netloc)
 
     def _connect_via_proxy(self, netloc):
         timeout = None if self._proxylist else 20
-        logging.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
+        self.server.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
         if not self.pproxy:
             return create_connection(netloc, timeout or 5)
         elif self.pproxy.startswith('http://'):
@@ -719,11 +723,11 @@ class ProxyHandler(HTTPRequestHandler):
                     break
                 count += 1
             except socket.error as e:
-                logging.debug('socket error: %s' % e)
+                self.server.logger.debug('socket error: %s' % e)
                 break
 
     def do_FTP(self):
-        logging.info('{} {}'.format(self.command, self.path))
+        self.server.logger.info('{} {}'.format(self.command, self.path))
         # fish out user and password information
         p = urlparse.urlparse(self.path, 'http')
         user, passwd = p.username or "anonymous", p.password or None
@@ -747,7 +751,7 @@ class ProxyHandler(HTTPRequestHandler):
                     ftp.retrbinary("RETR %s" % p.path, self.wfile.write, self.bufsize)
                     ftp.quit()
                 except Exception as e:  # Possibly no such file
-                    logging.warning("FTP Exception: %r" % e)
+                    self.server.logger.warning("FTP Exception: %r" % e)
                     self.send_error(504, repr(e))
         else:
             self.send_error(501)
@@ -779,7 +783,7 @@ class ProxyHandler(HTTPRequestHandler):
             md += '|================|==========|=============|\r\n'
             md += '\r\n%s\r\n' % response
         except Exception as e:
-            logging.warning("FTP Exception: %r" % e)
+            self.server.logger.warning("FTP Exception: %r" % e)
             self.send_error(504, repr(e))
         else:
             self.send_response(200)
@@ -831,7 +835,7 @@ class sssocket(object):
             while not data in (b'\r\n', b'\n', b''):
                 data = remoterfile.readline()
         else:
-            logging.error('sssocket does not support parent proxy server: %s for now' % self.parentproxy)
+            self.server.logger.error('sssocket does not support parent proxy server: %s for now' % self.parentproxy)
             return 1
         self.setsockopt = self._sock.setsockopt
         self.fileno = self._sock.fileno
@@ -963,10 +967,11 @@ class ExpiredError(Exception):
 
 
 class autoproxy_rule(object):
-    def __init__(self, arg, expire=None):
+    def __init__(self, arg, expire=None, logger=logging):
         super(autoproxy_rule, self).__init__()
         self.rule = arg.strip()
-        logging.debug('parsing autoproxy rule: %r' % self.rule)
+        self.logger = logger
+        self.logger.debug('parsing autoproxy rule: %r' % self.rule)
         if len(self.rule) < 3 or self.rule.startswith(('!', '[')) or '#' in self.rule:
             raise TypeError("invalid autoproxy_rule: %s" % self.rule)
         self.expire = expire
@@ -1006,6 +1011,7 @@ class parent_proxy(object):
     def __init__(self, conf, enable_gfwlist=True):
         self.enable_gfwlist = enable_gfwlist
         self.conf = conf
+        self.logger = self.conf.logger
         self.config()
 
     def config(self):
@@ -1034,7 +1040,7 @@ class parent_proxy(object):
                     for line in data.splitlines():
                         self.add_rule(line)
             except TypeError:
-                logging.warning('./fgfw-lite/gfwlist.txt is corrupted!')
+                self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
 
         self.geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
 
@@ -1048,7 +1054,7 @@ class parent_proxy(object):
                     return
                 self.redirlst.append((autoproxy_rule(rule), result))
             except TypeError as e:
-                logging.debug('create autoproxy rule failed: %s' % e)
+                self.logger.debug('create autoproxy rule failed: %s' % e)
         elif len(rule) == 1:
             try:
                 o = autoproxy_rule(rule[0])
@@ -1059,9 +1065,9 @@ class parent_proxy(object):
                 else:
                     self.gfwlist.append(o)
             except TypeError as e:
-                logging.debug('create autoproxy rule failed: %s' % e)
+                self.logger.debug('create autoproxy rule failed: %s' % e)
         elif rule and not line.startswith(('!', '#')):
-            logging.warning('Bad autoproxy rule: %r' % line)
+            self.logger.warning('Bad autoproxy rule: %r' % line)
 
     def redirect(self, uri, host=None):
         searchword = re.match(r'^http://([\w-]+)/$', uri)
@@ -1069,11 +1075,11 @@ class parent_proxy(object):
             q = searchword.group(1)
             if 'xn--' in q:
                 q = q.encode().decode('idna')
-            logging.debug('Match redirect rule addressbar-search')
+            self.logger.debug('Match redirect rule addressbar-search')
             return 'https://www.google.com/search?q=%s&ie=utf-8&oe=utf-8&aq=t&rls=org.mozilla:zh-CN:official' % urlquote(q.encode('utf-8'))
         for rule, result in self.redirlst:
             if rule.match(uri):
-                logging.debug('Match redirect rule {}, {}'.format(rule.rule, result))
+                self.logger.debug('Match redirect rule {}, {}'.format(rule.rule, result))
                 if rule.override:
                     return None
                 if result == 'forcehttps':
@@ -1087,7 +1093,7 @@ class parent_proxy(object):
         try:
             code = self.geoip.country_code_by_addr(ip)
             if code in self.conf.region:
-                logging.info('%s in %s' % (host, code))
+                self.logger.info('%s in %s' % (host, code))
                 return True
             return False
         except socket.error:
@@ -1101,7 +1107,7 @@ class parent_proxy(object):
                 if rule.match(uri):
                     return True
             except ExpiredError:
-                logging.info('%s expired' % rule.rule)
+                self.logger.info('%s expired' % rule.rule)
                 self.gfwlist_force.remove(rule)
                 self.temp_rules.discard(rule.rule)
 
@@ -1175,7 +1181,7 @@ class parent_proxy(object):
         try:
             ip = get_ip_address(host, port)
         except Exception as e:
-            logging.warning('resolve %s failed! %s' % (host, repr(e)))
+            self.logger.warning('resolve %s failed! %s' % (host, repr(e)))
             ip = None
 
         f = self.ifgfwed(uri, host, port, ip, level)
@@ -1190,7 +1196,7 @@ class parent_proxy(object):
         parentlist = sorted(parentlist, key=lambda item: self.conf.parentdict[item][1])
 
         if command == 'CONNECT' and 'goagent' in parentlist and self.no_goagent(uri, host):
-            logging.debug('skip goagent')
+            self.logger.debug('skip goagent')
             if 'goagent' in parentlist:
                 parentlist.remove('goagent')
                 parentlist.append('goagent')
@@ -1204,7 +1210,7 @@ class parent_proxy(object):
         if f is True or level == 3:
             parentlist.remove('direct')
             if not parentlist:
-                logging.warning('No parent proxy available, direct connection is used')
+                self.logger.warning('No parent proxy available, direct connection is used')
                 return ['direct']
 
         if len(parentlist) > self.conf.maxretry + 1:
@@ -1212,7 +1218,7 @@ class parent_proxy(object):
         return parentlist
 
     def notify(self, command, url, requesthost, success, failed_parents, current_parent):
-        logging.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (command, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
+        self.logger.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (command, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
         for fpp in failed_parents:
             self.conf.STATS.log(command, requesthost[0], url, fpp, 0)
@@ -1233,7 +1239,7 @@ class parent_proxy(object):
                     exp = min(direct_sr[1], 10)
                 else:
                     exp = 1
-                logging.info('add autoproxy rule: %s expire in %.1f min' % (rule, exp))
+                self.logger.info('add autoproxy rule: %s expire in %.1f min' % (rule, exp))
                 self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * exp))
                 self.temp_rules.add(rule)
 
@@ -1248,9 +1254,9 @@ def updater(conf):
             update(conf, auto=True)
         global CTIMEOUT, ctimer
         if ctimer:
-            logging.info('max connection time: %ss in %s' % (max(ctimer), len(ctimer)))
+            conf.logger.info('max connection time: %ss in %s' % (max(ctimer), len(ctimer)))
             CTIMEOUT = min(max(3, max(ctimer) * 5), 15)
-            logging.info('conn timeout set to: %s' % CTIMEOUT)
+            conf.logger.info('conn timeout set to: %s' % CTIMEOUT)
             ctimer = []
 
 
@@ -1266,7 +1272,7 @@ def update(conf, auto=False):
         try:
             r = urllib2.urlopen(req)
         except Exception as e:
-            logging.info('%s NOT updated. Reason: %r' % (path, e))
+            conf.logger.info('%s NOT updated. Reason: %r' % (path, e))
         else:
             data = r.read()
             if r.getcode() == 200 and data:
@@ -1274,35 +1280,35 @@ def update(conf, auto=False):
                     localfile.write(data)
                 conf.version.set('Update', path.replace('./', '').replace('/', '-'), r.info().getheader('ETag'))
                 conf.confsave()
-                logging.info('%s Updated.' % path)
+                conf.logger.info('%s Updated.' % path)
             else:
-                logging.info('{} NOT updated. Reason: {}'.format(path, str(r.getcode())))
+                conf.logger.info('{} NOT updated. Reason: {}'.format(path, str(r.getcode())))
     import json
     branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
     try:
         r = json.loads(urllib2.urlopen('https://github.com/v3aqb/fgfw-lite/raw/%s/fgfw-lite/update.json' % branch).read())
     except Exception as e:
-        logging.info('read update.json failed. Reason: %r' % e)
+        conf.logger.info('read update.json failed. Reason: %r' % e)
     else:
         import hashlib
         for path, v, in r.items():
             try:
                 if v == conf.version.dget('Update', path.replace('./', '').replace('/', '-'), ''):
-                    logging.debug('{} Not Modified'.format(path))
+                    conf.logger.debug('{} Not Modified'.format(path))
                     continue
                 fdata = urllib2.urlopen('https://github.com/v3aqb/fgfw-lite/raw/%s%s' % (branch, path[1:])).read()
                 h = hashlib.new("sha256", fdata).hexdigest()
                 if h != v:
-                    logging.warning('{} NOT updated. hash mismatch.'.format(path))
+                    conf.logger.warning('{} NOT updated. hash mismatch.'.format(path))
                     continue
                 if not os.path.isdir(os.path.dirname(path)):
                     os.mkdir(os.path.dirname(path))
                 with open(path, 'wb') as localfile:
                     localfile.write(fdata)
-                logging.info('%s Updated.' % path)
+                conf.logger.info('%s Updated.' % path)
                 conf.version.set('Update', path.replace('./', '').replace('/', '-'), h)
             except Exception as e:
-                logging.error('update failed! %r\n%s' % (e, traceback.format_exc()))
+                conf.logger.error('update failed! %r\n%s' % (e, traceback.format_exc()))
         conf.confsave()
     restart(conf)
 
@@ -1321,6 +1327,7 @@ class FGFWProxyHandler(object):
     def __init__(self, conf):
         FGFWProxyHandler.ITEMS.append(self)
         self.conf = conf
+        self.logger = self.conf.logger
         self.subpobj = None
         self.cmd = ''
         self.cwd = ''
@@ -1335,7 +1342,7 @@ class FGFWProxyHandler(object):
         try:
             self.config()
             if self.enable:
-                logging.info('starting %s' % self.cmd)
+                self.logger.info('starting %s' % self.cmd)
                 self.subpobj = subprocess.Popen(shlex.split(self.cmd), cwd=self.cwd, stdin=subprocess.PIPE)
         except Exception:
             sys.stderr.write(traceback.format_exc() + '\n')
@@ -1375,7 +1382,7 @@ class goagentHandler(FGFWProxyHandler):
             goagent.set('gae', 'appid', self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'))
             goagent.set("gae", "password", self.conf.userconf.dget('goagent', 'gaepassword', ''))
         else:
-            logging.warning('GoAgent APPID is NOT set! Fake APPID is used.')
+            self.logger.warning('GoAgent APPID is NOT set! Fake APPID is used.')
             goagent.set('gae', 'appid', 'dummy')
         goagent.set('gae', 'profile', self.conf.userconf.dget('goagent', 'profile', 'ipv4'))
         goagent.set('gae', 'mode', self.conf.userconf.dget('goagent', 'mode', 'https'))
@@ -1536,9 +1543,10 @@ class SConfigParser(configparser.ConfigParser):
 
 
 class Config(object):
-    def __init__(self):
+    def __init__(self, logger=logging):
+        self.logger = logger
         self.STATS = stats()
-        self.HTTPCONN_POOL = httpconn_pool()
+        self.HTTPCONN_POOL = httpconn_pool(self.logger)
         self.version = SConfigParser()
         self.userconf = SConfigParser()
         self.reload()
@@ -1579,7 +1587,7 @@ class Config(object):
                         if ip not in self.HOSTS.get(host, []):
                             self.HOSTS[host].append(ip)
                     except Exception as e:
-                        logging.warning('%s %s' % (e, line))
+                        self.logger.warning('%s %s' % (e, line))
 
         self.PARENT_PROXY = parent_proxy(self, enable_gfwlist=self.userconf.dgetbool('fgfwproxy', 'gfwlist', True))
 
@@ -1605,7 +1613,7 @@ class Config(object):
         priority = int(priority) if priority else (0 if name == 'direct' else 99)
         if proxy and not '//' in proxy:
             proxy = 'http://%s' % proxy
-        logging.info('adding parent proxy: %s: %s' % (name, proxy))
+        self.logger.info('adding parent proxy: %s: %s' % (name, proxy))
         self.parentdict[name] = (proxy, priority)
 
 
