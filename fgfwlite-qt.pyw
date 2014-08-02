@@ -32,6 +32,7 @@ class MainWindow(QtGui.QMainWindow):
             self.ui.console.setFont(font)
         self.ui.console.setWordWrapMode(QtGui.QTextOption.WrapAnywhere)
         self._lock = threading.Lock()
+        self.runner = None
         self.setWindowIcon(QtGui.QIcon(TRAY_ICON))
         self.center()
         self.createActions()
@@ -39,6 +40,8 @@ class MainWindow(QtGui.QMainWindow):
         self.createProcess()
 
     def createProcess(self):
+        if self.runner:
+            self.runner.kill()
         self.runner = QtCore.QProcess(self)
         self.runner.readyReadStandardError.connect(self.newStderrInfo)
         self.runner.readyReadStandardOutput.connect(self.newStdoutInfo)
