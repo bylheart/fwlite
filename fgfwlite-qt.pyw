@@ -113,6 +113,10 @@ class MainWindow(QtGui.QMainWindow):
         self.createProcess()
 
 if __name__ == "__main__":
+    if os.name == 'nt':
+        import ctypes
+        myappid = 'v3aqb.fgfw-lite'  # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     app = QtGui.QApplication('')
     win = MainWindow()
     sys.exit(app.exec_())
