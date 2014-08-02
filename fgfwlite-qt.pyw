@@ -4,7 +4,6 @@
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
-import threading
 from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
 
@@ -31,7 +30,6 @@ class MainWindow(QtGui.QMainWindow):
             font.setFamily("Droid Sans Mono")
             self.ui.console.setFont(font)
         self.ui.console.setWordWrapMode(QtGui.QTextOption.WrapAnywhere)
-        self._lock = threading.Lock()
         self.runner = None
         self.setWindowIcon(QtGui.QIcon(TRAY_ICON))
         self.center()
@@ -62,12 +60,16 @@ class MainWindow(QtGui.QMainWindow):
     def createActions(self):
         self.showToggleAction = QtGui.QAction(u"显示/隐藏", self, triggered=self.showToggle)
         self.reloadAction = QtGui.QAction(u"重新载入", self, triggered=self.reload)
+        self.openlocalAction = QtGui.QAction(u"本地规则", self, triggered=self.openlocal)
+        self.openconfAction = QtGui.QAction(u"设置", self, triggered=self.openconf)
         self.quitAction = QtGui.QAction(u"退出", self, triggered=self.on_Quit)
 
     def createTrayIcon(self):
         self.trayIconMenu = QtGui.QMenu(self)
         self.trayIconMenu.addAction(self.showToggleAction)
         self.trayIconMenu.addAction(self.reloadAction)
+        self.trayIconMenu.addAction(self.openlocalAction)
+        self.trayIconMenu.addAction(self.openconfAction)
         self.trayIconMenu.addSeparator()
         self.trayIconMenu.addAction(self.quitAction)
 
@@ -85,6 +87,18 @@ class MainWindow(QtGui.QMainWindow):
     def on_trayActive(self, reason):
         if reason is self.trayIcon.Trigger:
             self.showToggle()
+
+    def openlocal(self):
+        if os.name == 'nt':
+            os.system('start ./fgfw-lite/local.txt')
+        else:
+            os.system('xdg-open ./fgfw-lite/local.txt')
+
+    def openconf(self):
+        if os.name == 'nt':
+            os.system('start userconf.ini')
+        else:
+            os.system('xdg-open userconf.ini')
 
     def on_Quit(self):
         QtGui.qApp.quit()
