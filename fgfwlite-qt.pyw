@@ -132,6 +132,8 @@ class MainWindow(QtGui.QMainWindow):
             self.hide()
         else:
             self.show()
+            if self.isMinimized():
+                self.showNormal()
             self.activateWindow()
 
     def reload(self):
