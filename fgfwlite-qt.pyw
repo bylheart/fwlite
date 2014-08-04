@@ -82,6 +82,7 @@ class MainWindow(QtGui.QMainWindow):
         self.trayIconMenu.addAction(self.quitAction)
 
         self.trayIcon = QtGui.QSystemTrayIcon(self)
+        self.trayIcon.setToolTip(u'FGFW-Lite')
         self.trayIcon.setContextMenu(self.trayIconMenu)
         self.trayIcon.setIcon(QtGui.QIcon(TRAY_ICON))
         self.trayIcon.activated.connect(self.on_trayActive)
