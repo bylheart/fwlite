@@ -21,13 +21,17 @@ class MainWindow(QtGui.QMainWindow):
         super(MainWindow, self).__init__(parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        if os.name == 'nt':
+        if sys.platform.startswith('win'):
             font = QtGui.QFont()
             font.setFamily("Consolas")
             self.ui.console.setFont(font)
-        else:
+        elif sys.platform.startswith('linux'):
             font = QtGui.QFont()
             font.setFamily("Droid Sans Mono")
+            self.ui.console.setFont(font)
+        elif sys.platform.startswith('darwin'):
+            font = QtGui.QFont()
+            font.setFamily("Menlo")
             self.ui.console.setFont(font)
         self.ui.console.setWordWrapMode(QtGui.QTextOption.WrapAnywhere)
         self.runner = None
@@ -91,16 +95,20 @@ class MainWindow(QtGui.QMainWindow):
             self.showToggle()
 
     def openlocal(self):
-        if os.name == 'nt':
+        if sys.platform.startswith('win'):
             os.system('start ./fgfw-lite/local.txt')
-        else:
+        elif sys.platform.startswith('linux'):
             os.system('xdg-open ./fgfw-lite/local.txt')
+        elif sys.platform.startswith('darwin'):
+            os.system('open ./fgfw-lite/local.txt')
 
     def openconf(self):
-        if os.name == 'nt':
+        if sys.platform.startswith('win'):
             os.system('start userconf.ini')
-        else:
+        elif sys.platform.startswith('linux'):
             os.system('xdg-open userconf.ini')
+        elif sys.platform.startswith('darwin'):
+            os.system('open userconf.ini')
 
     def on_Quit(self):
         QtGui.qApp.quit()
