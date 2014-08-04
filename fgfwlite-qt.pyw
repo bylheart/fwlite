@@ -60,16 +60,18 @@ class MainWindow(QtGui.QMainWindow):
     def createActions(self):
         self.showToggleAction = QtGui.QAction(u"显示/隐藏", self, triggered=self.showToggle)
         self.reloadAction = QtGui.QAction(u"重新载入", self, triggered=self.reload)
-        self.openlocalAction = QtGui.QAction(u"本地规则", self, triggered=self.openlocal)
-        self.openconfAction = QtGui.QAction(u"设置", self, triggered=self.openconf)
+        self.openlocalAction = QtGui.QAction(u"local.txt", self, triggered=self.openlocal)
+        self.openconfAction = QtGui.QAction(u"userconf.ini", self, triggered=self.openconf)
         self.quitAction = QtGui.QAction(u"退出", self, triggered=self.on_Quit)
 
     def createTrayIcon(self):
         self.trayIconMenu = QtGui.QMenu(self)
         self.trayIconMenu.addAction(self.showToggleAction)
         self.trayIconMenu.addAction(self.reloadAction)
-        self.trayIconMenu.addAction(self.openlocalAction)
-        self.trayIconMenu.addAction(self.openconfAction)
+
+        settingMenu = self.trayIconMenu.addMenu(u'设置')
+        settingMenu.addAction(self.openconfAction)
+        settingMenu.addAction(self.openlocalAction)
         self.trayIconMenu.addSeparator()
         self.trayIconMenu.addAction(self.quitAction)
 
