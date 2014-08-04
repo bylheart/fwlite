@@ -4,6 +4,7 @@
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
+from collections import deque
 from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
 
@@ -34,9 +35,10 @@ class MainWindow(QtGui.QMainWindow):
             font.setFamily("Menlo")
             self.ui.console.setFont(font)
         self.ui.console.setWordWrapMode(QtGui.QTextOption.WrapAnywhere)
-        self.runner = None
         self.setWindowIcon(QtGui.QIcon(TRAY_ICON))
         self.center()
+        self.consoleText = deque(maxlen=300)
+        self.runner = None
         self.createActions()
         self.createTrayIcon()
         self.createProcess()
@@ -119,11 +121,10 @@ class MainWindow(QtGui.QMainWindow):
         self.update_text(te)
 
     def update_text(self, text):
-        if text:
-            if len(self.ui.console.toPlainText().splitlines()) > 300:
-                self.ui.console.setPlainText(u'\n'.join(self.ui.console.toPlainText().splitlines()[-100:]))
+        if text.strip():
+            self.consoleText.append(text)
+            self.ui.console.setPlainText(u'\n'.join(self.consoleText))
             self.ui.console.moveCursor(QtGui.QTextCursor.End)
-            self.ui.console.appendPlainText(text)
 
     def showToggle(self):
         if self.isVisible():
