@@ -191,6 +191,7 @@ class MainWindow(QtGui.QMainWindow):
 
     def reload(self):
         self.ui.console.clear()
+        self.consoleText = deque(maxlen=300)
         self.createProcess()
 
 if __name__ == "__main__":
