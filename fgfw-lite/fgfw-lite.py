@@ -1635,13 +1635,12 @@ def main():
     updatedaemon = Thread(target=updater, args=([conf]))
     updatedaemon.daemon = True
     updatedaemon.start()
-    server = ThreadingHTTPServer((conf.listen[0], conf.listen[1] - 1), ProxyHandler, conf=conf, level=4)
+    server = ThreadingHTTPServer(conf.listen, ProxyHandler, conf=conf)
     Thread(target=server.serve_forever).start()
-    server2 = ThreadingHTTPServer(conf.listen, ProxyHandler, conf=conf)
-    Thread(target=server2.serve_forever).start()
-    server3 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ProxyHandler, conf=conf, level=2)
+    server1 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ProxyHandler, conf=conf, level=2)
+    Thread(target=server1.serve_forever).start()
+    server3 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 2), ProxyHandler, conf=conf, level=4)
     server3.serve_forever()
-
 
 if __name__ == "__main__":
     try:
