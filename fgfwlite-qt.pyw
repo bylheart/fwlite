@@ -169,11 +169,6 @@ class MainWindow(QtGui.QMainWindow):
     def on_Quit(self):
         QtGui.qApp.quit()
 
-    def send(self):
-        te = self.ui.lineEdit.text()
-        self.ui.lineEdit.clear()
-        self.update_text(te)
-
     def update_text(self, text):
         if text.strip():
             self.consoleText.append(text)
