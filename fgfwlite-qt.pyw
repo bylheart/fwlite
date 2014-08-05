@@ -7,7 +7,11 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('
 from collections import deque
 from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
-
+try:
+    import pynotify
+    pynotify.init('FGFW-Lite Notify')
+except ImportError:
+    pynotify = None
 WORKINGDIR = os.path.dirname(os.path.abspath(__file__).replace('\\', '/'))
 os.chdir(WORKINGDIR)
 
@@ -123,7 +127,19 @@ class MainWindow(QtGui.QMainWindow):
 
         ctypes.windll.Wininet.InternetSetOptionW(0, 39, 0, 0)
 
+    def showMessage(self, msg, timeout=None):
+        if pynotify:
+            notification = pynotify.Notification('FGFW-Lite Notify', msg)
+            notification.set_hint('x', 200)
+            notification.set_hint('y', 400)
+            if timeout:
+                notification.set_timeout(timeout)
+            notification.show()
+        else:
+            self.trayIcon.showMessage(u'FGFW-Lite', msg)
+
     def closeEvent(self, event):
+        # hide mainwindow when close
         if self.trayIcon.isVisible():
             self.hide()
         event.ignore()
@@ -133,20 +149,22 @@ class MainWindow(QtGui.QMainWindow):
             self.showToggle()
 
     def openlocal(self):
-        if sys.platform.startswith('win'):
-            os.system('start ./fgfw-lite/local.txt')
-        elif sys.platform.startswith('linux'):
-            os.system('xdg-open ./fgfw-lite/local.txt')
-        elif sys.platform.startswith('darwin'):
-            os.system('open ./fgfw-lite/local.txt')
+        self.openfile('./fgfw-lite/local.txt')
 
     def openconf(self):
+        self.openfile('userconf.ini')
+
+    def openfile(self, path):
         if sys.platform.startswith('win'):
-            os.system('start userconf.ini')
+            cmd = 'start'
         elif sys.platform.startswith('linux'):
-            os.system('xdg-open userconf.ini')
+            cmd = 'xdg-open'
         elif sys.platform.startswith('darwin'):
-            os.system('open userconf.ini')
+            cmd = 'open'
+        else:
+            return self.showMessage('OS not supported')
+        os.system('%s %s' % (cmd, path))
+        self.showMessage(u'新的设置将在重新载入后生效')
 
     def on_Quit(self):
         QtGui.qApp.quit()
