@@ -66,6 +66,9 @@ class MainWindow(QtGui.QMainWindow):
     def createActions(self):
         self.showToggleAction = QtGui.QAction(u"显示/隐藏", self, triggered=self.showToggle)
         self.reloadAction = QtGui.QAction(u"重新载入", self, triggered=self.reload)
+        self.setIE8118Action = QtGui.QAction(u"智能代理8118", self, triggered=self.setIEproxy8118)
+        self.setIE8119Action = QtGui.QAction(u"全局代理8119", self, triggered=self.setIEproxy8119)
+        self.setIENoneAction = QtGui.QAction(u"直接连接", self, triggered=self.setIEproxyNone)
         self.openlocalAction = QtGui.QAction(u"local.txt", self, triggered=self.openlocal)
         self.openconfAction = QtGui.QAction(u"userconf.ini", self, triggered=self.openconf)
         self.quitAction = QtGui.QAction(u"退出", self, triggered=self.on_Quit)
@@ -74,6 +77,12 @@ class MainWindow(QtGui.QMainWindow):
         self.trayIconMenu = QtGui.QMenu(self)
         self.trayIconMenu.addAction(self.showToggleAction)
         self.trayIconMenu.addAction(self.reloadAction)
+
+        if sys.platform.startswith('win'):
+            settingIEproxyMenu = self.trayIconMenu.addMenu(u'设置代理')
+            settingIEproxyMenu.addAction(self.setIE8118Action)
+            settingIEproxyMenu.addAction(self.setIE8119Action)
+            settingIEproxyMenu.addAction(self.setIENoneAction)
 
         settingMenu = self.trayIconMenu.addMenu(u'设置')
         settingMenu.addAction(self.openconfAction)
@@ -87,6 +96,32 @@ class MainWindow(QtGui.QMainWindow):
         self.trayIcon.setIcon(QtGui.QIcon(TRAY_ICON))
         self.trayIcon.activated.connect(self.on_trayActive)
         self.trayIcon.show()
+
+    def setIEproxy8118(self):
+        self.setIEproxy(1, u'127.0.0.1:8118')
+
+    def setIEproxy8119(self):
+        self.setIEproxy(1, u'127.0.0.1:8119')
+
+    def setIEproxyNone(self):
+        self.setIEproxy(0)
+
+    def setIEproxy(self, enable, proxy=u'', override=u'<local>'):
+        import ctypes
+        import _winreg
+
+        access = _winreg.KEY_ALL_ACCESS
+        if 'PROGRAMFILES(X86)' in os.environ:
+            access |= _winreg.KEY_WOW64_64KEY
+        INTERNET_SETTINGS = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER,
+                                            r'Software\Microsoft\Windows\CurrentVersion\Internet Settings',
+                                            0, access)
+
+        _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyEnable', 0, _winreg.REG_DWORD, enable)
+        _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyServer', 0, _winreg.REG_SZ, proxy)
+        _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyOverride', 0, _winreg.REG_SZ, override)
+
+        ctypes.windll.Wininet.InternetSetOptionW(0, 39, 0, 0)
 
     def closeEvent(self, event):
         if self.trayIcon.isVisible():
