@@ -3,10 +3,13 @@
 
 import os
 import sys
+import shutil
+import atexit
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 from collections import deque
 from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
+from util import SConfigParser
 try:
     import pynotify
     pynotify.init('FGFW-Lite Notify')
@@ -17,6 +20,24 @@ os.chdir(WORKINGDIR)
 
 TRAY_ICON = '%s/fgfw-lite/ui/taskbar.ico' % WORKINGDIR
 PYTHON = '%s/Python27/python27.exe' % WORKINGDIR if sys.platform.startswith('win') else '/usr/bin/env python2.7'
+
+
+def setIEproxy(enable, proxy=u'', override=u'<local>'):
+    import ctypes
+    import _winreg
+
+    access = _winreg.KEY_ALL_ACCESS
+    if 'PROGRAMFILES(X86)' in os.environ:
+        access |= _winreg.KEY_WOW64_64KEY
+    INTERNET_SETTINGS = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER,
+                                        r'Software\Microsoft\Windows\CurrentVersion\Internet Settings',
+                                        0, access)
+
+    _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyEnable', 0, _winreg.REG_DWORD, enable)
+    _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyServer', 0, _winreg.REG_SZ, proxy)
+    _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyOverride', 0, _winreg.REG_SZ, override)
+
+    ctypes.windll.Wininet.InternetSetOptionW(0, 39, 0, 0)
 
 
 class MainWindow(QtGui.QMainWindow):
@@ -42,6 +63,10 @@ class MainWindow(QtGui.QMainWindow):
         self.setWindowIcon(QtGui.QIcon(TRAY_ICON))
         self.center()
         self.consoleText = deque(maxlen=300)
+        if not os.path.isfile('./userconf.ini'):
+            shutil.copyfile('./userconf.sample.ini', './userconf.ini')
+        self.conf = SConfigParser()
+        self.conf.read('userconf.ini')
         self.runner = None
         self.createActions()
         self.createTrayIcon()
@@ -87,6 +112,8 @@ class MainWindow(QtGui.QMainWindow):
             settingIEproxyMenu.addAction(self.setIE8118Action)
             settingIEproxyMenu.addAction(self.setIE8119Action)
             settingIEproxyMenu.addAction(self.setIENoneAction)
+            if self.conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
+                self.setIEproxy8118()
 
         settingMenu = self.trayIconMenu.addMenu(u'设置')
         settingMenu.addAction(self.openconfAction)
@@ -102,30 +129,13 @@ class MainWindow(QtGui.QMainWindow):
         self.trayIcon.show()
 
     def setIEproxy8118(self):
-        self.setIEproxy(1, u'127.0.0.1:8118')
+        setIEproxy(1, u'127.0.0.1:8118')
 
     def setIEproxy8119(self):
-        self.setIEproxy(1, u'127.0.0.1:8119')
+        setIEproxy(1, u'127.0.0.1:8119')
 
     def setIEproxyNone(self):
-        self.setIEproxy(0)
-
-    def setIEproxy(self, enable, proxy=u'', override=u'<local>'):
-        import ctypes
-        import _winreg
-
-        access = _winreg.KEY_ALL_ACCESS
-        if 'PROGRAMFILES(X86)' in os.environ:
-            access |= _winreg.KEY_WOW64_64KEY
-        INTERNET_SETTINGS = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER,
-                                            r'Software\Microsoft\Windows\CurrentVersion\Internet Settings',
-                                            0, access)
-
-        _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyEnable', 0, _winreg.REG_DWORD, enable)
-        _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyServer', 0, _winreg.REG_SZ, proxy)
-        _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyOverride', 0, _winreg.REG_SZ, override)
-
-        ctypes.windll.Wininet.InternetSetOptionW(0, 39, 0, 0)
+        setIEproxy(0)
 
     def showMessage(self, msg, timeout=None):
         if pynotify:
@@ -188,6 +198,12 @@ class MainWindow(QtGui.QMainWindow):
         self.ui.console.clear()
         self.consoleText = deque(maxlen=300)
         self.createProcess()
+
+
+@atexit.register
+def atexit_do():
+    setIEproxy(0)
+
 
 if __name__ == "__main__":
     if os.name == 'nt':
