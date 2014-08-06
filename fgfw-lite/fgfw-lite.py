@@ -79,14 +79,13 @@ except ImportError:
 from threading import Thread
 from repoze.lru import lru_cache
 import encrypt
-from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address
+from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser
 try:
     import markdown
 except ImportError:
     markdown = None
     sys.stderr.write('Warning: python-Markdown is NOT installed!\n')
 try:
-    import configparser
     import urllib.request as urllib2
     import urllib.parse as urlparse
     urlquote = urlparse.quote
@@ -97,11 +96,9 @@ except ImportError:
     import urllib2
     import urlparse
     urlquote = urllib2.quote
-    import ConfigParser as configparser
     from SocketServer import ThreadingMixIn
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
     from ipaddr import IPAddress as ip_address
-configparser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 
 logging.basicConfig(level=logging.INFO,
                     format='FGFW-Lite %(asctime)s %(levelname)s %(message)s',
@@ -1497,49 +1494,6 @@ class snovaHandler(FGFWProxyHandler):
         proxy.set('Misc', 'RC4Key', self.conf.userconf.dget('snova', 'RC4Key', '8976501f8451f03c5c4067b47882f2e5'))
         with open('./snova/conf/snova.conf', 'w') as configfile:
             proxy.write(configfile)
-
-
-class SConfigParser(configparser.ConfigParser):
-    """docstring for SSafeConfigParser"""
-    optionxform = str
-
-    def dget(self, section, option, default=''):
-        try:
-            value = self.get(section, option)
-            if not value:
-                value = default
-        except Exception:
-            value = default
-        return value
-
-    def dgetfloat(self, section, option, default=0):
-        try:
-            return self.getfloat(section, option)
-        except Exception:
-            return float(default)
-
-    def dgetint(self, section, option, default=0):
-        try:
-            return self.getint(section, option)
-        except Exception:
-            return int(default)
-
-    def dgetbool(self, section, option, default=False):
-        try:
-            return self.getboolean(section, option)
-        except Exception:
-            return bool(default)
-
-    def items(self, section):
-        try:
-            return configparser.ConfigParser.items(self, section)
-        except Exception:
-            return []
-
-    def set(self, section, option, value):
-        if not self.has_section(section):
-            self.add_section(section)
-        configparser.ConfigParser.set(self, section, option, value)
 
 
 class Config(object):

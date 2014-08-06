@@ -25,9 +25,55 @@ import socket
 import select
 from repoze.lru import lru_cache
 try:
+    import configparser
     from ipaddress import ip_address
 except ImportError:
+    import ConfigParser as configparser
     from ipaddr import IPAddress as ip_address
+configparser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
+
+
+class SConfigParser(configparser.ConfigParser):
+    """docstring for SSafeConfigParser"""
+    optionxform = str
+
+    def dget(self, section, option, default=''):
+        try:
+            value = self.get(section, option)
+            if not value:
+                value = default
+        except Exception:
+            value = default
+        return value
+
+    def dgetfloat(self, section, option, default=0):
+        try:
+            return self.getfloat(section, option)
+        except Exception:
+            return float(default)
+
+    def dgetint(self, section, option, default=0):
+        try:
+            return self.getint(section, option)
+        except Exception:
+            return int(default)
+
+    def dgetbool(self, section, option, default=False):
+        try:
+            return self.getboolean(section, option)
+        except Exception:
+            return bool(default)
+
+    def items(self, section):
+        try:
+            return configparser.ConfigParser.items(self, section)
+        except Exception:
+            return []
+
+    def set(self, section, option, value):
+        if not self.has_section(section):
+            self.add_section(section)
+        configparser.ConfigParser.set(self, section, option, value)
 
 
 @lru_cache(4096, timeout=90)
