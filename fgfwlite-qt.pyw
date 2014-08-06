@@ -98,6 +98,7 @@ class MainWindow(QtGui.QMainWindow):
         self.setIE8118Action = QtGui.QAction(u"智能代理8118", self, triggered=self.setIEproxy8118)
         self.setIE8119Action = QtGui.QAction(u"全局代理8119", self, triggered=self.setIEproxy8119)
         self.setIENoneAction = QtGui.QAction(u"直接连接", self, triggered=self.setIEproxyNone)
+        self.flushDNSAction = QtGui.QAction(u"清空DNS缓存", self, triggered=self.flushDNS)
         self.openlocalAction = QtGui.QAction(u"local.txt", self, triggered=self.openlocal)
         self.openconfAction = QtGui.QAction(u"userconf.ini", self, triggered=self.openconf)
         self.quitAction = QtGui.QAction(u"退出", self, triggered=self.on_Quit)
@@ -115,6 +116,9 @@ class MainWindow(QtGui.QMainWindow):
             if self.conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
                 self.setIEproxy8118()
 
+        advancedMenu = self.trayIconMenu.addMenu(u'高級')
+        advancedMenu.addAction(self.flushDNSAction)
+
         settingMenu = self.trayIconMenu.addMenu(u'设置')
         settingMenu.addAction(self.openconfAction)
         settingMenu.addAction(self.openlocalAction)
@@ -127,6 +131,16 @@ class MainWindow(QtGui.QMainWindow):
         self.trayIcon.setIcon(QtGui.QIcon(TRAY_ICON))
         self.trayIcon.activated.connect(self.on_trayActive)
         self.trayIcon.show()
+
+    def flushDNS(self):
+        if sys.platform.startswith('win'):
+            os.system('ipconfig.exe /flushdns')
+        elif sys.platform.startswith('darwin'):
+            os.system('dscacheutil -flushcache')
+        elif sys.platform.startswith('linux'):
+            self.showMessage(u'for Linux system, you need to run "sudo /etc/init.d/nscd restart"')
+        else:
+            self.showMessage(u'OS not recognised')
 
     def setIEproxy8118(self):
         setIEproxy(1, u'127.0.0.1:8118')
