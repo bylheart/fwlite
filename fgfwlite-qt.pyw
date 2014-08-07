@@ -4,11 +4,16 @@
 import os
 import sys
 import shutil
+import threading
 import atexit
+import base64
+import json
+import urllib2
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 from collections import deque
 from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
+from ui_remoteresolver import Ui_remote_resolver
 from util import SConfigParser
 try:
     import pynotify
@@ -41,8 +46,6 @@ def setIEproxy(enable, proxy=u'', override=u'<local>'):
 
 
 class MainWindow(QtGui.QMainWindow):
-    trigger = QtCore.Signal(str)
-
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         self.ui = Ui_MainWindow()
@@ -71,6 +74,7 @@ class MainWindow(QtGui.QMainWindow):
         self.createActions()
         self.createTrayIcon()
         self.createProcess()
+        self.resolve = RemoteResolve()
 
     def createProcess(self):
         if self.runner:
@@ -99,6 +103,7 @@ class MainWindow(QtGui.QMainWindow):
         self.setIE8119Action = QtGui.QAction(u"全局代理8119", self, triggered=self.setIEproxy8119)
         self.setIENoneAction = QtGui.QAction(u"直接连接", self, triggered=self.setIEproxyNone)
         self.flushDNSAction = QtGui.QAction(u"清空DNS缓存", self, triggered=self.flushDNS)
+        self.remoteDNSAction = QtGui.QAction(u"远程DNS解析", self, triggered=self.remoteDNS)
         self.openlocalAction = QtGui.QAction(u"local.txt", self, triggered=self.openlocal)
         self.openconfAction = QtGui.QAction(u"userconf.ini", self, triggered=self.openconf)
         self.quitAction = QtGui.QAction(u"退出", self, triggered=self.on_Quit)
@@ -118,6 +123,7 @@ class MainWindow(QtGui.QMainWindow):
 
         advancedMenu = self.trayIconMenu.addMenu(u'高級')
         advancedMenu.addAction(self.flushDNSAction)
+        advancedMenu.addAction(self.remoteDNSAction)
 
         settingMenu = self.trayIconMenu.addMenu(u'设置')
         settingMenu.addAction(self.openconfAction)
@@ -141,6 +147,9 @@ class MainWindow(QtGui.QMainWindow):
             self.showMessage(u'for Linux system, you need to run "sudo /etc/init.d/nscd restart"')
         else:
             self.showMessage(u'OS not recognised')
+
+    def remoteDNS(self):
+        self.resolve.show()
 
     def setIEproxy8118(self):
         setIEproxy(1, u'127.0.0.1:8118')
@@ -212,6 +221,35 @@ class MainWindow(QtGui.QMainWindow):
         self.ui.console.clear()
         self.consoleText = deque(maxlen=300)
         self.createProcess()
+
+
+class RemoteResolve(QtGui.QWidget):
+    trigger = QtCore.Signal(str)
+
+    def __init__(self, parent=None):
+        super(RemoteResolve, self).__init__(parent)
+        self.ui = Ui_remote_resolver()
+        self.ui.setupUi(self)
+        self.ui.goButton.clicked.connect(self.do_resolve)
+        self.trigger.connect(self.ui.resultTextEdit.setPlainText)
+
+    def do_resolve(self):
+        self.ui.resultTextEdit.setPlainText('resolving...')
+        threading.Thread(target=self._do_resolve, args=(self.ui.hostLineEdit.text(), self.ui.serverComboBox.currentText())).start()
+
+    def _do_resolve(self, host, server):
+        try:
+            result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.b64encode(host).strip('='), server)).read())
+        except Exception as e:
+            result = [repr(e)]
+        self.trigger.emit('\n'.join(result))
+
+    def closeEvent(self, event):
+        # hide mainwindow when close
+        if self.isVisible():
+            self.hide()
+        self.ui.resultTextEdit.clear()
+        event.ignore()
 
 
 @atexit.register
