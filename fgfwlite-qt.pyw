@@ -70,6 +70,8 @@ class MainWindow(QtGui.QMainWindow):
             shutil.copyfile('./userconf.sample.ini', './userconf.ini')
         self.conf = SConfigParser()
         self.conf.read('userconf.ini')
+        listen = self.conf.dget('fgfwproxy', 'listen', '8118')
+        self.port = int(listen) if listen.isdigit() else int(listen.split(':')[1])
         self.runner = None
         self.createActions()
         self.createTrayIcon()
@@ -99,8 +101,8 @@ class MainWindow(QtGui.QMainWindow):
     def createActions(self):
         self.showToggleAction = QtGui.QAction(u"显示/隐藏", self, triggered=self.showToggle)
         self.reloadAction = QtGui.QAction(u"重新载入", self, triggered=self.reload)
-        self.setIE8118Action = QtGui.QAction(u"智能代理8118", self, triggered=self.setIEproxy8118)
-        self.setIE8119Action = QtGui.QAction(u"全局代理8119", self, triggered=self.setIEproxy8119)
+        self.setIEAutoAction = QtGui.QAction(u"智能代理%d" % self.port, self, triggered=self.setIEproxyAuto)
+        self.setIERegionAction = QtGui.QAction(u"全局代理%d" % (self.port + 1), self, triggered=self.setIEproxyRegion)
         self.setIENoneAction = QtGui.QAction(u"直接连接", self, triggered=self.setIEproxyNone)
         self.flushDNSAction = QtGui.QAction(u"清空DNS缓存", self, triggered=self.flushDNS)
         self.remoteDNSAction = QtGui.QAction(u"远程DNS解析", self, triggered=self.remoteDNS)
@@ -115,11 +117,11 @@ class MainWindow(QtGui.QMainWindow):
 
         if sys.platform.startswith('win'):
             settingIEproxyMenu = self.trayIconMenu.addMenu(u'设置代理')
-            settingIEproxyMenu.addAction(self.setIE8118Action)
-            settingIEproxyMenu.addAction(self.setIE8119Action)
+            settingIEproxyMenu.addAction(self.setIEAutoAction)
+            settingIEproxyMenu.addAction(self.setIERegionAction)
             settingIEproxyMenu.addAction(self.setIENoneAction)
             if self.conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
-                self.setIEproxy8118()
+                self.setIEproxyAuto()
 
         advancedMenu = self.trayIconMenu.addMenu(u'高級')
         advancedMenu.addAction(self.flushDNSAction)
@@ -151,11 +153,11 @@ class MainWindow(QtGui.QMainWindow):
     def remoteDNS(self):
         self.resolve.show()
 
-    def setIEproxy8118(self):
-        setIEproxy(1, u'127.0.0.1:8118')
+    def setIEproxyAuto(self):
+        setIEproxy(1, u'127.0.0.1:%d' % self.port)
 
-    def setIEproxy8119(self):
-        setIEproxy(1, u'127.0.0.1:8119')
+    def setIEproxyRegion(self):
+        setIEproxy(1, u'127.0.0.1:%d' % (self.port + 1))
 
     def setIEproxyNone(self):
         setIEproxy(0)
