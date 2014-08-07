@@ -48,7 +48,7 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          './userconf.sample.ini',
          './Python27/python27.zip',
          './README.md',
-         './fgfwlite-qt.pyw'
+         './fgfwlite-qt.pyw',
          './goagent/proxy.py',
          './goagent/proxy.sample.ini',
          './goagent/cacert.pem',
