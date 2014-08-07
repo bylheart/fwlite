@@ -451,8 +451,10 @@ class ProxyHandler(HTTPRequestHandler):
             while True:
                 line = remoterfile.readline()
                 header_data.append(line)
-                if line in (b'\r\n', b'\n', b''):  # header ends with a empty line
+                if line in (b'\r\n', b'\n', b'\r'):  # header ends with a empty line
                     break
+                if not line:
+                    raise OSError(0, 'remote socket closed')
         except NetWorkIOError as e:
             return self.on_GET_Error(e)
         header_data = b''.join(header_data)
@@ -503,7 +505,7 @@ class ProxyHandler(HTTPRequestHandler):
                 try:
                     data = self.remotesoc.recv(min(self.bufsize, content_length))
                     if not data:
-                        raise OSError(0, 'socket read empty')
+                        raise OSError(0, 'remote socket closed')
                 except NetWorkIOError as e:
                     return self.on_GET_Error(e)
                 content_length -= len(data)
@@ -575,9 +577,12 @@ class ProxyHandler(HTTPRequestHandler):
             remoterfile = self.remotesoc.makefile('rb', 0)
             data = remoterfile.readline()
             if b'200' not in data:
-                self.server.logger.warning('{} {} failed! 200 not in response'.format(self.command, self.path))
+                self.server.logger.warning('{} {} via {} failed! 200 not in response'.format(self.command, self.path, self.ppname))
                 return self._do_CONNECT(True)
-            while not data in (b'\r\n', b'\n', b''):
+            while not data in (b'\r\n', b'\n', b'\r'):
+                if not data:
+                    self.server.logger.warning('{} {} via {} failed! remote peer closed'.format(self.command, self.path, self.ppname))
+                    return self._do_CONNECT(True)
                 data = remoterfile.readline()
         if self.rbuffer:
             self.server.logger.debug('remote write rbuffer')
@@ -1559,7 +1564,7 @@ def atexit_do():
 
 
 def main():
-    if os.name == 'nt':
+    if sys.platform.startswith('win'):
         import ctypes
         ctypes.windll.kernel32.SetConsoleTitleW(u'FGFW-Lite v%s' % __version__)
     conf = Config()
