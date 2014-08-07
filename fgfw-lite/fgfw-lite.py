@@ -271,23 +271,17 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
             self.wfile.write(content)
 
-    def send_response(self, code, message=None):
-        if message is None:
-            if code in self.responses:
-                message = self.responses[code][0]
-            else:
-                message = ''
-        if self.request_version != 'HTTP/0.9':
-            s = "%s %d %s\r\n" % (self.protocol_version, code, message)
-            self.wfile.write(s.encode())
-        self.send_header('ProxyServer', self.version_string())
-        self.send_header('Date', self.date_time_string())
-
-    def send_trunk(self, data):
-        self.wfile.write(b"%x\r\n%s\r\n" % (len(data), data))
-
-    def end_trunk(self):
-        self.wfile.write(b'0\r\n\r\n')
+    def write(self, code=200, msg=None, ctype=None):
+        if msg is None:
+            msg = ''
+        self.send_response(code)
+        if ctype:
+            self.send_header('Content-type', ctype)
+        self.send_header('Content-Length', str(len(msg)))
+        self.send_header('Connection', 'keep_alive')
+        self.end_headers()
+        if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
+            self.wfile.write(msg)
 
     def _request_is_localhost(self, req):
         try:
@@ -359,16 +353,8 @@ class ProxyHandler(HTTPRequestHandler):
         self.requesthost = parse_hostport(self.headers['Host'], 80)
 
         if self._request_is_localhost(self.requesthost):
-            if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.server.conf.listen[1], self.server.conf.listen[1] + 1):
-                self.send_response(200)
-                msg = 'Hello World !'
-                self.send_header('Content-type', 'text/html')
-                self.send_header('Content-Length', str(len(msg)))
-                self.send_header('Connection', 'keep_alive')
-                self.end_headers()
-                # Send the html message
-                self.wfile.write(msg)
-                return
+            if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.server.conf.listen[1], self.server.conf.listen[1] + 1, self.server.conf.listen[1] + 2):
+                return self.write(200, 'Hello World !', 'text/html')
             if not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
         self.shortpath = '%s%s' % (self.path.split('?')[0], '?' if len(self.path.split('?')) > 1 else '')
@@ -783,17 +769,12 @@ class ProxyHandler(HTTPRequestHandler):
             self.server.logger.warning("FTP Exception: %r" % e)
             self.send_error(504, repr(e))
         else:
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.send_header('Transfer-Encoding', 'chunked')
-            self.send_header('Connection', 'keep_alive')
-            self.end_headers()
-            self.send_trunk('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
-            self.send_trunk("<html>\n<title>Directory listing for %s</title>\n" % path)
-            self.send_trunk("<body>\n<h2>Directory listing for %s</h2>\n<hr>\n" % path)
-            self.send_trunk(markdown.markdown(md, extensions=['tables', ]))
-            self.send_trunk("<hr>\n</body>\n</html>\n")
-            self.end_trunk()
+            msg = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">',
+                   "<html>\n<title>Directory listing for %s</title>\n" % path,
+                   "<body>\n<h2>Directory listing for %s</h2>\n<hr>\n" % path,
+                   markdown.markdown(md, extensions=['tables', ]),
+                   "<hr>\n</body>\n</html>\n"]
+            self.write(200, ''.join(msg), 'text/html')
 
 
 class sssocket(object):
