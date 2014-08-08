@@ -1574,8 +1574,8 @@ def main():
     updatedaemon = Thread(target=updater, args=([conf]))
     updatedaemon.daemon = True
     updatedaemon.start()
-    for level in list(conf.userconf.dget('fgfwproxy', 'profile', '134')):
-        server = ThreadingHTTPServer(conf.listen, ProxyHandler, conf=conf, level=int(level))
+    for i, level in enumerate(list(conf.userconf.dget('fgfwproxy', 'profile', '134'))):
+        server = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + i), ProxyHandler, conf=conf, level=int(level))
         t = Thread(target=server.serve_forever)
         t.start()
     t.join()
