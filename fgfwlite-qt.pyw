@@ -69,6 +69,7 @@ class MainWindow(QtGui.QMainWindow):
         if not os.path.isfile('./userconf.ini'):
             shutil.copyfile('./userconf.sample.ini', './userconf.ini')
         self.runner = None
+        self.trayIcon = None
         self.createActions()
         self.createTrayIcon()
         self.createProcess()
@@ -105,6 +106,8 @@ class MainWindow(QtGui.QMainWindow):
         self.quitAction = QtGui.QAction(u"退出", self, triggered=self.on_Quit)
 
     def createTrayIcon(self):
+        if self.trayIcon and self.trayIcon.isVisible():
+            self.trayIcon.hide()
         self.trayIconMenu = QtGui.QMenu(self)
         self.trayIconMenu.addAction(self.showToggleAction)
         self.trayIconMenu.addAction(self.reloadAction)
@@ -221,6 +224,7 @@ class MainWindow(QtGui.QMainWindow):
     def reload(self):
         self.ui.console.clear()
         self.consoleText = deque(maxlen=300)
+        self.createTrayIcon()
         self.createProcess()
 
 
