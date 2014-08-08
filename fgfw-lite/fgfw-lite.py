@@ -225,7 +225,7 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
         self.proxy_level = level
         self.conf = conf
         self.logger = self.conf.logger
-        self.logger.info('starting server at %s:%s' % server_address)
+        self.logger.info('starting server at %s:%s, level %d' % (server_address[0], server_address[1], level))
         HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
 
@@ -1082,53 +1082,12 @@ class parent_proxy(object):
         except socket.error:
             return None
 
-    def if_gfwlist_force(self, uri, level):
-        if level == 3:
-            return True
-        for rule in self.gfwlist_force:
-            try:
-                if rule.match(uri):
-                    return True
-            except ExpiredError:
-                self.logger.info('%s expired' % rule.rule)
-                self.gfwlist_force.remove(rule)
-                self.temp_rules.discard(rule.rule)
-
     def gfwlist_match(self, uri):
         for i, rule in enumerate(self.gfwlist):
             if rule.match(uri):
                 if i > 300:
                     self.gfwlist.insert(0, self.gfwlist.pop(i))
                 return True
-
-    def ifgfwed(self, uri, host, port, ip, level=1):
-        if level == 0:
-            return False
-        forceproxy = level >= 2
-
-        if ip is None:
-            return True
-
-        if any((ip.is_loopback, ip.is_private)):
-            return False
-
-        if level == 4:
-            return True
-
-        if self.if_gfwlist_force(uri, level):
-            return True
-
-        if any(rule.match(uri) for rule in self.ignore):
-            return None
-
-        if any(rule.match(uri) for rule in self.override):
-            return False
-
-        if self.conf.HOSTS.get(host) or self.ifhost_in_region(host, str(ip)):
-            return None
-
-        if forceproxy or self.gfwlist_match(uri):
-            return True
 
     @lru_cache(256, timeout=120)
     def no_goagent(self, uri, host):
@@ -1147,6 +1106,46 @@ class parent_proxy(object):
             #     return False
             return True
 
+    def if_gfwlist_force(self, uri, level):
+        if level == 4:
+            return True
+        for rule in self.gfwlist_force:
+            try:
+                if rule.match(uri):
+                    return True
+            except ExpiredError:
+                self.logger.info('%s expired' % rule.rule)
+                self.gfwlist_force.remove(rule)
+                self.temp_rules.discard(rule.rule)
+
+    def ifgfwed(self, uri, host, port, ip, level=1):
+        if level == 0:
+            return False
+
+        if ip is None:
+            return True
+
+        if any((ip.is_loopback, ip.is_private)):
+            return False
+
+        if self.if_gfwlist_force(uri, level):
+            return True
+
+        if any(rule.match(uri) for rule in self.ignore):
+            return None
+
+        if any(rule.match(uri) for rule in self.override):
+            return False
+
+        if level == 2 and uri.startswith('http://'):
+            return True
+
+        if self.conf.HOSTS.get(host) or self.ifhost_in_region(host, str(ip)):
+            return None
+
+        if level == 3 or self.gfwlist_match(uri):
+            return True
+
     def parentproxy(self, uri, host, command, level=1):
         '''
             decide which parentproxy to use.
@@ -1155,8 +1154,8 @@ class parent_proxy(object):
             host: ('www.google.com', 443) (no port number is allowed)
             level: 0 -- direct
                    1 -- proxy if force, direct if ip in region or override, proxy if gfwlist
-                   2 -- proxy if force, direct if ip in region or override, proxy if all
-                   3 -- proxy if not local or override
+                   2 -- proxy if force or not https, direct if ip in region or override, proxy if gfwlist
+                   3 -- proxy if force, direct if ip in region or override, proxy if all
                    4 -- proxy if not local
         '''
         host, port = host
@@ -1167,9 +1166,9 @@ class parent_proxy(object):
             self.logger.warning('resolve %s failed! %s' % (host, repr(e)))
             ip = None
 
-        f = self.ifgfwed(uri, host, port, ip, level)
+        ifgfwed = self.ifgfwed(uri, host, port, ip, level)
 
-        if f is False:
+        if ifgfwed is False:
             if ip.is_private:
                 return ['local' if 'local' in self.conf.parentdict.keys() else 'direct']
             return ['direct']
@@ -1190,7 +1189,7 @@ class parent_proxy(object):
         if 'local' in parentlist:
             parentlist.remove('local')
 
-        if f is True or level == 3:
+        if ifgfwed or level == 3:
             parentlist.remove('direct')
             if not parentlist:
                 self.logger.warning('No parent proxy available, direct connection is used')
@@ -1575,12 +1574,11 @@ def main():
     updatedaemon = Thread(target=updater, args=([conf]))
     updatedaemon.daemon = True
     updatedaemon.start()
-    server = ThreadingHTTPServer(conf.listen, ProxyHandler, conf=conf)
-    Thread(target=server.serve_forever).start()
-    server1 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 1), ProxyHandler, conf=conf, level=2)
-    Thread(target=server1.serve_forever).start()
-    server3 = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + 2), ProxyHandler, conf=conf, level=4)
-    server3.serve_forever()
+    for level in list(conf.userconf.dget('fgfwproxy', 'profile', '134')):
+        server = ThreadingHTTPServer(conf.listen, ProxyHandler, conf=conf, level=int(level))
+        t = Thread(target=server.serve_forever)
+        t.start()
+    t.join()
 
 if __name__ == "__main__":
     try:
