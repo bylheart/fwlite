@@ -102,7 +102,8 @@ class MainWindow(QtGui.QMainWindow):
         self.showToggleAction = QtGui.QAction(u"显示/隐藏", self, triggered=self.showToggle)
         self.reloadAction = QtGui.QAction(u"重新载入", self, triggered=self.reload)
         self.setIEAutoAction = QtGui.QAction(u"智能代理%d" % self.port, self, triggered=self.setIEproxyAuto)
-        self.setIERegionAction = QtGui.QAction(u"全局代理%d" % (self.port + 1), self, triggered=self.setIEproxyRegion)
+        self.setIERegionAction = QtGui.QAction(u"国内直连%d" % (self.port + 1), self, triggered=self.setIEproxyRegion)
+        self.setIEOverallAction = QtGui.QAction(u"全局代理%d" % (self.port + 2), self, triggered=self.setIEproxyOverall)
         self.setIENoneAction = QtGui.QAction(u"直接连接", self, triggered=self.setIEproxyNone)
         self.flushDNSAction = QtGui.QAction(u"清空DNS缓存", self, triggered=self.flushDNS)
         self.remoteDNSAction = QtGui.QAction(u"远程DNS解析", self, triggered=self.remoteDNS)
@@ -119,6 +120,7 @@ class MainWindow(QtGui.QMainWindow):
             settingIEproxyMenu = self.trayIconMenu.addMenu(u'设置代理')
             settingIEproxyMenu.addAction(self.setIEAutoAction)
             settingIEproxyMenu.addAction(self.setIERegionAction)
+            settingIEproxyMenu.addAction(self.setIEOverallAction)
             settingIEproxyMenu.addAction(self.setIENoneAction)
             if self.conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
                 self.setIEproxyAuto()
@@ -158,6 +160,9 @@ class MainWindow(QtGui.QMainWindow):
 
     def setIEproxyRegion(self):
         setIEproxy(1, u'127.0.0.1:%d' % (self.port + 1))
+
+    def setIEproxyOverall(self):
+        setIEproxy(1, u'127.0.0.1:%d' % (self.port + 2))
 
     def setIEproxyNone(self):
         setIEproxy(0)
