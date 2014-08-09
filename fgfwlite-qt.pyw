@@ -111,28 +111,10 @@ class MainWindow(QtGui.QMainWindow):
         self.trayIconMenu = QtGui.QMenu(self)
         self.trayIconMenu.addAction(self.showToggleAction)
         self.trayIconMenu.addAction(self.reloadAction)
-        conf = SConfigParser()
-        conf.read('userconf.ini')
-        listen = conf.dget('fgfwproxy', 'listen', '8118')
-        port = int(listen) if listen.isdigit() else int(listen.split(':')[1])
 
         if sys.platform.startswith('win'):
-            settingIEproxyMenu = self.trayIconMenu.addMenu(u'设置代理')
-            profile = [int(x) for x in conf.dget('fgfwproxy', 'profile', '134')]
-            for i, p in enumerate(profile):
-                d = {1: u'智能代理%d',
-                     2: u'全局加密%d',
-                     3: u'国内直连%d',
-                     4: u'全局代理%d',
-                     }
-                if p in d:
-                    title = d[p] % (port + i)
-                else:
-                    title = u'127.0.0.1:%d prifile%d' % ((port + i), p)
-                settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=lambda: setIEproxy(1, u'127.0.0.1:%d' % (port + i))))
-            settingIEproxyMenu.addAction(self.setIENoneAction)
-            if conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
-                setIEproxy(1, u'127.0.0.1:%d' % port)
+            self.settingIEproxyMenu = self.trayIconMenu.addMenu(u'设置代理')
+            self.setIEProxyMenu()
 
         advancedMenu = self.trayIconMenu.addMenu(u'高級')
         advancedMenu.addAction(self.flushDNSAction)
@@ -150,6 +132,30 @@ class MainWindow(QtGui.QMainWindow):
         self.trayIcon.setIcon(QtGui.QIcon(TRAY_ICON))
         self.trayIcon.activated.connect(self.on_trayActive)
         self.trayIcon.show()
+
+    def setIEProxyMenu(self):
+        self.settingIEproxyMenu.clear()
+
+        conf = SConfigParser()
+        conf.read('userconf.ini')
+        listen = conf.dget('fgfwproxy', 'listen', '8118')
+        port = int(listen) if listen.isdigit() else int(listen.split(':')[1])
+
+        profile = [int(x) for x in conf.dget('fgfwproxy', 'profile', '134')]
+        for i, p in enumerate(profile):
+            d = {1: u'智能代理%d',
+                 2: u'全局加密%d',
+                 3: u'国内直连%d',
+                 4: u'全局代理%d',
+                 }
+            if p in d:
+                title = d[p] % (port + i)
+            else:
+                title = u'127.0.0.1:%d prifile%d' % ((port + i), p)
+            self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=lambda: setIEproxy(1, u'127.0.0.1:%d' % (port + i))))
+        self.settingIEproxyMenu.addAction(self.setIENoneAction)
+        if conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
+            setIEproxy(1, u'127.0.0.1:%d' % port)
 
     def flushDNS(self):
         if sys.platform.startswith('win'):
@@ -224,7 +230,8 @@ class MainWindow(QtGui.QMainWindow):
     def reload(self):
         self.ui.console.clear()
         self.consoleText = deque(maxlen=300)
-        self.createTrayIcon()
+        if sys.platform.startswith('win'):
+            self.setIEProxyMenu()
         self.createProcess()
 
 
