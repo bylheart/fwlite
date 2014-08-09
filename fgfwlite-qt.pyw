@@ -68,7 +68,7 @@ class MainWindow(QtGui.QMainWindow):
         self.consoleText = deque(maxlen=300)
         if not os.path.isfile('./userconf.ini'):
             shutil.copyfile('./userconf.sample.ini', './userconf.ini')
-        self.runner = None
+        self.runner = QtCore.QProcess(self)
         self.trayIcon = None
         self.createActions()
         self.createTrayIcon()
@@ -76,9 +76,9 @@ class MainWindow(QtGui.QMainWindow):
         self.resolve = RemoteResolve()
 
     def createProcess(self):
-        if self.runner:
+        if self.runner.state() == QtCore.QProcess.ProcessState.Running:
             self.runner.kill()
-        self.runner = QtCore.QProcess(self)
+            self.runner.waitForFinished(100)
         self.runner.readyReadStandardError.connect(self.newStderrInfo)
         self.runner.readyReadStandardOutput.connect(self.newStdoutInfo)
         self.runner.start('%s -B %s/fgfw-lite/fgfw-lite.py' % (PYTHON, WORKINGDIR))
