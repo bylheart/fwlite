@@ -81,11 +81,6 @@ from repoze.lru import lru_cache
 import encrypt
 from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt
 try:
-    import markdown
-except ImportError:
-    markdown = None
-    sys.stderr.write('Warning: python-Markdown is NOT installed!\n')
-try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
     urlquote = urlparse.quote
@@ -748,7 +743,7 @@ class ProxyHandler(HTTPRequestHandler):
         if not path.endswith('/'):
             self.path += '/'
         lst = []
-        md = '|Content|Size|Modify|\r\n|:----|----:|----:|\r\n'
+        table = '<table><thead><tr><th align="left">Content</th><th align="right">Size</th><th align="right">Modify</th></tr></thead><tbody>'
         try:
             ftp = ftplib.FTP(netloc)
             ftp.login(user, passwd)
@@ -758,9 +753,9 @@ class ProxyHandler(HTTPRequestHandler):
                 line_split = line.split()
                 if line.startswith('d'):
                     line_split[8] += '/'
-                md += '|[%s](%s%s)|%s|%s %s %s|\r\n' % (line_split[8], self.path, line_split[8], line_split[4] if line.startswith('d') else sizeof_fmt(int(line_split[4])), line_split[5], line_split[6], line_split[7])
-            md += '|================|==========|=============|\r\n'
-            md += '\r\n%s\r\n' % response
+                table += '<tr><td align="left"><a href="%s%s">%s</a></td><td align="right">%s</td><td align="right">%s %s %s</td></tr>\r\n' % (self.path, line_split[8], line_split[8], line_split[4] if line.startswith('d') else sizeof_fmt(int(line_split[4])), line_split[5], line_split[6], line_split[7])
+            table += '<tr><td align="left">================</td><td align="right">==========</td><td align="right">=============</td></tr></tbody></table>\r\n'
+            table += '<p>%s</p>' % response
         except Exception as e:
             self.server.logger.warning("FTP Exception: %r" % e)
             self.send_error(504, repr(e))
@@ -768,7 +763,7 @@ class ProxyHandler(HTTPRequestHandler):
             msg = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">',
                    "<html>\n<title>Directory listing for %s</title>\n" % path,
                    "<body>\n<h2>Directory listing for %s</h2>\n<hr>\n" % path,
-                   markdown.markdown(md, extensions=['tables', ]),
+                   table,
                    "<hr>\n</body>\n</html>\n"]
             self.write(200, ''.join(msg), 'text/html')
 
