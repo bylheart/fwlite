@@ -743,7 +743,7 @@ class ProxyHandler(HTTPRequestHandler):
         if not path.endswith('/'):
             self.path += '/'
         lst = []
-        table = '<table><thead><tr><th align="left">Content</th><th align="right">Size</th><th align="right">Modify</th></tr></thead><tbody>'
+        table = '<table class="content"><thead><tr><th align="left">Content</th><th align="right">Size</th><th align="right">Modify</th></tr></thead><tbody>'
         try:
             ftp = ftplib.FTP(netloc)
             ftp.login(user, passwd)
@@ -760,8 +760,9 @@ class ProxyHandler(HTTPRequestHandler):
             self.server.logger.warning("FTP Exception: %r" % e)
             self.send_error(504, repr(e))
         else:
-            msg = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">',
-                   "<html>\n<title>Directory listing for %s</title>\n" % path,
+            msg = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"><html>\n',
+                   '<head><style type="text/css">.content tr{font-family:Consolas,"Droid Sans Mono", Menlo, Monospace;}</style></head>',
+                   "<title>Directory listing for %s</title>\n" % path,
                    "<body>\n<h2>Directory listing for %s</h2>\n<hr>\n" % path,
                    table,
                    "<hr>\n</body>\n</html>\n"]
