@@ -159,6 +159,16 @@ def is_connection_dropped(sock):  # from urllib3
             return True
 
 
+def sizeof_fmt(num):
+    if num < 1024:
+        return "%dB" % num
+    for x in ['B', 'KB', 'MB', 'GB']:
+        if num < 1024.0:
+            return "%.1f%s" % (num, x)
+        num /= 1024.0
+    return "%.1f%s" % (num, 'TB')
+
+
 if __name__ == "__main__":
     t = socket.getaddrinfo('www.baidu.com', 80)
     r = getaddrinfo('www.baidu.com')
