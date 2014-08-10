@@ -1234,6 +1234,7 @@ def update(conf, auto=False):
         return
     conf.version.set('Update', 'LastUpdate', str(time.time()))
     filelist = [('https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt', './fgfw-lite/gfwlist.txt'), ]
+    count = 0
     for url, path in filelist:
         etag = conf.version.dget('Update', path.replace('./', '').replace('/', '-'), '')
         req = urllib2.Request(url)
@@ -1250,6 +1251,7 @@ def update(conf, auto=False):
                 conf.version.set('Update', path.replace('./', '').replace('/', '-'), r.info().getheader('ETag'))
                 conf.confsave()
                 conf.logger.info('%s Updated.' % path)
+                count += 1
             else:
                 conf.logger.info('{} NOT updated. Reason: {}'.format(path, str(r.getcode())))
     import json
@@ -1276,9 +1278,12 @@ def update(conf, auto=False):
                     localfile.write(fdata)
                 conf.logger.info('%s Updated.' % path)
                 conf.version.set('Update', path.replace('./', '').replace('/', '-'), h)
+                count += 1
             except Exception as e:
                 conf.logger.error('update failed! %r\n%s' % (e, traceback.format_exc()))
-        conf.confsave()
+    if count:
+        conf.logger.info('Update Completed, %d file Updated.' % count)
+    conf.confsave()
     restart(conf)
 
 

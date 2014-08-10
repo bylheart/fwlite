@@ -217,6 +217,9 @@ class MainWindow(QtGui.QMainWindow):
             self.consoleText.append(text)
             self.ui.console.setPlainText(u'\n'.join(self.consoleText))
             self.ui.console.moveCursor(QtGui.QTextCursor.End)
+        if 'Update Completed' in text:
+            self.showMessage(u'已升级到最新版，重新载入中...')
+            self.reload()
 
     def showToggle(self):
         if self.isVisible():
