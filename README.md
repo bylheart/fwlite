@@ -39,7 +39,7 @@ FGFW-Lite是便携软件，[下载](https://github.com/v3aqb/fgfw-lite/archive/m
 
 windows系统：运行FGFW_Lite.exe
 
-Linux系统：运行fgfwlite-gtk.pyw
+Linux系统：运行fgfwlite-qt.pyw
 
 requirements under openSUSE:
 
