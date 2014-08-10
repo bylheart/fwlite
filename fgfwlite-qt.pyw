@@ -23,7 +23,7 @@ except ImportError:
 WORKINGDIR = os.path.dirname(os.path.abspath(__file__).replace('\\', '/'))
 os.chdir(WORKINGDIR)
 
-TRAY_ICON = '%s/fgfw-lite/ui/taskbar.ico' % WORKINGDIR
+TRAY_ICON = '%s/fgfw-lite/ui/icon.png' % WORKINGDIR
 PYTHON = '%s/Python27/python27.exe' % WORKINGDIR if sys.platform.startswith('win') else '/usr/bin/env python2.7'
 
 
