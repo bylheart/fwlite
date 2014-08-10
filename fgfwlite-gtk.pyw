@@ -50,7 +50,7 @@ Name=FGFW-Lite GTK
 Comment=FGFW-Lite GTK Launcher
 Categories=Network;Proxy;
 Exec=/usr/bin/env python "%s"
-Icon=%s/fgfw-lite/taskbar.ico
+Icon=%s/fgfw-lite/ui/taskbar.ico
 Terminal=false
 StartupNotify=true
 ''' % (filename, dirname)
