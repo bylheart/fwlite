@@ -9,6 +9,7 @@ import atexit
 import base64
 import json
 import urllib2
+import subprocess
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 from collections import deque
 from PySide import QtCore, QtGui
@@ -148,10 +149,7 @@ class MainWindow(QtGui.QMainWindow):
                  3: u'国内直连%d',
                  4: u'全局代理%d',
                  }
-            if p in d:
-                title = d[p] % (port + i)
-            else:
-                title = u'127.0.0.1:%d prifile%d' % ((port + i), p)
+            title = d[p] % (port + i) if p in d else (u'127.0.0.1:%d profile%d' % ((port + i), p))
             self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=lambda: setIEproxy(1, u'127.0.0.1:%d' % (port + i))))
         self.settingIEproxyMenu.addAction(self.setIENoneAction)
         if conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
@@ -205,8 +203,8 @@ class MainWindow(QtGui.QMainWindow):
         elif sys.platform.startswith('darwin'):
             cmd = 'open'
         else:
-            return self.showMessage('OS not supported')
-        os.system('%s %s' % (cmd, path))
+            return self.showMessage('OS not recognised')
+        subprocess.Popen('%s %s' % (cmd, path), shell=True)
         self.showMessage(u'新的设置将在重新载入后生效')
 
     def on_Quit(self):
