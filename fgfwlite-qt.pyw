@@ -211,13 +211,17 @@ class MainWindow(QtGui.QMainWindow):
         QtGui.qApp.quit()
 
     def update_text(self, text):
-        if text.strip():
-            self.consoleText.append(text)
-            self.ui.console.setPlainText(u'\n'.join(self.consoleText))
-            self.ui.console.moveCursor(QtGui.QTextCursor.End)
-        if 'Update Completed' in text:
-            self.showMessage(u'已升级到最新版，重新载入中...')
-            self.reload()
+        freload = False
+        lines = text.splitlines()
+        self.consoleText.extend(lines)
+        for line in lines:
+            if 'Update Completed' in line:
+                self.showMessage(u'已升级到最新版，重新载入中...')
+                freload = True
+        self.ui.console.setPlainText(u'\n'.join(self.consoleText))
+        self.ui.console.moveCursor(QtGui.QTextCursor.End)
+        if freload:
+            self.reload(clear=False)
 
     def showToggle(self):
         if self.isVisible():
@@ -228,9 +232,10 @@ class MainWindow(QtGui.QMainWindow):
                 self.showNormal()
             self.activateWindow()
 
-    def reload(self):
-        self.ui.console.clear()
-        self.consoleText = deque(maxlen=300)
+    def reload(self, clear=True):
+        if clear:
+            self.ui.console.clear()
+            self.consoleText = deque(maxlen=300)
         if sys.platform.startswith('win'):
             self.setIEProxyMenu()
         self.createProcess()
