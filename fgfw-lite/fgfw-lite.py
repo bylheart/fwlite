@@ -963,7 +963,7 @@ class autoproxy_rule(object):
                 regex = rule.replace('.', r'\.').replace('?', r'\?').replace('*', '.*').replace('^', r'[^\w%._-]')
                 regex = re.sub(r'^\|', r'^', regex)
                 regex = re.sub(r'\|$', r'$', regex)
-                if not rule.startswith('|'):
+                if not rule.startswith(('|', 'http://')):
                     regex = re.sub(r'^', r'^http://.*', regex)
                 return re.compile(regex)
 
