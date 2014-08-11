@@ -1440,39 +1440,6 @@ class goagentHandler(FGFWProxyHandler):
             shutil.rmtree('./goagent/certs')
 
 
-class snovaHandler(FGFWProxyHandler):
-    """docstring for ClassName"""
-    def config(self):
-        self.cmd = '%s/snova/bin/start.%s' % (WORKINGDIR, 'bat' if sys.platform.startswith('win') else 'sh')
-        self.cwd = '%s/snova' % WORKINGDIR
-        self.enable = self.conf.userconf.dgetbool('snova', 'enable', False)
-        self.enableupdate = False
-        if self.enable:
-            self._config()
-
-    def _config(self):
-        proxy = SConfigParser()
-        proxy.optionxform = str
-        proxy.read('./snova/conf/snova.conf')
-
-        proxy.set('GAE', 'Enable', '0')
-
-        worknodes = self.conf.userconf.dget('snova', 'C4worknodes')
-        if worknodes:
-            worknodes = worknodes.split('|')
-            for i, v in enumerate(worknodes):
-                proxy.set('C4', 'WorkerNode[%s]' % i, v)
-            proxy.set('C4', 'Enable', '1')
-            self.conf.addparentproxy('snova-c4', 'http://127.0.0.1:48102')
-        else:
-            proxy.set('C4', 'Enable', '0')
-
-        proxy.set('SPAC', 'Enable', '0')
-        proxy.set('Misc', 'RC4Key', self.conf.userconf.dget('snova', 'RC4Key', '8976501f8451f03c5c4067b47882f2e5'))
-        with open('./snova/conf/snova.conf', 'w') as configfile:
-            proxy.write(configfile)
-
-
 class Config(object):
     def __init__(self, logger=logging):
         self.logger = logger
@@ -1562,7 +1529,6 @@ def main():
     for k, v in conf.userconf.items('parents'):
         conf.addparentproxy(k, v)
     goagentHandler(conf)
-    snovaHandler(conf)
     updatedaemon = Thread(target=updater, args=([conf]))
     updatedaemon.daemon = True
     updatedaemon.start()
