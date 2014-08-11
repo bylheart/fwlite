@@ -1,17 +1,17 @@
 {
-    "./Python27/python27.zip": "9190966809d42f972a4b082ad201c25d046ad24abb9a134217f631c5f4127df1",
-    "./README.md": "7cb7c65c2a18c209e71983f2be91d2077080d0bcc3167b476d5d85ae967dc8fd",
+    "./Python27/python27.zip": "c1877ecc56033d6362e950535caf9613726deb6fc4c39feac17b1fa1e039177a",
+    "./README.md": "46d072f48bef7c025c734c21543a0d8589a1b84c6cab7e90ae960fa1c65ca831",
     "./fgfw-lite/cloud.txt": "b883022c3639afea57b7ebe6b55a4aa7fe9ce94de8630d1566b3aabbaa909a11",
     "./fgfw-lite/encrypt.py": "db90f5b7d085d8cb3fe4e66f353faa76ae6ff340b23ce70c50c7313c35772cc3",
-    "./fgfw-lite/fgfw-lite.py": "fc8202be173b31178384776d753e995fed257aaa3fbf559bd5038d0409cf69af",
-    "./fgfw-lite/ui_mainwindow.py": "f21ccb94a1bb94059dd6da8da9f36db68db4550d9b2baabe595c272503a101e4",
-    "./fgfw-lite/ui_remoteresolver.py": "ca054572f9a39883634a951b5e0339f318a68f629b7a24741fe7b99f449d95ce",
-    "./fgfw-lite/util.py": "969a1984f4485d4186a4652d2be14f720e99a465f40cb59b0bee4bb525232b88",
-    "./fgfwlite-qt.pyw": "1af612f9705afa76e393027d1b96d44a8fa585133cc2ec2691ad462fd709980b",
+    "./fgfw-lite/fgfw-lite.py": "f500a7e43e15055c0bd54f139efd079267646b6e565b39678a0aa2c48a9ed5bb",
+    "./fgfw-lite/ui_mainwindow.py": "bc647989c5421793ff565a7f614186019a89d4216942743ab5f774d34041b995",
+    "./fgfw-lite/ui_remoteresolver.py": "5b5f1cf9c969fed1314011489b508a2bc2565ac90ae076de3d08207b5993f683",
+    "./fgfw-lite/util.py": "65b6db22e5b20c8b91998d6fe662417ac362d35f40451dc803820234a84c2017",
+    "./fgfwlite-qt.pyw": "e0a890edfa82fea07f61a93d4983dcc0340b0de95bb7d326f15d89f8c80437bd",
     "./goagent/GeoIP.dat": "642680a7c98da514dfbd1b4921cf590fca9a913141843fd773e7330145579d3c",
     "./goagent/cacert.pem": "eb1288b800cb2fdf7c5d8d14fb79a5c00a8b05722c7f2a08763919ef6df11dc3",
     "./goagent/proxy.bat": "8e11cf1502be2cb253d595064aee55ff379a72268618941b47c9dbf0936bcf74",
     "./goagent/proxy.py": "807906e8afdcd8caac68a560cc0f388e8c69564b13d827e55ce752995b54b8d2",
     "./goagent/proxy.sample.ini": "2335573d8572c44e09ecb4a56d2c4f563ff4b3642c04ad3867cd413526f587eb",
-    "./userconf.sample.ini": "0922a7394920b675370fec93a62c0db3480ca78f1b263f933a9e6282cd8c8aea"
+    "./userconf.sample.ini": "60cf20e51c4d34f2e6d8928672fd5095653eebbddff45a11d5d47a80c8dd49b9"
 }
