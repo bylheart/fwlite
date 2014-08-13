@@ -342,8 +342,10 @@ class ProxyHandler(HTTPRequestHandler):
             else:
                 return self.redirect(new_url)
 
+        parse = urlparse.urlparse(self.path)
+
         if 'Host' not in self.headers:
-            self.headers['Host'] = urlparse.urlparse(self.path).netloc
+            self.headers['Host'] = parse.netloc
 
         self.requesthost = parse_hostport(self.headers['Host'], 80)
 
@@ -352,8 +354,8 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.write(200, 'Hello World !', 'text/html')
             if not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
-        self.shortpath = '%s%s' % (self.path.split('?')[0], '?' if len(self.path.split('?')) > 1 else '')
-        self.shortpath = '%s%s' % (':'.join(self.shortpath.split(':')[:2]), ':' if len(self.shortpath.split(':')) > 2 else '')
+
+        self.shortpath = '%s://%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0])
 
         if self.server.conf.xheaders:
             ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
