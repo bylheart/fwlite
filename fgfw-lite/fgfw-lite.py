@@ -794,6 +794,11 @@ class ProxyHandler(HTTPRequestHandler):
         if parse.path == '/api/localrule' and self.command == 'GET':
             data = json.dumps([(index, rule.rule, rule.expire) for index, rule in enumerate(self.server.conf.PARENT_PROXY.gfwlist_force)])
             return self.write(200, data, 'application/json')
+        elif parse.path == '/api/localrule' and self.command == 'POST':
+            'accept a json encoded tuple: (str rule, int exp)'
+            rule, exp = json.loads(body)
+            result = self.server.conf.PARENT_PROXY.add_temp(rule, exp)
+            return self.write(400 if result else 201, result, 'application/json')
         self.write(200, 'Hello World !', 'text/html')
 
 
@@ -1243,6 +1248,8 @@ class parent_proxy(object):
             self.logger.info('add autoproxy rule: %s%s' % (rule, (' expire in %.1f min' % exp) if exp else ''))
             self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * exp))
             self.temp_rules.add(rule)
+        else:
+            return 'already in there'
 
 
 def updater(conf):
