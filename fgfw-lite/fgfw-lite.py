@@ -1236,9 +1236,13 @@ class parent_proxy(object):
                     exp = min(direct_sr[1], 10)
                 else:
                     exp = 1
-                self.logger.info('add autoproxy rule: %s expire in %.1f min' % (rule, exp))
-                self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * exp))
-                self.temp_rules.add(rule)
+                self.add_temp(rule, exp)
+
+    def add_temp(self, rule, exp=None):
+        if rule not in self.temp_rules:
+            self.logger.info('add autoproxy rule: %s%s' % (rule, (' expire in %.1f min' % exp) if exp else ''))
+            self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * exp))
+            self.temp_rules.add(rule)
 
 
 def updater(conf):
