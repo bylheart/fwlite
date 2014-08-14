@@ -76,7 +76,7 @@ except ImportError:
         from StringIO import StringIO
     except ImportError:
         from io import BytesIO as StringIO
-from threading import Thread
+from threading import Thread, RLock
 from repoze.lru import lru_cache
 import encrypt
 from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt
@@ -179,37 +179,41 @@ class httpconn_pool(object):
     timerwheel = defaultdict(list)
     timerwheel_index_iter = itertools.cycle(range(10))
     timerwheel_index = timerwheel_index_iter.next()
+    lock = RLock()
 
     def __init__(self, logger=logging):
         self.logger = logger
 
     def put(self, upstream_name, soc, ppname):
-        self.POOL[upstream_name].append((soc, ppname))
-        self.timerwheel[self.timerwheel_index].append((upstream_name, (soc, ppname)))
+        with self.lock:
+            self.POOL[upstream_name].append((soc, ppname))
+            self.timerwheel[self.timerwheel_index].append((upstream_name, (soc, ppname)))
 
     def get(self, upstream_name):
         lst = self.POOL.get(upstream_name)
-        while lst:
-            sock, pproxy = lst.popleft()
-            if not is_connection_dropped(sock):
-                return (sock, pproxy)
-            sock.close()
+        with self.lock:
+            while lst:
+                sock, pproxy = lst.popleft()
+                if not is_connection_dropped(sock):
+                    return (sock, pproxy)
+                sock.close()
 
     def purge(self):
         pcount = count = 0
-        for k, v in self.POOL.items():
-            count += len(v)
-            for i in [pair for pair in v if pair[0] in select.select([item[0] for item in v], [], [], 0.0)[0]]:
-                i[0].close()
-                v.remove(i)
-                pcount += 1
-        self.timerwheel_index = self.timerwheel_index_iter.next()
-        for upsname, soc in self.timerwheel[self.timerwheel_index]:
-            if soc in self.POOL[upsname]:
-                soc[0].close()
-                self.POOL[upsname].remove(soc)
-                pcount += 1
-        self.timerwheel[self.timerwheel_index] = []
+        with self.lock:
+            for k, v in self.POOL.items():
+                count += len(v)
+                for i in [pair for pair in v if pair[0] in select.select([item[0] for item in v], [], [], 0.0)[0]]:
+                    i[0].close()
+                    v.remove(i)
+                    pcount += 1
+            self.timerwheel_index = self.timerwheel_index_iter.next()
+            for upsname, soc in self.timerwheel[self.timerwheel_index]:
+                if soc in self.POOL[upsname]:
+                    soc[0].close()
+                    self.POOL[upsname].remove(soc)
+                    pcount += 1
+            self.timerwheel[self.timerwheel_index] = []
         count -= pcount
         if pcount:
             self.logger.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
