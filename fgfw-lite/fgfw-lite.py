@@ -58,6 +58,7 @@ import email
 import atexit
 import base64
 import itertools
+import json
 import ftplib
 import logging
 import random
@@ -355,7 +356,7 @@ class ProxyHandler(HTTPRequestHandler):
 
         if self._request_is_localhost(self.requesthost):
             if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.server.conf.listen[1], self.server.conf.listen[1] + 1, self.server.conf.listen[1] + 2):
-                return self.write(200, 'Hello World !', 'text/html')
+                return self.api(parse)
             if not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
 
@@ -773,6 +774,27 @@ class ProxyHandler(HTTPRequestHandler):
                    table,
                    "<hr>\n</body>\n</html>\n"]
             self.write(200, ''.join(msg), 'text/html')
+
+    def api(self, parse):
+        '''
+        path: supported command
+        /api/localrule: GET POST DELETE
+        '''
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length > 102400:
+            return
+        body = StringIO()
+        while content_length:
+            data = self.rfile.read(min(self.bufsize, content_length))
+            if not data:
+                return
+            content_length -= len(data)
+            body.write(data)
+        body = body.getvalue()
+        if parse.path == '/api/localrule' and self.command == 'GET':
+            data = json.dumps([(index, rule.rule, rule.expire) for index, rule in enumerate(self.server.conf.PARENT_PROXY.gfwlist_force)])
+            return self.write(200, data, 'application/json')
+        self.write(200, 'Hello World !', 'text/html')
 
 
 class sssocket(object):
@@ -1260,7 +1282,6 @@ def update(conf, auto=False):
                 count += 1
             else:
                 conf.logger.info('{} NOT updated. Reason: {}'.format(path, str(r.getcode())))
-    import json
     branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
     try:
         r = json.loads(urllib2.urlopen('https://github.com/v3aqb/fgfw-lite/raw/%s/fgfw-lite/update.json' % branch).read())
