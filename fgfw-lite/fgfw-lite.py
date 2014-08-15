@@ -799,6 +799,26 @@ class ProxyHandler(HTTPRequestHandler):
             rule, exp = json.loads(body)
             result = self.server.conf.PARENT_PROXY.add_temp(rule, exp)
             return self.write(400 if result else 201, result, 'application/json')
+        elif parse.path.startswith('/api/localrule/') and self.command == 'DELETE':
+            try:
+                result = self.server.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[15:]))
+                return self.write(200, json.dumps([int(parse.path[15:]), result.rule, result.expire]), 'application/json')
+            except Exception as e:
+                return self.send_error(404, repr(e))
+        elif parse.path == '/api/redirector' and self.command == 'GET':
+            data = json.dumps([(index, rule[0].rule, rule[1]) for index, rule in enumerate(self.server.conf.PARENT_PROXY.redirlst)])
+            return self.write(200, data, 'application/json')
+        elif parse.path == '/api/redirector' and self.command == 'POST':
+            'accept a json encoded tuple: (str rule, str dest)'
+            rule, dest = json.loads(body)
+            self.server.conf.PARENT_PROXY.add_rule('%s %s' % (rule, dest))
+            return self.write(200, data, 'application/json')
+        elif parse.path.startswith('/api/redirector/') and self.command == 'DELETE':
+            try:
+                rule, dest = self.server.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[16:]))
+                return self.write(200, json.dumps([int(parse.path[16:]), rule.rule, dest]), 'application/json')
+            except Exception as e:
+                return self.send_error(404, repr(e))
         self.write(200, 'Hello World !', 'text/html')
 
 
