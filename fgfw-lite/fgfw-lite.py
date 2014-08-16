@@ -801,6 +801,9 @@ class ProxyHandler(HTTPRequestHandler):
             return self.write(400 if result else 201, result, 'application/json')
         elif parse.path.startswith('/api/localrule/') and self.command == 'DELETE':
             try:
+                rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
+                if rule:
+                    assert rule == self.server.conf.PARENT_PROXY.gfwlist_force[int(parse.path[15:])].rule
                 result = self.server.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[15:]))
                 return self.write(200, json.dumps([int(parse.path[15:]), result.rule, result.expire]), 'application/json')
             except Exception as e:
