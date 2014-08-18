@@ -7,14 +7,18 @@ import shutil
 import threading
 import atexit
 import base64
+import httplib
 import json
 import urllib2
+import time
 import subprocess
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 from collections import deque
 from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
 from ui_remoteresolver import Ui_remote_resolver
+from ui_localrules import Ui_LocalRules
+from ui_localrule import Ui_LocalRule
 from util import SConfigParser
 try:
     import pynotify
@@ -70,6 +74,16 @@ class MainWindow(QtGui.QMainWindow):
         if not os.path.isfile('./userconf.ini'):
             shutil.copyfile('./userconf.sample.ini', './userconf.ini')
         self.runner = QtCore.QProcess(self)
+
+        self.conf = SConfigParser()
+        self.conf.read('userconf.ini')
+        listen = self.conf.dget('fgfwproxy', 'listen', '8118')
+        self.port = int(listen) if listen.isdigit() else int(listen.split(':')[1])
+
+        self.LocalRules = LocalRules(self)
+        self.ui.tabWidget.addTab(self.LocalRules, "")
+        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.LocalRules), QtGui.QApplication.translate("MainWindow", "LocalRules", None, QtGui.QApplication.UnicodeUTF8))
+
         self.trayIcon = None
         self.createActions()
         self.createTrayIcon()
@@ -137,23 +151,18 @@ class MainWindow(QtGui.QMainWindow):
     def setIEProxyMenu(self):
         self.settingIEproxyMenu.clear()
 
-        conf = SConfigParser()
-        conf.read('userconf.ini')
-        listen = conf.dget('fgfwproxy', 'listen', '8118')
-        port = int(listen) if listen.isdigit() else int(listen.split(':')[1])
-
-        profile = [int(x) for x in conf.dget('fgfwproxy', 'profile', '134')]
+        profile = [int(x) for x in self.conf.dget('fgfwproxy', 'profile', '134')]
         for i, p in enumerate(profile):
             d = {1: u'智能代理%d',
                  2: u'全局加密%d',
                  3: u'国内直连%d',
                  4: u'全局代理%d',
                  }
-            title = d[p] % (port + i) if p in d else (u'127.0.0.1:%d profile%d' % ((port + i), p))
-            self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=lambda: setIEproxy(1, u'127.0.0.1:%d' % (port + i))))
+            title = d[p] % (self.port + i) if p in d else (u'127.0.0.1:%d profile%d' % ((self.port + i), p))
+            self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=lambda: setIEproxy(1, u'127.0.0.1:%d' % (self.port + i))))
         self.settingIEproxyMenu.addAction(self.setIENoneAction)
-        if conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
-            setIEproxy(1, u'127.0.0.1:%d' % port)
+        if self.conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
+            setIEproxy(1, u'127.0.0.1:%d' % self.port)
 
     def flushDNS(self):
         if sys.platform.startswith('win'):
@@ -239,6 +248,84 @@ class MainWindow(QtGui.QMainWindow):
         if sys.platform.startswith('win'):
             self.setIEProxyMenu()
         self.createProcess()
+
+
+class LocalRules(QtGui.QWidget):
+    ref = QtCore.Signal()
+
+    def __init__(self, parent=None):
+        super(LocalRules, self).__init__(parent)
+        self.ui = Ui_LocalRules()
+        self.ui.setupUi(self)
+        self.ui.AddLocalRuleButton.clicked.connect(self.addLocalRule)
+        self.ui.RefreshButton.clicked.connect(self.refresh)
+        self.ref.connect(self.refresh)
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.refresh)
+        self.timer.start(1000)
+        self.port = parent.port
+        self.list = []
+
+    def refresh(self):
+        if self.ui.LocalRulesLayout.count():
+            try:
+                layout = self.ui.LocalRulesLayout.takeAt(0)
+                self.clearLayout(layout)
+                layout.deleteLater()
+            except:
+                pass
+        layout = QtGui.QVBoxLayout()
+        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port).read())
+        for rid, rule, exp in data:
+            w = LocalRule(rid, rule, exp, self.port, self.ref)
+            layout.addWidget(w)
+        layout.addItem(QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
+        self.ui.LocalRulesLayout.insertLayout(0, layout)
+        if not self.timer.isActive():
+            self.timer.start(1000)
+
+    def clearLayout(self, layout):
+        if layout is not None:
+            try:
+                while layout.count():
+                    item = layout.takeAt(0)
+                    widget = item.widget()
+                    if widget is not None:
+                        widget.deleteLater()
+                    else:
+                        self.clearLayout(item.layout())
+            except:
+                pass
+
+    def addLocalRule(self):
+        exp = int(self.ui.ExpireEdit.text()) if self.ui.ExpireEdit.text().isdigit() and int(self.ui.ExpireEdit.text()) > 0 else None
+        data = json.dumps((self.ui.LocalRuleEdit.text(), exp))
+        urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, data)
+        self.refresh()
+
+
+class LocalRule(QtGui.QWidget):
+    def __init__(self, rid, rule, exp, port, ref, parent=None):
+        super(LocalRule, self).__init__(parent)
+        self.ui = Ui_LocalRule()
+        self.ui.setupUi(self)
+        self.ui.delButton.clicked.connect(self.delrule)
+        self.port = port
+        self.rule = rule
+        self.rid = rid
+        self.exp = exp
+        self.ref = ref
+        exp = exp - time.time() if exp else None
+        text = '%s%s' % (self.rule, (' expire %.1fs' % exp if exp else ''))
+        self.ui.lineEdit.setText(text)
+
+    def delrule(self):
+        conn = httplib.HTTPConnection('127.0.0.1', self.port)
+        conn.request('DELETE', '/api/localrule/%d?rule=%s' % (self.rid, self.rule))
+        resp = conn.getresponse()
+        content = resp.read()
+        print(content)
+        self.ref.emit()
 
 
 class RemoteResolve(QtGui.QWidget):

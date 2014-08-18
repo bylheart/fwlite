@@ -58,6 +58,7 @@ import email
 import atexit
 import base64
 import itertools
+import json
 import ftplib
 import logging
 import random
@@ -355,7 +356,7 @@ class ProxyHandler(HTTPRequestHandler):
 
         if self._request_is_localhost(self.requesthost):
             if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.server.conf.listen[1], self.server.conf.listen[1] + 1, self.server.conf.listen[1] + 2):
-                return self.write(200, 'Hello World !', 'text/html')
+                return self.api(parse)
             if not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
 
@@ -773,6 +774,55 @@ class ProxyHandler(HTTPRequestHandler):
                    table,
                    "<hr>\n</body>\n</html>\n"]
             self.write(200, ''.join(msg), 'text/html')
+
+    def api(self, parse):
+        '''
+        path: supported command
+        /api/localrule: GET POST DELETE
+        '''
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length > 102400:
+            return
+        body = StringIO()
+        while content_length:
+            data = self.rfile.read(min(self.bufsize, content_length))
+            if not data:
+                return
+            content_length -= len(data)
+            body.write(data)
+        body = body.getvalue()
+        if parse.path == '/api/localrule' and self.command == 'GET':
+            data = json.dumps([(index, rule.rule, rule.expire) for index, rule in enumerate(self.server.conf.PARENT_PROXY.gfwlist_force)])
+            return self.write(200, data, 'application/json')
+        elif parse.path == '/api/localrule' and self.command == 'POST':
+            'accept a json encoded tuple: (str rule, int exp)'
+            rule, exp = json.loads(body)
+            result = self.server.conf.PARENT_PROXY.add_temp(rule, exp)
+            return self.write(400 if result else 201, result, 'application/json')
+        elif parse.path.startswith('/api/localrule/') and self.command == 'DELETE':
+            try:
+                rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
+                if rule:
+                    assert rule == self.server.conf.PARENT_PROXY.gfwlist_force[int(parse.path[15:])].rule
+                result = self.server.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[15:]))
+                return self.write(200, json.dumps([int(parse.path[15:]), result.rule, result.expire]), 'application/json')
+            except Exception as e:
+                return self.send_error(404, repr(e))
+        elif parse.path == '/api/redirector' and self.command == 'GET':
+            data = json.dumps([(index, rule[0].rule, rule[1]) for index, rule in enumerate(self.server.conf.PARENT_PROXY.redirlst)])
+            return self.write(200, data, 'application/json')
+        elif parse.path == '/api/redirector' and self.command == 'POST':
+            'accept a json encoded tuple: (str rule, str dest)'
+            rule, dest = json.loads(body)
+            self.server.conf.PARENT_PROXY.add_rule('%s %s' % (rule, dest))
+            return self.write(200, data, 'application/json')
+        elif parse.path.startswith('/api/redirector/') and self.command == 'DELETE':
+            try:
+                rule, dest = self.server.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[16:]))
+                return self.write(200, json.dumps([int(parse.path[16:]), rule.rule, dest]), 'application/json')
+            except Exception as e:
+                return self.send_error(404, repr(e))
+        self.write(200, 'Hello World !', 'text/html')
 
 
 class sssocket(object):
@@ -1214,9 +1264,15 @@ class parent_proxy(object):
                     exp = min(direct_sr[1], 10)
                 else:
                     exp = 1
-                self.logger.info('add autoproxy rule: %s expire in %.1f min' % (rule, exp))
-                self.gfwlist_force.append(autoproxy_rule(rule, expire=time.time() + 60 * exp))
-                self.temp_rules.add(rule)
+                self.add_temp(rule, exp)
+
+    def add_temp(self, rule, exp=None):
+        if rule not in self.temp_rules:
+            self.logger.info('add autoproxy rule: %s%s' % (rule, (' expire in %.1f min' % exp) if exp else ''))
+            self.gfwlist_force.append(autoproxy_rule(rule, expire=None if not exp else (time.time() + 60 * exp)))
+            self.temp_rules.add(rule)
+        else:
+            return 'already in there'
 
 
 def updater(conf):
@@ -1260,7 +1316,6 @@ def update(conf, auto=False):
                 count += 1
             else:
                 conf.logger.info('{} NOT updated. Reason: {}'.format(path, str(r.getcode())))
-    import json
     branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
     try:
         r = json.loads(urllib2.urlopen('https://github.com/v3aqb/fgfw-lite/raw/%s/fgfw-lite/update.json' % branch).read())
