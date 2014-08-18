@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\localrules.ui'
 #
-# Created: Mon Aug 18 12:11:07 2014
+# Created: Mon Aug 18 13:24:49 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -17,7 +17,12 @@ class Ui_LocalRules(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.LocalRulesLayout = QtGui.QVBoxLayout()
         self.LocalRulesLayout.setObjectName("LocalRulesLayout")
+        spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        self.LocalRulesLayout.addItem(spacerItem)
         self.verticalLayout.addLayout(self.LocalRulesLayout)
+        self.RefreshButton = QtGui.QPushButton(LocalRules)
+        self.RefreshButton.setObjectName("RefreshButton")
+        self.verticalLayout.addWidget(self.RefreshButton)
         self.horizontalLayout = QtGui.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.label = QtGui.QLabel(LocalRules)
@@ -47,6 +52,7 @@ class Ui_LocalRules(object):
 
     def retranslateUi(self, LocalRules):
         LocalRules.setWindowTitle(QtGui.QApplication.translate("LocalRules", "Form", None, QtGui.QApplication.UnicodeUTF8))
+        self.RefreshButton.setText(QtGui.QApplication.translate("LocalRules", "刷新", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("LocalRules", "添加规则", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("LocalRules", "有效期", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("LocalRules", "分钟", None, QtGui.QApplication.UnicodeUTF8))

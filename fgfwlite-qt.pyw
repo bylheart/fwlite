@@ -7,8 +7,10 @@ import shutil
 import threading
 import atexit
 import base64
+import httplib
 import json
 import urllib2
+import time
 import subprocess
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 from collections import deque
@@ -16,6 +18,7 @@ from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
 from ui_remoteresolver import Ui_remote_resolver
 from ui_localrules import Ui_LocalRules
+from ui_localrule import Ui_LocalRule
 from util import SConfigParser
 try:
     import pynotify
@@ -253,12 +256,66 @@ class LocalRules(QtGui.QWidget):
         self.ui = Ui_LocalRules()
         self.ui.setupUi(self)
         self.ui.AddLocalRuleButton.clicked.connect(self.addLocalRule)
+        self.ui.RefreshButton.clicked.connect(self.refresh)
         self.port = parent.port
+        self.list = []
+
+    def refresh(self):
+        if self.ui.LocalRulesLayout.count():
+            try:
+                layout = self.ui.LocalRulesLayout.takeAt(0)
+                self.clearLayout(layout)
+                layout.deleteLater()
+            except:
+                pass
+        layout = QtGui.QVBoxLayout()
+        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port).read())
+        for rid, rule, exp in data:
+            w = LocalRule(rid, rule, exp, self.port)
+            layout.addWidget(w)
+        layout.addItem(QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
+        self.ui.LocalRulesLayout.insertLayout(0, layout)
+
+    def clearLayout(self, layout):
+        if layout is not None:
+            try:
+                while layout.count():
+                    item = layout.takeAt(0)
+                    widget = item.widget()
+                    if widget is not None:
+                        widget.deleteLater()
+                    else:
+                        self.clearLayout(item.layout())
+            except:
+                pass
 
     def addLocalRule(self):
         exp = int(self.ui.ExpireEdit.text()) if self.ui.ExpireEdit.text().isdigit() and int(self.ui.ExpireEdit.text()) > 0 else None
         data = json.dumps((self.ui.LocalRuleEdit.text(), exp))
         urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, data)
+
+
+class LocalRule(QtGui.QWidget):
+    def __init__(self, rid, rule, exp, port, parent=None):
+        super(LocalRule, self).__init__(parent)
+        self.ui = Ui_LocalRule()
+        self.ui.setupUi(self)
+        self.ui.delButton.clicked.connect(self.delrule)
+        self.port = port
+        self.rule = rule
+        self.rid = rid
+        self.exp = exp
+        exp = exp - time.time() if exp else None
+        text = '%s%s' % (self.rule, (' expire %.1f' % exp if exp else ''))
+        self.ui.lineEdit.setText(text)
+
+    def delrule(self):
+        conn = httplib.HTTPConnection('127.0.0.1', self.port)
+        conn.request('DELETE', '/api/localrule/%d?rule=%s' % (self.rid, self.rule))
+        resp = conn.getresponse()
+        content = resp.read()
+        print(content)
+        self.deleteLater()
 
 
 class RemoteResolve(QtGui.QWidget):
