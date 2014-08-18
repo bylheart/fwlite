@@ -70,6 +70,12 @@ class MainWindow(QtGui.QMainWindow):
         if not os.path.isfile('./userconf.ini'):
             shutil.copyfile('./userconf.sample.ini', './userconf.ini')
         self.runner = QtCore.QProcess(self)
+
+        self.conf = SConfigParser()
+        self.conf.read('userconf.ini')
+        listen = self.conf.dget('fgfwproxy', 'listen', '8118')
+        self.port = int(listen) if listen.isdigit() else int(listen.split(':')[1])
+
         self.trayIcon = None
         self.createActions()
         self.createTrayIcon()
@@ -137,23 +143,18 @@ class MainWindow(QtGui.QMainWindow):
     def setIEProxyMenu(self):
         self.settingIEproxyMenu.clear()
 
-        conf = SConfigParser()
-        conf.read('userconf.ini')
-        listen = conf.dget('fgfwproxy', 'listen', '8118')
-        port = int(listen) if listen.isdigit() else int(listen.split(':')[1])
-
-        profile = [int(x) for x in conf.dget('fgfwproxy', 'profile', '134')]
+        profile = [int(x) for x in self.conf.dget('fgfwproxy', 'profile', '134')]
         for i, p in enumerate(profile):
             d = {1: u'智能代理%d',
                  2: u'全局加密%d',
                  3: u'国内直连%d',
                  4: u'全局代理%d',
                  }
-            title = d[p] % (port + i) if p in d else (u'127.0.0.1:%d profile%d' % ((port + i), p))
-            self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=lambda: setIEproxy(1, u'127.0.0.1:%d' % (port + i))))
+            title = d[p] % (self.port + i) if p in d else (u'127.0.0.1:%d profile%d' % ((self.port + i), p))
+            self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=lambda: setIEproxy(1, u'127.0.0.1:%d' % (self.port + i))))
         self.settingIEproxyMenu.addAction(self.setIENoneAction)
-        if conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
-            setIEproxy(1, u'127.0.0.1:%d' % port)
+        if self.conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
+            setIEproxy(1, u'127.0.0.1:%d' % self.port)
 
     def flushDNS(self):
         if sys.platform.startswith('win'):
