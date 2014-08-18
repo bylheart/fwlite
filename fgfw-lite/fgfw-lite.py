@@ -820,8 +820,8 @@ class ProxyHandler(HTTPRequestHandler):
             try:
                 rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
                 if rule:
-                    assert base64.urlsafe_b64decode(rule) == self.server.conf.PARENT_PROXY.gfwlist_force[int(parse.path[16:])].rule
-                rule, dest = self.server.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[16:]))
+                    assert base64.urlsafe_b64decode(rule) == self.server.conf.PARENT_PROXY.redirlst[int(parse.path[16:])][0].rule
+                rule, dest = self.server.conf.PARENT_PROXY.redirlst.pop(int(parse.path[16:]))
                 return self.write(200, json.dumps([int(parse.path[16:]), rule.rule, dest]), 'application/json')
             except Exception as e:
                 return self.send_error(404, repr(e))

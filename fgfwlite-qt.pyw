@@ -19,6 +19,7 @@ from ui_mainwindow import Ui_MainWindow
 from ui_remoteresolver import Ui_remote_resolver
 from ui_localrules import Ui_LocalRules
 from ui_localrule import Ui_LocalRule
+from ui_redirectorrules import Ui_RedirectorRules
 from util import SConfigParser
 try:
     import pynotify
@@ -83,6 +84,10 @@ class MainWindow(QtGui.QMainWindow):
         self.LocalRules = LocalRules(self)
         self.ui.tabWidget.addTab(self.LocalRules, "")
         self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.LocalRules), QtGui.QApplication.translate("MainWindow", "LocalRules", None, QtGui.QApplication.UnicodeUTF8))
+
+        self.RedirRules = RedirectorRules(self)
+        self.ui.tabWidget.addTab(self.RedirRules, "")
+        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.RedirRules), QtGui.QApplication.translate("MainWindow", "RedirectorRules", None, QtGui.QApplication.UnicodeUTF8))
 
         self.trayIcon = None
         self.createActions()
@@ -321,6 +326,80 @@ class LocalRule(QtGui.QWidget):
     def delrule(self):
         conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
         conn.request('DELETE', '/api/localrule/%d?rule=%s' % (self.rid, base64.urlsafe_b64encode(self.rule)))
+        resp = conn.getresponse()
+        content = resp.read()
+        print(content)
+        self.ref.emit()
+
+
+class RedirectorRules(QtGui.QWidget):
+    ref = QtCore.Signal()
+
+    def __init__(self, parent=None):
+        super(RedirectorRules, self).__init__(parent)
+        self.ui = Ui_RedirectorRules()
+        self.ui.setupUi(self)
+        self.ui.AddRedirectorRuleButton.clicked.connect(self.addRedirRule)
+        self.ref.connect(self.refresh)
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.refresh)
+        self.timer.start(1000)
+        self.port = parent.port
+        self.list = []
+
+    def refresh(self):
+        if self.ui.RedirectorRulesLayout.count():
+            try:
+                layout = self.ui.RedirectorRulesLayout.takeAt(0)
+                self.clearLayout(layout)
+                layout.deleteLater()
+            except:
+                pass
+        layout = QtGui.QVBoxLayout()
+        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, timeout=1).read())
+        for rid, rule, exp in data:
+            w = RedirRule(rid, rule, exp, self.port, self.ref)
+            layout.addWidget(w)
+        layout.addItem(QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
+        self.ui.RedirectorRulesLayout.insertLayout(0, layout)
+        if not self.timer.isActive():
+            self.timer.start(1000)
+
+    def clearLayout(self, layout):
+        if layout is not None:
+            try:
+                while layout.count():
+                    item = layout.takeAt(0)
+                    widget = item.widget()
+                    if widget is not None:
+                        widget.deleteLater()
+                    else:
+                        self.clearLayout(item.layout())
+            except:
+                pass
+
+    def addRedirRule(self):
+        data = json.dumps((self.ui.RuleEdit.text(), self.ui.DestEdit.text()))
+        urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, data, timeout=1)
+        self.refresh()
+
+
+class RedirRule(QtGui.QWidget):
+    def __init__(self, rid, rule, dest, port, ref, parent=None):
+        super(RedirRule, self).__init__(parent)
+        self.ui = Ui_LocalRule()
+        self.ui.setupUi(self)
+        self.ui.delButton.clicked.connect(self.delrule)
+        self.port = port
+        self.rule = rule
+        self.rid = rid
+        self.ref = ref
+        text = '%s %s' % (self.rule, dest)
+        self.ui.lineEdit.setText(text)
+
+    def delrule(self):
+        conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
+        conn.request('DELETE', '/api/redirector/%d?rule=%s' % (self.rid, base64.urlsafe_b64encode(self.rule)))
         resp = conn.getresponse()
         content = resp.read()
         print(content)
