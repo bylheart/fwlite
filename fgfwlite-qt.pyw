@@ -258,7 +258,6 @@ class LocalRules(QtGui.QWidget):
         self.ui = Ui_LocalRules()
         self.ui.setupUi(self)
         self.ui.AddLocalRuleButton.clicked.connect(self.addLocalRule)
-        self.ui.RefreshButton.clicked.connect(self.refresh)
         self.ref.connect(self.refresh)
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.refresh)

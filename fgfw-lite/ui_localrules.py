@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\localrules.ui'
 #
-# Created: Mon Aug 18 22:37:35 2014
+# Created: Mon Aug 18 22:41:12 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -19,7 +19,7 @@ class Ui_LocalRules(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtGui.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 380, 220))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 380, 249))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_2 = QtGui.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
@@ -35,9 +35,6 @@ class Ui_LocalRules(object):
         self.verticalLayout_2.addWidget(self.widget)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.verticalLayout.addWidget(self.scrollArea)
-        self.RefreshButton = QtGui.QPushButton(LocalRules)
-        self.RefreshButton.setObjectName("RefreshButton")
-        self.verticalLayout.addWidget(self.RefreshButton)
         self.horizontalLayout = QtGui.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.label = QtGui.QLabel(LocalRules)
@@ -66,7 +63,6 @@ class Ui_LocalRules(object):
 
     def retranslateUi(self, LocalRules):
         LocalRules.setWindowTitle(QtGui.QApplication.translate("LocalRules", "Form", None, QtGui.QApplication.UnicodeUTF8))
-        self.RefreshButton.setText(QtGui.QApplication.translate("LocalRules", "刷新", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("LocalRules", "添加规则", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("LocalRules", "有效期", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("LocalRules", "分钟", None, QtGui.QApplication.UnicodeUTF8))
