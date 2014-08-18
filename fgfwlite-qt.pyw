@@ -320,7 +320,7 @@ class LocalRule(QtGui.QWidget):
 
     def delrule(self):
         conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
-        conn.request('DELETE', '/api/localrule/%d?rule=%s' % (self.rid, self.rule))
+        conn.request('DELETE', '/api/localrule/%d?rule=%s' % (self.rid, base64.urlsafe_b64encode(self.rule)))
         resp = conn.getresponse()
         content = resp.read()
         print(content)
@@ -343,7 +343,7 @@ class RemoteResolve(QtGui.QWidget):
 
     def _do_resolve(self, host, server):
         try:
-            result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.b64encode(host).strip('='), server), timeout=1).read())
+            result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host).strip('='), server), timeout=1).read())
         except Exception as e:
             result = [repr(e)]
         self.trigger.emit('\n'.join(result))

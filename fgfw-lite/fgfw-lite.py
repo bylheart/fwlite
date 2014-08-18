@@ -803,7 +803,7 @@ class ProxyHandler(HTTPRequestHandler):
             try:
                 rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
                 if rule:
-                    assert rule == self.server.conf.PARENT_PROXY.gfwlist_force[int(parse.path[15:])].rule
+                    assert base64.urlsafe_b64decode(rule) == self.server.conf.PARENT_PROXY.gfwlist_force[int(parse.path[15:])].rule
                 result = self.server.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[15:]))
                 return self.write(200, json.dumps([int(parse.path[15:]), result.rule, result.expire]), 'application/json')
             except Exception as e:
@@ -818,6 +818,9 @@ class ProxyHandler(HTTPRequestHandler):
             return self.write(200, data, 'application/json')
         elif parse.path.startswith('/api/redirector/') and self.command == 'DELETE':
             try:
+                rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
+                if rule:
+                    assert base64.urlsafe_b64decode(rule) == self.server.conf.PARENT_PROXY.gfwlist_force[int(parse.path[16:])].rule
                 rule, dest = self.server.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[16:]))
                 return self.write(200, json.dumps([int(parse.path[16:]), rule.rule, dest]), 'application/json')
             except Exception as e:
