@@ -274,7 +274,7 @@ class LocalRules(QtGui.QWidget):
             except:
                 pass
         layout = QtGui.QVBoxLayout()
-        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port).read())
+        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=1).read())
         for rid, rule, exp in data:
             w = LocalRule(rid, rule, exp, self.port, self.ref)
             layout.addWidget(w)
@@ -299,7 +299,7 @@ class LocalRules(QtGui.QWidget):
     def addLocalRule(self):
         exp = int(self.ui.ExpireEdit.text()) if self.ui.ExpireEdit.text().isdigit() and int(self.ui.ExpireEdit.text()) > 0 else None
         data = json.dumps((self.ui.LocalRuleEdit.text(), exp))
-        urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, data)
+        urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, data, timeout=1)
         self.refresh()
 
 
@@ -319,7 +319,7 @@ class LocalRule(QtGui.QWidget):
         self.ui.lineEdit.setText(text)
 
     def delrule(self):
-        conn = httplib.HTTPConnection('127.0.0.1', self.port)
+        conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
         conn.request('DELETE', '/api/localrule/%d?rule=%s' % (self.rid, self.rule))
         resp = conn.getresponse()
         content = resp.read()
@@ -343,7 +343,7 @@ class RemoteResolve(QtGui.QWidget):
 
     def _do_resolve(self, host, server):
         try:
-            result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.b64encode(host).strip('='), server)).read())
+            result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.b64encode(host).strip('='), server), timeout=1).read())
         except Exception as e:
             result = [repr(e)]
         self.trigger.emit('\n'.join(result))
