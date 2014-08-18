@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\localrules.ui'
 #
-# Created: Mon Aug 18 15:53:30 2014
+# Created: Mon Aug 18 22:37:35 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -26,6 +26,7 @@ class Ui_LocalRules(object):
         self.widget = QtGui.QWidget(self.scrollAreaWidgetContents)
         self.widget.setObjectName("widget")
         self.verticalLayout_3 = QtGui.QVBoxLayout(self.widget)
+        self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.LocalRulesLayout = QtGui.QVBoxLayout()
