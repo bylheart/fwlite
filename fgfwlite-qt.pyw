@@ -251,12 +251,18 @@ class MainWindow(QtGui.QMainWindow):
 
 
 class LocalRules(QtGui.QWidget):
+    ref = QtCore.Signal()
+
     def __init__(self, parent=None):
         super(LocalRules, self).__init__(parent)
         self.ui = Ui_LocalRules()
         self.ui.setupUi(self)
         self.ui.AddLocalRuleButton.clicked.connect(self.addLocalRule)
         self.ui.RefreshButton.clicked.connect(self.refresh)
+        self.ref.connect(self.refresh)
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.refresh)
+        self.timer.start(1000)
         self.port = parent.port
         self.list = []
 
@@ -271,10 +277,12 @@ class LocalRules(QtGui.QWidget):
         layout = QtGui.QVBoxLayout()
         data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port).read())
         for rid, rule, exp in data:
-            w = LocalRule(rid, rule, exp, self.port)
+            w = LocalRule(rid, rule, exp, self.port, self.ref)
             layout.addWidget(w)
         layout.addItem(QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
         self.ui.LocalRulesLayout.insertLayout(0, layout)
+        if not self.timer.isActive():
+            self.timer.start(1000)
 
     def clearLayout(self, layout):
         if layout is not None:
@@ -293,10 +301,11 @@ class LocalRules(QtGui.QWidget):
         exp = int(self.ui.ExpireEdit.text()) if self.ui.ExpireEdit.text().isdigit() and int(self.ui.ExpireEdit.text()) > 0 else None
         data = json.dumps((self.ui.LocalRuleEdit.text(), exp))
         urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, data)
+        self.refresh()
 
 
 class LocalRule(QtGui.QWidget):
-    def __init__(self, rid, rule, exp, port, parent=None):
+    def __init__(self, rid, rule, exp, port, ref, parent=None):
         super(LocalRule, self).__init__(parent)
         self.ui = Ui_LocalRule()
         self.ui.setupUi(self)
@@ -305,8 +314,9 @@ class LocalRule(QtGui.QWidget):
         self.rule = rule
         self.rid = rid
         self.exp = exp
+        self.ref = ref
         exp = exp - time.time() if exp else None
-        text = '%s%s' % (self.rule, (' expire %.1f' % exp if exp else ''))
+        text = '%s%s' % (self.rule, (' expire %.1fs' % exp if exp else ''))
         self.ui.lineEdit.setText(text)
 
     def delrule(self):
@@ -315,7 +325,7 @@ class LocalRule(QtGui.QWidget):
         resp = conn.getresponse()
         content = resp.read()
         print(content)
-        self.deleteLater()
+        self.ref.emit()
 
 
 class RemoteResolve(QtGui.QWidget):

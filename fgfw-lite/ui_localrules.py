@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\localrules.ui'
 #
-# Created: Mon Aug 18 13:24:49 2014
+# Created: Mon Aug 18 15:53:30 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -15,11 +15,25 @@ class Ui_LocalRules(object):
         LocalRules.resize(400, 300)
         self.verticalLayout = QtGui.QVBoxLayout(LocalRules)
         self.verticalLayout.setObjectName("verticalLayout")
+        self.scrollArea = QtGui.QScrollArea(LocalRules)
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setObjectName("scrollArea")
+        self.scrollAreaWidgetContents = QtGui.QWidget()
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 380, 220))
+        self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
+        self.verticalLayout_2 = QtGui.QVBoxLayout(self.scrollAreaWidgetContents)
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.widget = QtGui.QWidget(self.scrollAreaWidgetContents)
+        self.widget.setObjectName("widget")
+        self.verticalLayout_3 = QtGui.QVBoxLayout(self.widget)
+        self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.LocalRulesLayout = QtGui.QVBoxLayout()
         self.LocalRulesLayout.setObjectName("LocalRulesLayout")
-        spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
-        self.LocalRulesLayout.addItem(spacerItem)
-        self.verticalLayout.addLayout(self.LocalRulesLayout)
+        self.verticalLayout_3.addLayout(self.LocalRulesLayout)
+        self.verticalLayout_2.addWidget(self.widget)
+        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+        self.verticalLayout.addWidget(self.scrollArea)
         self.RefreshButton = QtGui.QPushButton(LocalRules)
         self.RefreshButton.setObjectName("RefreshButton")
         self.verticalLayout.addWidget(self.RefreshButton)
@@ -45,7 +59,6 @@ class Ui_LocalRules(object):
         self.AddLocalRuleButton.setObjectName("AddLocalRuleButton")
         self.horizontalLayout.addWidget(self.AddLocalRuleButton)
         self.verticalLayout.addLayout(self.horizontalLayout)
-        self.verticalLayout.setStretch(0, 6)
 
         self.retranslateUi(LocalRules)
         QtCore.QMetaObject.connectSlotsByName(LocalRules)

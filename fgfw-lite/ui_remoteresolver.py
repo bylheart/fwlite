@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\remoteresolver.ui'
 #
-# Created: Mon Aug 18 13:24:49 2014
+# Created: Mon Aug 18 15:53:30 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
