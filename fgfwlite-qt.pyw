@@ -15,6 +15,7 @@ from collections import deque
 from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
 from ui_remoteresolver import Ui_remote_resolver
+from ui_localrules import Ui_LocalRules
 from util import SConfigParser
 try:
     import pynotify
@@ -75,6 +76,10 @@ class MainWindow(QtGui.QMainWindow):
         self.conf.read('userconf.ini')
         listen = self.conf.dget('fgfwproxy', 'listen', '8118')
         self.port = int(listen) if listen.isdigit() else int(listen.split(':')[1])
+
+        self.LocalRules = LocalRules(self)
+        self.ui.tabWidget.addTab(self.LocalRules, "")
+        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.LocalRules), QtGui.QApplication.translate("MainWindow", "LocalRules", None, QtGui.QApplication.UnicodeUTF8))
 
         self.trayIcon = None
         self.createActions()
@@ -240,6 +245,20 @@ class MainWindow(QtGui.QMainWindow):
         if sys.platform.startswith('win'):
             self.setIEProxyMenu()
         self.createProcess()
+
+
+class LocalRules(QtGui.QWidget):
+    def __init__(self, parent=None):
+        super(LocalRules, self).__init__(parent)
+        self.ui = Ui_LocalRules()
+        self.ui.setupUi(self)
+        self.ui.AddLocalRuleButton.clicked.connect(self.addLocalRule)
+        self.port = parent.port
+
+    def addLocalRule(self):
+        exp = int(self.ui.ExpireEdit.text()) if self.ui.ExpireEdit.text().isdigit() and int(self.ui.ExpireEdit.text()) > 0 else None
+        data = json.dumps((self.ui.LocalRuleEdit.text(), exp))
+        urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, data)
 
 
 class RemoteResolve(QtGui.QWidget):
