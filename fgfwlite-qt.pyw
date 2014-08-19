@@ -241,6 +241,7 @@ class MainWindow(QtGui.QMainWindow):
         if self.isVisible():
             self.hide()
         else:
+            self.ui.tabWidget.setCurrentIndex(0)
             self.show()
             if self.isMinimized():
                 self.showNormal()
