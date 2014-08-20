@@ -10,8 +10,9 @@ import base64
 import httplib
 import json
 import urllib2
-import time
+import signal
 import subprocess
+import time
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 from collections import deque
 from PySide import QtCore, QtGui
@@ -95,10 +96,19 @@ class MainWindow(QtGui.QMainWindow):
         self.createProcess()
         self.resolve = RemoteResolve()
 
-    def createProcess(self):
+    def killProcess(self):
         if self.runner.state() == QtCore.QProcess.ProcessState.Running:
-            self.runner.kill()
+            if sys.platform.startswith('win'):
+                a = urllib2.urlopen('http://127.0.0.1:8118/api/goagent/pid').read()
+                if a.isdigit():
+                    os.kill(int(a), signal.SIGTERM)
+                self.runner.kill()
+            else:
+                self.runner.terminate()
             self.runner.waitForFinished(100)
+
+    def createProcess(self):
+        self.killProcess()
         self.runner.readyReadStandardError.connect(self.newStderrInfo)
         self.runner.readyReadStandardOutput.connect(self.newStdoutInfo)
         self.runner.start('%s -B %s/fgfw-lite/fgfw-lite.py' % (PYTHON, WORKINGDIR))
@@ -438,7 +448,9 @@ class RemoteResolve(QtGui.QWidget):
 
 @atexit.register
 def atexit_do():
-    setIEproxy(0)
+    if sys.platform.startswith('win'):
+        setIEproxy(0)
+    win.killProcess()
 
 
 if __name__ == "__main__":
