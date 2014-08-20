@@ -825,6 +825,9 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.write(200, json.dumps([int(parse.path[16:]), rule.rule, dest]), 'application/json')
             except Exception as e:
                 return self.send_error(404, repr(e))
+        elif parse.path == '/api/goagent/pid' and self.command == 'GET':
+            data = json.dumps(self.server.conf.goagent.pid)
+            return self.write(200, data, 'application/json')
         self.write(200, 'Hello World !', 'text/html')
 
 
@@ -1369,6 +1372,7 @@ class FGFWProxyHandler(object):
         self.subpobj = None
         self.cmd = ''
         self.cwd = ''
+        self.pid = None
         self.filelist = []
         self.enable = True
         self.start()
@@ -1382,6 +1386,7 @@ class FGFWProxyHandler(object):
             if self.enable:
                 self.logger.info('starting %s' % self.cmd)
                 self.subpobj = subprocess.Popen(shlex.split(self.cmd), cwd=self.cwd, stdin=subprocess.PIPE)
+                self.pid = self.subpobj.pid
         except Exception:
             sys.stderr.write(traceback.format_exc() + '\n')
 
@@ -1402,7 +1407,7 @@ class goagentHandler(FGFWProxyHandler):
     """docstring for ClassName"""
     def config(self):
         self.cwd = '%s/goagent' % WORKINGDIR
-        self.cmd = '{}/goagent/proxy.bat'.format(WORKINGDIR) if sys.platform.startswith('win') else '{} {}/goagent/proxy.py'.format(PYTHON2, WORKINGDIR)
+        self.cmd = '{} {}/goagent/proxy.py'.format(PYTHON2, WORKINGDIR)
         self.enable = self.conf.userconf.dgetbool('goagent', 'enable', True)
         with open('%s/goagent/proxy.py' % WORKINGDIR, 'rb') as f:
             t = f.read()
@@ -1535,7 +1540,12 @@ class Config(object):
             self.addparentproxy('direct', '%s 0' % self.userconf.dget('fgfwproxy', 'parentproxy', ''))
             self.addparentproxy('local', 'direct 100')
 
+        for k, v in self.userconf.items('parents'):
+            self.addparentproxy(k, v)
+
         self.maxretry = self.userconf.dgetint('fgfwproxy', 'maxretry', 4)
+
+        self.goagent = goagentHandler(self)
 
         for host, ip in self.userconf.items('hosts'):
             if ip not in self.HOSTS.get(host, []):
@@ -1591,9 +1601,6 @@ def main():
         import ctypes
         ctypes.windll.kernel32.SetConsoleTitleW(u'FGFW-Lite v%s' % __version__)
     conf = Config()
-    for k, v in conf.userconf.items('parents'):
-        conf.addparentproxy(k, v)
-    goagentHandler(conf)
     updatedaemon = Thread(target=updater, args=([conf]))
     updatedaemon.daemon = True
     updatedaemon.start()
