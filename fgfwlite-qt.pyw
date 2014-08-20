@@ -98,13 +98,10 @@ class MainWindow(QtGui.QMainWindow):
 
     def killProcess(self):
         if self.runner.state() == QtCore.QProcess.ProcessState.Running:
-            if sys.platform.startswith('win'):
-                a = urllib2.urlopen('http://127.0.0.1:8118/api/goagent/pid').read()
-                if a.isdigit():
-                    os.kill(int(a), signal.SIGTERM)
-                self.runner.kill()
-            else:
-                self.runner.terminate()
+            a = urllib2.urlopen('http://127.0.0.1:8118/api/goagent/pid').read()
+            if a.isdigit():
+                os.kill(int(a), signal.SIGTERM)
+            self.runner.kill()
             self.runner.waitForFinished(100)
 
     def createProcess(self):
