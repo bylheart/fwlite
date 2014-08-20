@@ -68,8 +68,8 @@ import socket
 import struct
 import ssl
 import sqlite3
-import pygeoip
 import traceback
+import pygeoip
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -1422,12 +1422,13 @@ class goagentHandler(FGFWProxyHandler):
         else:
             self.logger.warning('GoAgent APPID is NOT set! Fake APPID is used.')
             goagent.set('gae', 'appid', 'dummy')
-        goagent.set('gae', 'profile', self.conf.userconf.dget('goagent', 'profile', 'ipv4'))
         goagent.set('gae', 'mode', self.conf.userconf.dget('goagent', 'mode', 'https'))
-        goagent.set('gae', 'obfuscate', self.conf.userconf.dget('goagent', 'obfuscate', '0'))
-        goagent.set('gae', 'validate', self.conf.userconf.dget('goagent', 'validate', '1'))
-        goagent.set('gae', 'options', self.conf.userconf.dget('goagent', 'options', ''))
+        goagent.set('gae', 'profile', self.conf.userconf.dget('goagent', 'profile', 'ipv4'))
         goagent.set('gae', 'keepalive', self.conf.userconf.dget('goagent', 'keepalive', '0'))
+        goagent.set('gae', 'obfuscate', self.conf.userconf.dget('goagent', 'obfuscate', '0'))
+        goagent.set('gae', 'validate', self.conf.userconf.dget('goagent', 'validate', '0'))
+        goagent.set('gae', 'pagespeed', self.conf.userconf.dget('goagent', 'pagespeed', '0'))
+        goagent.set('gae', 'options', self.conf.userconf.dget('goagent', 'options', ''))
         goagent.set('gae', 'sslversion', self.conf.userconf.dget('goagent', 'options', 'TLSv1'))
         if self.conf.userconf.dget('goagent', 'google_cn', ''):
             goagent.set('iplist', 'google_cn', self.conf.userconf.dget('goagent', 'google_cn', ''))

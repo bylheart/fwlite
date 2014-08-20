@@ -14,7 +14,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')))
 if raw_input('update? y/n: ').lower().startswith('y'):
     updatelst = [('https://github.com/goagent/goagent/raw/3.0/local/proxy.py', './goagent/proxy.py'),
                  ('https://github.com/goagent/goagent/raw/3.0/local/proxy.ini', './goagent/proxy.sample.ini'),
-                 ('https://github.com/goagent/goagent/raw/3.0/local/cacert.pem', './goagent/cacert.pem'),
+                 ('https://github.com/goagent/goagent/raw/3.0/local/proxylib.py', './goagent/proxylib.py'),
+                 # ('https://github.com/goagent/goagent/raw/3.0/local/cacert.pem', './goagent/cacert.pem'),
                  # ('https://github.com/goagent/goagent/raw/3.0/local/GeoIP.dat', './goagent/GeoIP.dat'),
                  ('https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt', './fgfw-lite/gfwlist.txt'),
                  ]
@@ -50,6 +51,7 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          './README.md',
          './fgfwlite-qt.pyw',
          './goagent/proxy.py',
+         './goagent/proxylib.py',
          './goagent/proxy.sample.ini',
          './goagent/cacert.pem',
          './goagent/GeoIP.dat',
