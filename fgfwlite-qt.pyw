@@ -257,7 +257,7 @@ class MainWindow(QtGui.QMainWindow):
     def reload(self, clear=True):
         if clear:
             self.ui.console.clear()
-            self.consoleText = deque(maxlen=300)
+            self.consoleText.clear()
         if sys.platform.startswith('win'):
             self.setIEProxyMenu()
         self.createProcess()
