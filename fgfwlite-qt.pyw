@@ -274,6 +274,8 @@ class LocalRules(QtGui.QWidget):
         self.ui = Ui_LocalRules()
         self.ui.setupUi(self)
         self.ui.AddLocalRuleButton.clicked.connect(self.addLocalRule)
+        self.spacer = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        self.ui.LocalRulesLayout.addItem(self.spacer)
         self.ref.connect(self.refresh)
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.refresh)
@@ -284,6 +286,7 @@ class LocalRules(QtGui.QWidget):
     def refresh(self):
         data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=1).read())
         lst = []
+        self.ui.LocalRulesLayout.removeItem(self.spacer)
         for rid, rule, exp in data:
             if self.widgetlist:
                 w = self.widgetlist.pop(0)
@@ -295,6 +298,7 @@ class LocalRules(QtGui.QWidget):
             lst.append(w)
         for w in self.widgetlist:
             w.setVisible(False)
+        self.ui.LocalRulesLayout.addItem(self.spacer)
         self.widgetlist = lst
         if not self.timer.isActive():
             self.timer.start(1000)
@@ -344,6 +348,8 @@ class RedirectorRules(QtGui.QWidget):
         self.ui = Ui_RedirectorRules()
         self.ui.setupUi(self)
         self.ui.AddRedirectorRuleButton.clicked.connect(self.addRedirRule)
+        self.spacer = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        self.ui.RedirectorRulesLayout.addItem(self.spacer)
         self.ref.connect(self.refresh)
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.refresh)
@@ -354,6 +360,7 @@ class RedirectorRules(QtGui.QWidget):
     def refresh(self):
         data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, timeout=1).read())
         lst = []
+        self.ui.RedirectorRulesLayout.removeItem(self.spacer)
         for rid, rule, exp in data:
             if self.widgetlist:
                 w = self.widgetlist.pop(0)
@@ -365,6 +372,7 @@ class RedirectorRules(QtGui.QWidget):
             lst.append(w)
         for w in self.widgetlist:
             w.setVisible(False)
+        self.ui.RedirectorRulesLayout.addItem(self.spacer)
         self.widgetlist = lst
         if not self.timer.isActive():
             self.timer.start(1000)
