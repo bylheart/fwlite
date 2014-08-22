@@ -280,19 +280,12 @@ class LocalRules(QtGui.QWidget):
 
     def refresh(self):
         if self.ui.LocalRulesLayout.count():
-            try:
-                layout = self.ui.LocalRulesLayout.takeAt(0)
-                self.clearLayout(layout)
-                layout.deleteLater()
-            except:
-                pass
-        layout = QtGui.QVBoxLayout()
+            self.clearLayout(self.ui.LocalRulesLayout)
         data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=1).read())
         for rid, rule, exp in data:
             w = LocalRule(rid, rule, exp, self.port, self.ref)
-            layout.addWidget(w)
-        layout.addItem(QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
-        self.ui.LocalRulesLayout.insertLayout(0, layout)
+            self.ui.LocalRulesLayout.addWidget(w)
+        self.ui.LocalRulesLayout.addItem(QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
         if not self.timer.isActive():
             self.timer.start(1000)
 
@@ -357,19 +350,12 @@ class RedirectorRules(QtGui.QWidget):
 
     def refresh(self):
         if self.ui.RedirectorRulesLayout.count():
-            try:
-                layout = self.ui.RedirectorRulesLayout.takeAt(0)
-                self.clearLayout(layout)
-                layout.deleteLater()
-            except:
-                pass
-        layout = QtGui.QVBoxLayout()
+            self.clearLayout(self.ui.RedirectorRulesLayout)
         data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, timeout=1).read())
         for rid, rule, exp in data:
             w = RedirRule(rid, rule, exp, self.port, self.ref)
-            layout.addWidget(w)
-        layout.addItem(QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
-        self.ui.RedirectorRulesLayout.insertLayout(0, layout)
+            self.ui.RedirectorRulesLayout.addWidget(w)
+        self.ui.RedirectorRulesLayout.addItem(QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
         if not self.timer.isActive():
             self.timer.start(1000)
 
