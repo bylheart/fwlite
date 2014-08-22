@@ -100,7 +100,10 @@ class MainWindow(QtGui.QMainWindow):
         if self.runner.state() == QtCore.QProcess.ProcessState.Running:
             a = urllib2.urlopen('http://127.0.0.1:8118/api/goagent/pid').read()
             if a.isdigit():
-                os.kill(int(a), signal.SIGTERM)
+                try:
+                    os.kill(int(a), signal.SIGTERM)
+                except Exception as e:
+                    print(repr(e))
             self.runner.kill()
             self.runner.waitForFinished(100)
 
@@ -276,31 +279,25 @@ class LocalRules(QtGui.QWidget):
         self.timer.timeout.connect(self.refresh)
         self.timer.start(1000)
         self.port = parent.port
-        self.list = []
+        self.widgetlist = []
 
     def refresh(self):
-        if self.ui.LocalRulesLayout.count():
-            self.clearLayout(self.ui.LocalRulesLayout)
         data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=1).read())
+        lst = []
         for rid, rule, exp in data:
-            w = LocalRule(rid, rule, exp, self.port, self.ref)
-            self.ui.LocalRulesLayout.addWidget(w)
-        self.ui.LocalRulesLayout.addItem(QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
+            if self.widgetlist:
+                w = self.widgetlist.pop(0)
+                w.updaterule(rid, rule, exp)
+                w.setVisible(True)
+            else:
+                w = LocalRule(rid, rule, exp, self.port, self.ref)
+                self.ui.LocalRulesLayout.addWidget(w)
+            lst.append(w)
+        for w in self.widgetlist:
+            w.setVisible(False)
+        self.widgetlist = lst
         if not self.timer.isActive():
             self.timer.start(1000)
-
-    def clearLayout(self, layout):
-        if layout is not None:
-            try:
-                while layout.count():
-                    item = layout.takeAt(0)
-                    widget = item.widget()
-                    if widget is not None:
-                        widget.deleteLater()
-                    else:
-                        self.clearLayout(item.layout())
-            except:
-                pass
 
     def addLocalRule(self):
         exp = int(self.ui.ExpireEdit.text()) if self.ui.ExpireEdit.text().isdigit() and int(self.ui.ExpireEdit.text()) > 0 else None
@@ -332,6 +329,12 @@ class LocalRule(QtGui.QWidget):
         print(content)
         self.ref.emit()
 
+    def updaterule(self, rid, rule, exp):
+        self.rid = rid
+        exp = exp - time.time() if exp else None
+        text = '%s%s' % (self.rule, (' expire %.1fs' % exp if exp else ''))
+        self.ui.lineEdit.setText(text)
+
 
 class RedirectorRules(QtGui.QWidget):
     ref = QtCore.Signal()
@@ -346,31 +349,25 @@ class RedirectorRules(QtGui.QWidget):
         self.timer.timeout.connect(self.refresh)
         self.timer.start(1000)
         self.port = parent.port
-        self.list = []
+        self.widgetlist = []
 
     def refresh(self):
-        if self.ui.RedirectorRulesLayout.count():
-            self.clearLayout(self.ui.RedirectorRulesLayout)
         data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, timeout=1).read())
+        lst = []
         for rid, rule, exp in data:
-            w = RedirRule(rid, rule, exp, self.port, self.ref)
-            self.ui.RedirectorRulesLayout.addWidget(w)
-        self.ui.RedirectorRulesLayout.addItem(QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding))
+            if self.widgetlist:
+                w = self.widgetlist.pop(0)
+                w.updaterule(rid, rule, exp)
+                w.setVisible(True)
+            else:
+                w = RedirRule(rid, rule, exp, self.port, self.ref)
+                self.ui.RedirectorRulesLayout.addWidget(w)
+            lst.append(w)
+        for w in self.widgetlist:
+            w.setVisible(False)
+        self.widgetlist = lst
         if not self.timer.isActive():
             self.timer.start(1000)
-
-    def clearLayout(self, layout):
-        if layout is not None:
-            try:
-                while layout.count():
-                    item = layout.takeAt(0)
-                    widget = item.widget()
-                    if widget is not None:
-                        widget.deleteLater()
-                    else:
-                        self.clearLayout(item.layout())
-            except:
-                pass
 
     def addRedirRule(self):
         data = json.dumps((self.ui.RuleEdit.text(), self.ui.DestEdit.text()))
@@ -386,10 +383,8 @@ class RedirRule(QtGui.QWidget):
         self.ui.delButton.clicked.connect(self.delrule)
         self.port = port
         self.rule = rule
-        self.rid = rid
         self.ref = ref
-        text = '%s %s' % (self.rule, dest)
-        self.ui.lineEdit.setText(text)
+        self.updaterule(rid, rule, dest)
 
     def delrule(self):
         conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
@@ -398,6 +393,11 @@ class RedirRule(QtGui.QWidget):
         content = resp.read()
         print(content)
         self.ref.emit()
+
+    def updaterule(self, rid, rule, dest):
+        self.rid = rid
+        text = '%s %s' % (self.rule, dest)
+        self.ui.lineEdit.setText(text)
 
 
 class RemoteResolve(QtGui.QWidget):
