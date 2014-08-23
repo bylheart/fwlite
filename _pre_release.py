@@ -55,7 +55,6 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          './goagent/proxy.sample.ini',
          './goagent/cacert.pem',
          './goagent/GeoIP.dat',
-         './goagent/proxy.bat',
          ]
 
 version = configparser.ConfigParser()
