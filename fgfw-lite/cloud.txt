@@ -8,3 +8,4 @@
 ||twimg.com auto
 /^http://userscripts.org$/ http://userscripts.org:8080
 /^http://userscripts.org/(.*)$/ /http://userscripts.org:8080/\1/
+|http://220.115.251.25:8084/ 403
