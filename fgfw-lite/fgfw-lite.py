@@ -607,7 +607,7 @@ class ProxyHandler(HTTPRequestHandler):
                 if self.remotesoc in ins:
                     self.server.logger.debug('read from remote')
                     data = self.remotesoc.recv(self.bufsize)
-                    if not data:
+                    if not data:  # remote connection closed
                         self.server.logger.debug('not data')
                         break
                     self.wfile.write(data)
@@ -828,7 +828,9 @@ class ProxyHandler(HTTPRequestHandler):
         elif parse.path == '/api/goagent/pid' and self.command == 'GET':
             data = json.dumps(self.server.conf.goagent.pid)
             return self.write(200, data, 'application/json')
-        self.write(200, 'Hello World !', 'text/html')
+        elif parse.path == '/' and self.command == 'GET':
+            return self.write(200, 'Hello World !', 'text/html')
+        self.send_error(404)
 
 
 class sssocket(object):
