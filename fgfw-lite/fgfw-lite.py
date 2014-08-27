@@ -1326,7 +1326,7 @@ def update(conf, auto=False):
                 conf.logger.info('{} NOT updated. Reason: {}'.format(path, str(r.getcode())))
     branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
     try:
-        r = json.loads(urllib2.urlopen('https://github.com/v3aqb/fgfw-lite/raw/%s/fgfw-lite/update.json' % branch).read())
+        r = json.loads(urllib2.urlopen('https://github.com/v3aqb/fwlite/raw/%s/fgfw-lite/update.json' % branch).read())
     except Exception as e:
         conf.logger.info('read update.json failed. Reason: %r' % e)
     else:
@@ -1336,7 +1336,7 @@ def update(conf, auto=False):
                 if v == conf.version.dget('Update', path.replace('./', '').replace('/', '-'), ''):
                     conf.logger.debug('{} Not Modified'.format(path))
                     continue
-                fdata = urllib2.urlopen('https://github.com/v3aqb/fgfw-lite/raw/%s%s' % (branch, path[1:])).read()
+                fdata = urllib2.urlopen('https://github.com/v3aqb/fwlite/raw/%s%s' % (branch, path[1:])).read()
                 h = hashlib.new("sha256", fdata).hexdigest()
                 if h != v:
                     conf.logger.warning('{} NOT updated. hash mismatch.'.format(path))
