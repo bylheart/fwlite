@@ -1350,10 +1350,10 @@ def update(conf, auto=False):
                 count += 1
             except Exception as e:
                 conf.logger.error('update failed! %r\n%s' % (e, traceback.format_exc()))
-    if count:
-        conf.logger.info('Update Completed, %d file Updated.' % count)
     conf.confsave()
     restart(conf)
+    if count:
+        conf.logger.info('Update Completed, %d file Updated.' % count)
 
 
 def restart(conf):
