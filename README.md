@@ -1,4 +1,4 @@
-FGFW-Lite
+FW-Lite
 =========
 一个辅助突破网络审查的HTTP代理服务器。它能自动检查网站是否被墙，使用二级代理。
 
@@ -31,15 +31,15 @@ Inspired by [COW]
 
 ##快速开始
 
-FGFW-Lite是便携软件，[下载](https://github.com/v3aqb/fgfw-lite/archive/master.zip)，解压即用。注意，**路径只支持英文，不能有空格**。
+FW-Lite是便携软件，[下载](http://fwlite.tk/fwlite.zip)，解压即用。注意，**路径只支持英文，不能有空格**。
 
 修改配置文件userconf.ini（参考userconf.sample.ini），可设置自己的goagent appid和其他二级代理。
 
 设置浏览器代理服务器为：127.0.0.1:8118（当代理服务器设为127.0.0.1:8119时，所有出国流量走代理）
 
-windows系统：运行FGFW_Lite.exe
+windows系统：运行FW_Lite.exe
 
-Linux系统：运行fgfwlite-qt.pyw
+Linux系统：运行FW_Lite.pyw
 
 requirements under openSUSE:
 
@@ -50,7 +50,7 @@ requirements under openSUSE:
 
 ##自定义规则(./fgfw-lite/local.txt)
 
-FGFW-Lite兼容[autoproxy规则](https://autoproxy.org/zh-CN/Rules)，不同之处：
+FW-Lite兼容[autoproxy规则](https://autoproxy.org/zh-CN/Rules)，不同之处：
 
 以某关键字结尾的url规则，用于防止无良ISP（长城宽带）的挟持：
 

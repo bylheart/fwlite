@@ -5,7 +5,7 @@
 #endregion ;**** Directives created by AutoIt3Wrapper_GUI ****
 
 setEnv()
-Run("./Python27/python27.exe -B ./fgfwlite-qt.pyw", @ScriptDir, @SW_HIDE)
+Run("./Python27/python27.exe -B ./FW_Lite.pyw", @ScriptDir, @SW_HIDE)
 Exit
 
 Func setEnv()
