@@ -3,6 +3,9 @@
 
 import os
 import sys
+WORKINGDIR = os.path.dirname(os.path.abspath(__file__).replace('\\', '/'))
+os.chdir(WORKINGDIR)
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 import shutil
 import threading
 import atexit
@@ -13,7 +16,6 @@ import urllib2
 import signal
 import subprocess
 import time
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 from collections import deque
 from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
@@ -23,12 +25,15 @@ from ui_localrule import Ui_LocalRule
 from ui_redirectorrules import Ui_RedirectorRules
 from util import SConfigParser
 try:
+    from singleton import SingleInstance
+    SINGLEINSTANCE = SingleInstance()
+except ImportError as e:
+    print(repr(e))
+try:
     import pynotify
     pynotify.init('FGFW-Lite Notify')
 except ImportError:
     pynotify = None
-WORKINGDIR = os.path.dirname(os.path.abspath(__file__).replace('\\', '/'))
-os.chdir(WORKINGDIR)
 
 TRAY_ICON = '%s/fgfw-lite/ui/icon.png' % WORKINGDIR
 PYTHON = '%s/Python27/python27.exe' % WORKINGDIR if sys.platform.startswith('win') else '/usr/bin/env python2.7'

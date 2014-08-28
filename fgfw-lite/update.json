@@ -1,11 +1,12 @@
 {
     "./FW_Lite.exe": "faa72b7ba9c806dac85f60f56f898ba6f1110fd51ae0fea8994045c3bfc1d81d",
-    "./FW_Lite.pyw": "58e83ef4a8dceceda0a686e03fbc7dbcad182da8bbac8ba05380f46561efbf75",
+    "./FW_Lite.pyw": "27ad1240a13e82a65cf9f57d7fae2e04a7caab52034bc7fbecb5dfeb4b99c3c4",
     "./Python27/python27.zip": "c7a251e8da1cd13a71fd928b4fce0e73d130788e5d8e5bc564713bf73066de48",
     "./README.md": "664e17406b3c0026c244c1b39a7177972ec7a926c743839d922578320e5b4545",
     "./fgfw-lite/cloud.txt": "7cef66eff46372635118405dc546b058d1e8738143baad1b58b63232bda84d59",
     "./fgfw-lite/encrypt.py": "db90f5b7d085d8cb3fe4e66f353faa76ae6ff340b23ce70c50c7313c35772cc3",
     "./fgfw-lite/fgfw-lite.py": "15e3c242d9737b9a2c20a22b5652ce771ea2d5eeeae27d30b39f8bf40ffa3950",
+    "./fgfw-lite/singleton.py": "2fc7ed8cfc47b001053a257f9e8ad521edcef446776adaee022122eb6dbda152",
     "./fgfw-lite/ui_localrule.py": "14158d9a7701e6db03f17391d24162d0551350783a58731e98f76eb0e7753f03",
     "./fgfw-lite/ui_localrules.py": "0508ad08c989f6411913ca7de3b01b7d7c575fd532d9e7aaac2511744a97871e",
     "./fgfw-lite/ui_mainwindow.py": "1bcb1f574a7a997631cb620e92443bbf23876d7331065d2eaf82f6cf3f7c544c",
