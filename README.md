@@ -27,7 +27,7 @@ Inspired by [COW]
   - Socks5代理
   - [GoAgent]
   - [Shadowsocks]
-  - [snova] (PAAS only)
+  - [snova] \(PAAS only)
 
 ##快速开始
 
