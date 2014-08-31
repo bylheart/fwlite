@@ -1302,7 +1302,6 @@ def updater(conf):
 def update(conf, auto=False):
     if auto and conf.userconf.dgetbool('FGFW_Lite', 'autoupdate') is False:
         return
-    conf.version.set('Update', 'LastUpdate', str(time.time()))
     filelist = [('https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt', './fgfw-lite/gfwlist.txt'), ]
     count = 0
     for url, path in filelist:
@@ -1350,6 +1349,7 @@ def update(conf, auto=False):
                 count += 1
             except Exception as e:
                 conf.logger.error('update failed! %r\n%s' % (e, traceback.format_exc()))
+        conf.version.set('Update', 'LastUpdate', str(time.time()))
     conf.confsave()
     restart(conf)
     if count:
