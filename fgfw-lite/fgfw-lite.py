@@ -1078,17 +1078,23 @@ class parent_proxy(object):
 
         self.geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
 
+    def add_redirect(self, rule, dest):
+        try:
+            if rule in [a.rule for a, b in self.redirlst]:
+                self.logger.warning('multiple redirector rule! %s' % rule)
+                return
+            if dest.lower() == 'auto':
+                self.ignore.append(autoproxy_rule(rule))
+                return
+            self.redirlst.append((autoproxy_rule(rule), dest))
+        except TypeError as e:
+            self.logger.debug('create autoproxy rule failed: %s' % e)
+
     def add_rule(self, line, force=False):
         rule = line.strip().split()
         if len(rule) == 2:  # |http://www.google.com/url forcehttps
-            try:
-                rule, result = rule
-                if result.lower() == 'auto':
-                    self.ignore.append(autoproxy_rule(rule))
-                    return
-                self.redirlst.append((autoproxy_rule(rule), result))
-            except TypeError as e:
-                self.logger.debug('create autoproxy rule failed: %s' % e)
+            rule, dest = rule
+            self.add_redirect(rule, dest)
         elif len(rule) == 1:
             try:
                 o = autoproxy_rule(rule[0])
