@@ -1326,7 +1326,6 @@ def update(conf, auto=False):
                 conf.version.set('Update', path.replace('./', '').replace('/', '-'), r.info().getheader('ETag'))
                 conf.confsave()
                 conf.logger.info('%s Updated.' % path)
-                count += 1
             else:
                 conf.logger.info('{} NOT updated. Reason: {}'.format(path, str(r.getcode())))
     branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
@@ -1352,7 +1351,8 @@ def update(conf, auto=False):
                     localfile.write(fdata)
                 conf.logger.info('%s Updated.' % path)
                 conf.version.set('Update', path.replace('./', '').replace('/', '-'), h)
-                count += 1
+                if not path.endswith(('txt', 'ini')):
+                    count += 1
             except Exception as e:
                 conf.logger.error('update failed! %r\n%s' % (e, traceback.format_exc()))
         conf.version.set('Update', 'LastUpdate', str(time.time()))
