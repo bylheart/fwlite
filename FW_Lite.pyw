@@ -322,13 +322,8 @@ class LocalRule(QtGui.QWidget):
         self.ui.setupUi(self)
         self.ui.delButton.clicked.connect(self.delrule)
         self.port = port
-        self.rule = rule
-        self.rid = rid
-        self.exp = exp
         self.ref = ref
-        exp = exp - time.time() if exp else None
-        text = '%s%s' % (self.rule, (' expire %.1fs' % exp if exp else ''))
-        self.ui.lineEdit.setText(text)
+        self.updaterule(rid, rule, exp)
 
     def delrule(self):
         conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
@@ -340,6 +335,8 @@ class LocalRule(QtGui.QWidget):
 
     def updaterule(self, rid, rule, exp):
         self.rid = rid
+        self.rule = rule
+        self.exp = exp
         exp = exp - time.time() if exp else None
         text = '%s%s' % (self.rule, (' expire %.1fs' % exp if exp else ''))
         self.ui.lineEdit.setText(text)
@@ -395,7 +392,6 @@ class RedirRule(QtGui.QWidget):
         self.ui.setupUi(self)
         self.ui.delButton.clicked.connect(self.delrule)
         self.port = port
-        self.rule = rule
         self.ref = ref
         self.updaterule(rid, rule, dest)
 
@@ -409,6 +405,7 @@ class RedirRule(QtGui.QWidget):
 
     def updaterule(self, rid, rule, dest):
         self.rid = rid
+        self.rule = rule
         text = '%s %s' % (self.rule, dest)
         self.ui.lineEdit.setText(text)
 
