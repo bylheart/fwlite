@@ -666,6 +666,8 @@ class ProxyHandler(HTTPRequestHandler):
             s = sssocket(self.pproxy, timeout, self.server.conf.parentdict.get('direct')[0])
             s.connect(netloc)
             return s
+        elif self.pproxy.startswith('sni://'):
+            return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or 10)
         elif self.pproxy.startswith('socks5://'):
             s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or 10)
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
