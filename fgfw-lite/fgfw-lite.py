@@ -1042,9 +1042,9 @@ class autoproxy_rule(object):
 
 class parent_proxy(object):
     """docstring for parent_proxy"""
-    def __init__(self, conf, enable_gfwlist=True):
-        self.enable_gfwlist = enable_gfwlist
+    def __init__(self, conf):
         self.conf = conf
+        self.enable_gfwlist = self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True)
         self.logger = self.conf.logger
         self.config()
 
@@ -1570,7 +1570,7 @@ class Config(object):
                     except Exception as e:
                         self.logger.warning('%s %s' % (e, line))
 
-        self.PARENT_PROXY = parent_proxy(self, enable_gfwlist=self.userconf.dgetbool('fgfwproxy', 'gfwlist', True))
+        self.PARENT_PROXY = parent_proxy(self)
 
     def reload(self):
         self.version.read('version.ini')
