@@ -1,45 +1,49 @@
 FW-Lite
 =========
-一个辅助突破网络审查的HTTP代理服务器。它能自动检查网站是否被墙，使用二级代理。
+A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
+
+Works on Windows, Linux and Mac(untested).
+
+Just [Download](http://fwlite.tk/fwlite.zip), and run it.
 
 Inspired by [COW]
 
-##功能
+##Features
 
-- 符合HTTP1.1标准的HTTP代理服务器
-- 自动设置系统代理(Windows only)
-- 支持需要设置代理的局域网环境
-- 地址栏搜索
-- 自动升级到最新的稳定版本
-- 使用多种方法检测网站是否被墙，并转发到二级代理
+- A HTTP Proxy Server fits HTTP1.1 standard
+- Sets IE proxy configuration automatically on windows
+- Supports Network which require a HTTP Proxy
+- URL Search
+- Automatic Update
+- Multiple Method to detect blocked sites
   - autoproxy-gfwlist
-  - 自定义规则
-  - 连接超时
-  - 读操作超时
-  - 连接被重置
-- 自动避免使用HTTPS假证书
-- 多种自定义规则
-- ~~默认设置即可无障碍访问部分Google服务(GoAgent FORWARD)~~
-- 支持FTP(仅限直接连接)
-- 支持的二级代理
-  - HTTP代理
-  - HTTPS代理
-  - Socks5代理
+  - self-defined rules
+  - connect timeout
+  - read timeout
+  - connect reset
+- Avoid use of fake SSL certs automatically
+- Supports FTP LIST/RETR
+- Supported parent proxy
+  - HTTP Proxy
+  - HTTPS Proxy
+  - Socks5 Proxy
   - [GoAgent]
   - [Shadowsocks]
   - [snova] \(PAAS only)
 
-##快速开始
+##Quick Start
 
-FW-Lite是便携软件，[下载](http://fwlite.tk/fwlite.zip)，解压即用。注意，**路径只支持英文，不能有空格**。
+FW-Lite is Portable Software, just [Download](http://fwlite.tk/fwlite.zip), and it works out of the box.
 
-修改配置文件userconf.ini（参考userconf.sample.ini），可设置自己的goagent appid和其他二级代理。
+You can set your own GoAgent APPID and other parent proxys in the main configuration file **userconf.ini**.
 
-设置浏览器代理服务器为：127.0.0.1:8118（当代理服务器设为127.0.0.1:8119时，所有出国流量走代理）
+**WARNING**: check your GoAgent password setting.
 
-windows系统：运行FW_Lite.exe
+Set your browser's proxy settings to *http://127.0.0.1:8118*, and you're set.
 
-Linux系统：运行FW_Lite.pyw
+For Windows, run FW_Lite.exe
+
+For Linux and Mac, run FW_Lite.pyw
 
 requirements under openSUSE:
 
@@ -48,16 +52,16 @@ requirements under openSUSE:
     zypper install python-gevent  # for better performance
     zypper install python-pyside  # https://software.opensuse.org/package/python-pyside
 
-##自定义规则(./fgfw-lite/local.txt)
+##Self Defined Rules(./fgfw-lite/local.txt)
 
-FW-Lite兼容[autoproxy规则](https://autoproxy.org/zh-CN/Rules)，不同之处：
+FW-Lite uses [autoproxy rules](https://autoproxy.org/zh-CN/Rules), the differences are:
 
-以某关键字结尾的url规则，用于防止无良ISP（长城宽带）的挟持：
+URL end with keyword, used to counteract ISP conducted MITM hijack(GWBN):
 
     .exe|
     .apk|
 
-对特定网址不使用规则。用于gfwlist中可直连的网站。
+Not applying rules for certain sites. For false positeves in gfwlist.
 
     ||twimg.com auto
 
@@ -65,25 +69,30 @@ forcehttps
 
     |http://zh.wikipedia.com/search forcehttps
 
-重定向
+Redirect
 
     http://www.baidu.com http://www.google.com
 
-重定向(正则表达式)
+Redirect with Regular Expression
 
     /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1&ie=gb2312/
 
-阻止访问特定网站
+Block certain sites
 
     ||dongtaiwang.com 403
 
-为特定网站指定二级代理
+Assign a parent proxy for certain sites
 
     ||bbc.co.uk shadowsocks-uk
 
 ##License
 
 GPLv2
+
+##ICCPR, Article 19.2
+
+**Everyone shall have the right to freedom of expression; this right shall include freedom to seek, receive and impart information and ideas of all kinds, regardless of frontiers, either orally, in writing or in print, in the form of art, or through any other media of his choice.**
+
 
 [COW]:https://github.com/cyfdecyf/cow
 [GoAgent]:https://code.google.com/p/goagent/
