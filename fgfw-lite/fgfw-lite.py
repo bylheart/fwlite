@@ -1153,16 +1153,6 @@ class parent_proxy(object):
         s = set(self.conf.parentdict.keys()) - set(['goagent', 'goagent-php', 'direct', 'local'])
         a = self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent'
         if s or a:  # two reasons not to use goagent
-            # if host in conf.FAKEHTTPS:
-            #     return True
-            # if host.endswith(conf.FAKEHTTPS_POSTFIX):
-            #     return True
-            # if host in conf.WITHGAE:
-            #     return True
-            # if host in conf.HOST:
-            #     return False
-            # if host.endswith(conf.HOST_POSTFIX):
-            #     return False
             return True
 
     def if_gfwlist_force(self, uri, level):
@@ -1477,47 +1467,8 @@ class goagentHandler(FGFWProxyHandler):
         with open('./goagent/proxy.ini', 'w') as configfile:
             goagent.write(configfile)
 
-        self.conf.FAKEHTTPS = tuple([k for k in goagent.dget('ipv4/http', 'fakehttps').split('|') if not k.startswith('.')])
-        self.conf.FAKEHTTPS_POSTFIX = tuple([k for k in goagent.dget('ipv4/http', 'fakehttps').split('|') if k.startswith('.')])
-        self.conf.WITHGAE = set(goagent.dget('ipv4/http', 'withgae').split('|'))
-        self.conf.HOST = tuple()
-        self.conf.HOST_POSTFIX = tuple([k for k, v in goagent.items('ipv4/hosts') if '\\' not in k and ':' not in k and k.startswith('.')])
 
-        if not os.path.isfile('./goagent/CA.crt'):
-            self.createCA()
 
-    def createCA(self):
-        '''
-        ripped from goagent 2.1.14 with modification
-        '''
-        import OpenSSL
-        key = OpenSSL.crypto.PKey()
-        key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
-        ca = OpenSSL.crypto.X509()
-        ca.set_serial_number(0)
-        ca.set_version(2)
-        subj = ca.get_subject()
-        subj.countryName = 'CN'
-        subj.stateOrProvinceName = 'Internet'
-        subj.localityName = 'Cernet'
-        subj.organizationName = 'GoAgent'
-        subj.organizationalUnitName = 'GoAgent Root'
-        subj.commonName = 'GoAgent CA'
-        ca.gmtime_adj_notBefore(0)
-        ca.gmtime_adj_notAfter(24 * 60 * 60 * 3652)
-        ca.set_issuer(ca.get_subject())
-        ca.set_pubkey(key)
-        ca.add_extensions([
-            OpenSSL.crypto.X509Extension(b'basicConstraints', True, b'CA:TRUE'),
-            OpenSSL.crypto.X509Extension(b'keyUsage', False, b'keyCertSign, cRLSign'),
-            OpenSSL.crypto.X509Extension(b'subjectKeyIdentifier', False, b'hash', subject=ca), ])
-        ca.sign(key, 'sha1')
-        with open('./goagent/CA.crt', 'wb') as fp:
-            fp.write(OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, ca))
-            fp.write(OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_PEM, key))
-        import shutil
-        if os.path.isdir('./goagent/certs'):
-            shutil.rmtree('./goagent/certs')
 
 
 class Config(object):
@@ -1531,11 +1482,6 @@ class Config(object):
         self.UPDATE_INTV = 6
         self.parentdict = {'direct': ('', 0), }
         self.HOSTS = defaultdict(list)
-        self.FAKEHTTPS = set()
-        self.WITHGAE = set()
-        self.HOST = tuple()
-        self.HOST_POSTFIX = tuple()
-        self.CONN_POSTFIX = tuple()
         listen = self.userconf.dget('fgfwproxy', 'listen', '8118')
         if listen.isdigit():
             self.listen = ('127.0.0.1', int(listen))
