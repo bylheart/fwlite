@@ -1468,7 +1468,31 @@ class goagentHandler(FGFWProxyHandler):
             goagent.write(configfile)
 
 
+class ParentProxy(object):
+    def __init__(self, name, proxy, httppriority, httpspriority):
+        self.name = name
+        self.proxy = proxy
+        self.proxyparse = urlparse.urlparse(self.proxy)
+        self.httppriority = httppriority
+        self.httpspriority = httpspriority
+        if self.proxyparse.scheme.lower() == 'sni':
+            self.httppriority = -1
 
+    def __str__(self):
+        return self.name
+
+
+class ParentProxyList(object):
+    def __init__(self):
+        self.httpparents = []
+        self.httpsparents = []
+
+    def add(self, parentproxy):
+        assert isinstance(parentproxy, ParentProxy)
+        if parentproxy.httppriority >= 0:
+            self.httpparents.append(parentproxy)
+        if parentproxy.httpspriority >= 0:
+            self.httpsparents.append(parentproxy)
 
 
 class Config(object):
