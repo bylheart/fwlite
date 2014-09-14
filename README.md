@@ -27,6 +27,7 @@ Inspired by [COW]
   - HTTP Proxy
   - HTTPS Proxy
   - Socks5 Proxy
+  - SNI Proxy
   - [GoAgent]
   - [Shadowsocks]
   - [snova] \(PAAS only)
