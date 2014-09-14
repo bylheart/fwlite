@@ -324,14 +324,13 @@ class ProxyHandler(HTTPRequestHandler):
     def getparent(self):
         if self._proxylist is None:
             self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
-            self.logger.info(repr(self._proxylist))
+            self.logger.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
             return 1
         self.pproxy = self._proxylist.pop(0)
         self.ppname = self.pproxy.name
-        self.pproxy = self.pproxy.proxy
-        self.pproxyparse = urlparse.urlparse(self.pproxy)
+        self.pproxyparse = self.pproxy.parse
 
     def do_GET(self):
         if isinstance(self.path, bytes):
@@ -390,7 +389,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
             return self.send_error(504)
 
-        self.upstream_name = self.ppname if self.pproxy.startswith('http') else self.requesthost
+        self.upstream_name = self.ppname if self.pproxy.proxy.startswith('http') else self.requesthost
         try:
             self.remotesoc = self._http_connect_via_proxy(self.requesthost)
         except NetWorkIOError as e:
@@ -400,7 +399,7 @@ class ProxyHandler(HTTPRequestHandler):
         # send request header
         self.logger.debug('sending request header')
         s = []
-        if self.pproxy.startswith('http'):
+        if self.pproxy.proxy.startswith('http'):
             s.append('%s %s %s\r\n' % (self.command, self.path, self.request_version))
             if self.pproxyparse.username:
                 a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
@@ -575,7 +574,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT(True)
 
-        if self.pproxy.startswith('http'):
+        if self.pproxy.proxy.startswith('http'):
             s = ['%s %s %s\r\n' % (self.command, self.path, self.request_version), ]
             if self.pproxyparse.username:
                 a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
@@ -651,7 +650,7 @@ class ProxyHandler(HTTPRequestHandler):
         if not self.failed_parents:
             res = self.conf.HTTPCONN_POOL.get(self.upstream_name)
             if res:
-                self._proxylist.insert(0, self.ppname)
+                self._proxylist.insert(0, self.conf.parentlist.dict.get(self.ppname))
                 sock, self.ppname = res
                 self.logger.info('{} {} via {}'.format(self.command, self.shortpath, self.ppname))
                 return sock
@@ -660,22 +659,22 @@ class ProxyHandler(HTTPRequestHandler):
     def _connect_via_proxy(self, netloc):
         timeout = None if self._proxylist else 20
         self.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
-        if not self.pproxy:
+        if not self.pproxy.proxy:
             return create_connection(netloc, timeout or 5)
-        elif self.pproxy.startswith('http://'):
+        elif self.pproxy.proxy.startswith('http://'):
             return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), timeout or 10)
-        elif self.pproxy.startswith('https://'):
+        elif self.pproxy.proxy.startswith('https://'):
             s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or 10)
             s = ssl.wrap_socket(s)
             s.do_handshake()
             return s
-        elif self.pproxy.startswith('ss://'):
-            s = sssocket(self.pproxy, timeout, self.conf.parentlist.dict.get('direct').proxy)
+        elif self.pproxy.proxy.startswith('ss://'):
+            s = sssocket(self.pproxy.proxy, timeout, self.conf.parentlist.dict.get('direct').proxy)
             s.connect(netloc)
             return s
-        elif self.pproxy.startswith('sni://'):
+        elif self.pproxy.proxy.startswith('sni://'):
             return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or 10)
-        elif self.pproxy.startswith('socks5://'):
+        elif self.pproxy.proxy.startswith('socks5://'):
             s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or 10)
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s.sendall(b"\x05\x02\x00\x02" if self.pproxyparse.username else b"\x05\x01\x00")
@@ -703,6 +702,7 @@ class ProxyHandler(HTTPRequestHandler):
             s.recv(2)  # read port
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)
             return s
+        raise IOError(0, '_connect_via_proxy failed!')
 
     def _read_write(self, soc, max_idling=20):
         iw = [self.connection, soc]
@@ -1469,10 +1469,10 @@ class ParentProxy(object):
             proxy = ''
         self.name = name
         self.proxy = proxy
-        self.proxyparse = urlparse.urlparse(self.proxy)
+        self.parse = urlparse.urlparse(self.proxy)
         self.httppriority = int(httppriority)
         self.httpspriority = int(httpspriority)
-        if self.proxyparse.scheme.lower() == 'sni':
+        if self.parse.scheme.lower() == 'sni':
             self.httppriority = -1
 
     def __str__(self):
