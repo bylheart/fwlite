@@ -5,7 +5,7 @@
     "./README.md": "4be3d947a7313fb61ab0098cb11cf7668da1fad61b8a1f485b49c463bff43c83",
     "./fgfw-lite/cloud.txt": "01e8c65625024289fa474e80d96c3e983ef7d060df21a0305f874c7af8642792",
     "./fgfw-lite/encrypt.py": "db90f5b7d085d8cb3fe4e66f353faa76ae6ff340b23ce70c50c7313c35772cc3",
-    "./fgfw-lite/fgfw-lite.py": "90cff4f91fa516964739761c2625f1985c3fe389e1549bacec37cc06415618a1",
+    "./fgfw-lite/fgfw-lite.py": "67b6faf4ac60a0f41174a9bbf541fe1b9fa81bd410b7587f57da6c6245a631ba",
     "./fgfw-lite/singleton.py": "2fc7ed8cfc47b001053a257f9e8ad521edcef446776adaee022122eb6dbda152",
     "./fgfw-lite/ui_localrule.py": "14158d9a7701e6db03f17391d24162d0551350783a58731e98f76eb0e7753f03",
     "./fgfw-lite/ui_localrules.py": "0508ad08c989f6411913ca7de3b01b7d7c575fd532d9e7aaac2511744a97871e",

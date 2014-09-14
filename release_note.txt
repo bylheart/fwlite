@@ -1,3 +1,7 @@
+2014.9.15 v4.3
+new GUI
+add support for sni proxy
+
 2014.7.22 v4.2
 options to add xheaders
 add statistics of connection success rate

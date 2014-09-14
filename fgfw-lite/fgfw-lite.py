@@ -20,7 +20,7 @@
 
 from __future__ import print_function, division
 
-__version__ = '4.2'
+__version__ = '4.3'
 
 import sys
 import os
@@ -661,20 +661,20 @@ class ProxyHandler(HTTPRequestHandler):
         self.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
         if not self.pproxy.proxy:
             return create_connection(netloc, timeout or 5)
-        elif self.pproxy.proxy.startswith('http://'):
+        elif self.pproxyparse.scheme == 'http':
             return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), timeout or 10)
-        elif self.pproxy.proxy.startswith('https://'):
+        elif self.pproxyparse.scheme == 'https':
             s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or 10)
             s = ssl.wrap_socket(s)
             s.do_handshake()
             return s
-        elif self.pproxy.proxy.startswith('ss://'):
+        elif self.pproxyparse.scheme == 'ss':
             s = sssocket(self.pproxy.proxy, timeout, self.conf.parentlist.dict.get('direct').proxy)
             s.connect(netloc)
             return s
-        elif self.pproxy.proxy.startswith('sni://'):
+        elif self.pproxyparse.scheme == 'sni':
             return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or 10)
-        elif self.pproxy.proxy.startswith('socks5://'):
+        elif self.pproxyparse.scheme == 'socks5':
             s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or 10)
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s.sendall(b"\x05\x02\x00\x02" if self.pproxyparse.username else b"\x05\x01\x00")
@@ -1443,7 +1443,7 @@ class goagentHandler(FGFWProxyHandler):
         goagent.set('pac', 'enable', '0')
 
         goagent.set('proxy', 'autodetect', '0')
-        if self.conf.parentlist.dict.get('direct') and self.conf.parentlist.dict.get('direct').proxy.startswith('http://'):
+        if self.conf.parentlist.dict.get('direct') and self.conf.parentlist.dict.get('direct').parse.scheme == 'http':
             p = self.conf.parentlist.dict.get('direct').parse
             goagent.set('proxy', 'enable', '1')
             goagent.set('proxy', 'host', p.hostname)
