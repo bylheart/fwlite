@@ -1469,12 +1469,12 @@ class goagentHandler(FGFWProxyHandler):
 
 
 class ParentProxy(object):
-    def __init__(self, name, proxy, httppriority, httpspriority):
+    def __init__(self, name, proxy, httppriority, httpspriority=None):
         self.name = name
         self.proxy = proxy
         self.proxyparse = urlparse.urlparse(self.proxy)
         self.httppriority = httppriority
-        self.httpspriority = httpspriority
+        self.httpspriority = httpspriority or httppriority
         if self.proxyparse.scheme.lower() == 'sni':
             self.httppriority = -1
 
