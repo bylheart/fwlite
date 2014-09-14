@@ -230,6 +230,11 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
+    def __init__(self, request, client_address, server):
+        self.conf = server.conf
+        self.logger = server.logger
+        BaseHTTPRequestHandler.__init__(self, request, client_address, server)
+
     def _quote_html(self, html):
         return html.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -317,13 +322,13 @@ class ProxyHandler(HTTPRequestHandler):
 
     def getparent(self):
         if self._proxylist is None:
-            self._proxylist = self.server.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
-            self.server.logger.debug(repr(self._proxylist))
+            self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
+            self.logger.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
             return 1
         self.ppname = self._proxylist.pop(0)
-        self.pproxy = self.server.conf.parentdict.get(self.ppname)[0]
+        self.pproxy = self.conf.parentdict.get(self.ppname)[0]
         self.pproxyparse = urlparse.urlparse(self.pproxy)
 
     def do_GET(self):
@@ -337,12 +342,12 @@ class ProxyHandler(HTTPRequestHandler):
         if self.path.startswith('/'):
             return self.send_error(403)
         # redirector
-        new_url = self.server.conf.PARENT_PROXY.redirect(self.path)
+        new_url = self.conf.PARENT_PROXY.redirect(self.path)
         if new_url:
-            self.server.logger.debug('redirecting to %s' % new_url)
+            self.logger.debug('redirecting to %s' % new_url)
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
-            elif new_url in self.server.conf.parentdict.keys():
+            elif new_url in self.conf.parentdict.keys():
                 self._proxylist = [new_url]
             else:
                 return self.redirect(new_url)
@@ -355,14 +360,14 @@ class ProxyHandler(HTTPRequestHandler):
         self.requesthost = parse_hostport(self.headers['Host'], 80)
 
         if self._request_is_localhost(self.requesthost):
-            if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.server.conf.listen[1], self.server.conf.listen[1] + 1, self.server.conf.listen[1] + 2):
+            if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.conf.listen[1], self.conf.listen[1] + 1, self.conf.listen[1] + 2):
                 return self.api(parse)
             if not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
 
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
-        if self.server.conf.xheaders:
+        if self.conf.xheaders:
             ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
             ipl.append(self.client_address[0])
             self.headers['X-Forwarded-For'] = ', '.join(ipl)
@@ -377,10 +382,10 @@ class ProxyHandler(HTTPRequestHandler):
             self.failed_parents.append(self.ppname)
         if not self.retryable:
             self.close_connection = 1
-            self.server.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
+            self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
             return
         if self.getparent():
-            self.server.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
+            self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
             return self.send_error(504)
 
         self.upstream_name = self.ppname if self.pproxy.startswith('http') else self.requesthost
@@ -391,7 +396,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.wbuffer = deque()
         self.wbuffer_size = 0
         # send request header
-        self.server.logger.debug('sending request header')
+        self.logger.debug('sending request header')
         s = []
         if self.pproxy.startswith('http'):
             s.append('%s %s %s\r\n' % (self.command, self.path, self.request_version))
@@ -410,7 +415,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.remotesoc.sendall(''.join(s).encode('latin1'))
         except NetWorkIOError as e:
             return self.on_GET_Error(e)
-        self.server.logger.debug('sending request body')
+        self.logger.debug('sending request body')
         # send request body
         content_length = int(self.headers.get('Content-Length', 0))
         if content_length:
@@ -435,7 +440,7 @@ class ProxyHandler(HTTPRequestHandler):
                 except NetWorkIOError as e:
                     return self.on_GET_Error(e)
         # read response line
-        self.server.logger.debug('reading response_line')
+        self.logger.debug('reading response_line')
         remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
         try:
             s = response_line = remoterfile.readline()
@@ -447,7 +452,7 @@ class ProxyHandler(HTTPRequestHandler):
         response_status, _, response_reason = response_status.partition(b' ')
         response_status = int(response_status)
         # read response headers
-        self.server.logger.debug('reading response header')
+        self.logger.debug('reading response header')
         header_data = []
         try:
             while True:
@@ -466,7 +471,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.close_connection = conntype.lower() == 'close'
         else:
             self.close_connection = conntype.lower() != 'keep_alive'
-        self.server.logger.debug('reading response body')
+        self.logger.debug('reading response body')
         if "Content-Length" in response_header:
             if "," in response_header["Content-Length"]:
                 # Proxies sometimes cause Content-Length headers to get
@@ -524,16 +529,16 @@ class ProxyHandler(HTTPRequestHandler):
                 except Exception:
                     break
         self.wfile_write()
-        self.server.logger.debug('request finish')
-        self.server.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
+        self.logger.debug('request finish')
+        self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
         if self.close_connection or is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
         else:
-            self.server.conf.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)')
+            self.conf.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)')
         self.remotesoc = None
 
     def on_GET_Error(self, e):
-        self.server.logger.warning('{} {} via {} failed! {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
+        self.logger.warning('{} {} via {} failed! {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
         return self._do_GET(True)
 
     do_POST = do_DELETE = do_TRACE = do_HEAD = do_PUT = do_GET
@@ -545,7 +550,7 @@ class ProxyHandler(HTTPRequestHandler):
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
         if self._request_is_localhost(self.requesthost):
-            if (ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.server.conf.listen[1], self.server.conf.listen[1] + 1)) or\
+            if (ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.conf.listen[1], self.conf.listen[1] + 1)) or\
                     not ip_address(self.client_address[0]).is_loopback:
                 return self.send_error(403)
         if 'Host' not in self.headers:
@@ -559,13 +564,13 @@ class ProxyHandler(HTTPRequestHandler):
         if self.remotesoc:
             self.remotesoc.close()
         if not self.retryable or self.getparent():
-            self.server.conf.PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
+            self.conf.PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
             return
         try:
             self.remotesoc = self._connect_via_proxy(self.requesthost)
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
-            self.server.logger.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
+            self.logger.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT(True)
 
         if self.pproxy.startswith('http'):
@@ -579,15 +584,15 @@ class ProxyHandler(HTTPRequestHandler):
             remoterfile = self.remotesoc.makefile('rb', 0)
             data = remoterfile.readline()
             if b'200' not in data:
-                self.server.logger.warning('{} {} via {} failed! 200 not in response'.format(self.command, self.path, self.ppname))
+                self.logger.warning('{} {} via {} failed! 200 not in response'.format(self.command, self.path, self.ppname))
                 return self._do_CONNECT(True)
             while not data in (b'\r\n', b'\n', b'\r'):
                 if not data:
-                    self.server.logger.warning('{} {} via {} failed! remote peer closed'.format(self.command, self.path, self.ppname))
+                    self.logger.warning('{} {} via {} failed! remote peer closed'.format(self.command, self.path, self.ppname))
                     return self._do_CONNECT(True)
                 data = remoterfile.readline()
         if self.rbuffer:
-            self.server.logger.debug('remote write rbuffer')
+            self.logger.debug('remote write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))
         while 1:
             try:
@@ -595,7 +600,7 @@ class ProxyHandler(HTTPRequestHandler):
                 if not ins:
                     break
                 if self.connection in ins:
-                    self.server.logger.debug('read from client')
+                    self.logger.debug('read from client')
                     try:
                         data = self.connection.recv(self.bufsize)
                     except:
@@ -605,22 +610,22 @@ class ProxyHandler(HTTPRequestHandler):
                     self.rbuffer.append(data)
                     self.remotesoc.sendall(data)
                 if self.remotesoc in ins:
-                    self.server.logger.debug('read from remote')
+                    self.logger.debug('read from remote')
                     data = self.remotesoc.recv(self.bufsize)
                     if not data:  # remote connection closed
-                        self.server.logger.debug('not data')
+                        self.logger.debug('not data')
                         break
                     self.wfile.write(data)
-                    self.server.logger.debug('self.retryable = False')
+                    self.logger.debug('self.retryable = False')
                     self.retryable = False
                     break
             except socket.error as e:
-                self.server.logger.warning('socket error: %r' % e)
+                self.logger.warning('socket error: %r' % e)
                 break
         if self.retryable:
-            self.server.logger.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
+            self.logger.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
             return self._do_CONNECT(True)
-        self.server.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
+        self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
         self._read_write(self.remotesoc, 300)
         self.remotesoc.close()
         self.connection.close()
@@ -642,17 +647,17 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _http_connect_via_proxy(self, netloc):
         if not self.failed_parents:
-            res = self.server.conf.HTTPCONN_POOL.get(self.upstream_name)
+            res = self.conf.HTTPCONN_POOL.get(self.upstream_name)
             if res:
                 self._proxylist.insert(0, self.ppname)
                 sock, self.ppname = res
-                self.server.logger.info('{} {} via {}'.format(self.command, self.shortpath, self.ppname))
+                self.logger.info('{} {} via {}'.format(self.command, self.shortpath, self.ppname))
                 return sock
         return self._connect_via_proxy(netloc)
 
     def _connect_via_proxy(self, netloc):
         timeout = None if self._proxylist else 20
-        self.server.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
+        self.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
         if not self.pproxy:
             return create_connection(netloc, timeout or 5)
         elif self.pproxy.startswith('http://'):
@@ -663,7 +668,7 @@ class ProxyHandler(HTTPRequestHandler):
             s.do_handshake()
             return s
         elif self.pproxy.startswith('ss://'):
-            s = sssocket(self.pproxy, timeout, self.server.conf.parentdict.get('direct')[0])
+            s = sssocket(self.pproxy, timeout, self.conf.parentdict.get('direct')[0])
             s.connect(netloc)
             return s
         elif self.pproxy.startswith('sni://'):
@@ -715,11 +720,11 @@ class ProxyHandler(HTTPRequestHandler):
                     break
                 count += 1
             except socket.error as e:
-                self.server.logger.debug('socket error: %s' % e)
+                self.logger.debug('socket error: %s' % e)
                 break
 
     def do_FTP(self):
-        self.server.logger.info('{} {}'.format(self.command, self.path))
+        self.logger.info('{} {}'.format(self.command, self.path))
         # fish out user and password information
         p = urlparse.urlparse(self.path, 'http')
         user, passwd = p.username or "anonymous", p.password or None
@@ -743,7 +748,7 @@ class ProxyHandler(HTTPRequestHandler):
                     ftp.retrbinary("RETR %s" % p.path, self.wfile.write, self.bufsize)
                     ftp.quit()
                 except Exception as e:  # Possibly no such file
-                    self.server.logger.warning("FTP Exception: %r" % e)
+                    self.logger.warning("FTP Exception: %r" % e)
                     self.send_error(504, repr(e))
         else:
             self.send_error(501)
@@ -766,7 +771,7 @@ class ProxyHandler(HTTPRequestHandler):
             table += '<tr><td align="left">================</td><td align="right">==========</td><td align="right">=============</td></tr></tbody></table>\r\n'
             table += '<p>%s</p>' % response
         except Exception as e:
-            self.server.logger.warning("FTP Exception: %r" % e)
+            self.logger.warning("FTP Exception: %r" % e)
             self.send_error(504, repr(e))
         else:
             msg = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"><html>\n',
@@ -794,41 +799,41 @@ class ProxyHandler(HTTPRequestHandler):
             body.write(data)
         body = body.getvalue()
         if parse.path == '/api/localrule' and self.command == 'GET':
-            data = json.dumps([(index, rule.rule, rule.expire) for index, rule in enumerate(self.server.conf.PARENT_PROXY.gfwlist_force)])
+            data = json.dumps([(index, rule.rule, rule.expire) for index, rule in enumerate(self.conf.PARENT_PROXY.gfwlist_force)])
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/localrule' and self.command == 'POST':
             'accept a json encoded tuple: (str rule, int exp)'
             rule, exp = json.loads(body)
-            result = self.server.conf.PARENT_PROXY.add_temp(rule, exp)
+            result = self.conf.PARENT_PROXY.add_temp(rule, exp)
             return self.write(400 if result else 201, result, 'application/json')
         elif parse.path.startswith('/api/localrule/') and self.command == 'DELETE':
             try:
                 rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
                 if rule:
-                    assert base64.urlsafe_b64decode(rule) == self.server.conf.PARENT_PROXY.gfwlist_force[int(parse.path[15:])].rule
-                result = self.server.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[15:]))
+                    assert base64.urlsafe_b64decode(rule) == self.conf.PARENT_PROXY.gfwlist_force[int(parse.path[15:])].rule
+                result = self.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[15:]))
                 return self.write(200, json.dumps([int(parse.path[15:]), result.rule, result.expire]), 'application/json')
             except Exception as e:
                 return self.send_error(404, repr(e))
         elif parse.path == '/api/redirector' and self.command == 'GET':
-            data = json.dumps([(index, rule[0].rule, rule[1]) for index, rule in enumerate(self.server.conf.PARENT_PROXY.redirlst)])
+            data = json.dumps([(index, rule[0].rule, rule[1]) for index, rule in enumerate(self.conf.PARENT_PROXY.redirlst)])
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/redirector' and self.command == 'POST':
             'accept a json encoded tuple: (str rule, str dest)'
             rule, dest = json.loads(body)
-            self.server.conf.PARENT_PROXY.add_rule('%s %s' % (rule, dest))
+            self.conf.PARENT_PROXY.add_rule('%s %s' % (rule, dest))
             return self.write(200, data, 'application/json')
         elif parse.path.startswith('/api/redirector/') and self.command == 'DELETE':
             try:
                 rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
                 if rule:
-                    assert base64.urlsafe_b64decode(rule) == self.server.conf.PARENT_PROXY.redirlst[int(parse.path[16:])][0].rule
-                rule, dest = self.server.conf.PARENT_PROXY.redirlst.pop(int(parse.path[16:]))
+                    assert base64.urlsafe_b64decode(rule) == self.conf.PARENT_PROXY.redirlst[int(parse.path[16:])][0].rule
+                rule, dest = self.conf.PARENT_PROXY.redirlst.pop(int(parse.path[16:]))
                 return self.write(200, json.dumps([int(parse.path[16:]), rule.rule, dest]), 'application/json')
             except Exception as e:
                 return self.send_error(404, repr(e))
         elif parse.path == '/api/goagent/pid' and self.command == 'GET':
-            data = json.dumps(self.server.conf.goagent.pid)
+            data = json.dumps(self.conf.goagent.pid)
             return self.write(200, data, 'application/json')
         elif parse.path == '/' and self.command == 'GET':
             return self.write(200, 'Hello World !', 'text/html')
@@ -871,7 +876,7 @@ class sssocket(object):
             while not data in (b'\r\n', b'\n', b''):
                 data = remoterfile.readline()
         else:
-            self.server.logger.error('sssocket does not support parent proxy server: %s for now' % self.parentproxy)
+            self.logger.error('sssocket does not support parent proxy server: %s for now' % self.parentproxy)
             return 1
         self.setsockopt = self._sock.setsockopt
         self.fileno = self._sock.fileno
