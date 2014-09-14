@@ -48,6 +48,7 @@ except TypeError:
     gevent.monkey.patch_all()
     sys.stderr.write('Warning: Please update gevent to the latest 1.0 version!\n')
 from collections import defaultdict, deque
+import copy
 import subprocess
 import shlex
 import time
@@ -323,12 +324,13 @@ class ProxyHandler(HTTPRequestHandler):
     def getparent(self):
         if self._proxylist is None:
             self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
-            self.logger.debug(repr(self._proxylist))
+            self.logger.info(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
             return 1
-        self.ppname = self._proxylist.pop(0)
-        self.pproxy = self.conf.parentdict.get(self.ppname)[0]
+        self.pproxy = self._proxylist.pop(0)
+        self.ppname = self.pproxy.name
+        self.pproxy = self.pproxy.proxy
         self.pproxyparse = urlparse.urlparse(self.pproxy)
 
     def do_GET(self):
@@ -347,8 +349,8 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.debug('redirecting to %s' % new_url)
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
-            elif new_url in self.conf.parentdict.keys():
-                self._proxylist = [new_url]
+            elif new_url in self.conf.parentlist.dict.keys():
+                self._proxylist = [self.conf.parentlist.dict.get(new_url)]
             else:
                 return self.redirect(new_url)
 
@@ -668,7 +670,7 @@ class ProxyHandler(HTTPRequestHandler):
             s.do_handshake()
             return s
         elif self.pproxy.startswith('ss://'):
-            s = sssocket(self.pproxy, timeout, self.conf.parentdict.get('direct')[0])
+            s = sssocket(self.pproxy, timeout, self.conf.parentlist.dict.get('direct').proxy)
             s.connect(netloc)
             return s
         elif self.pproxy.startswith('sni://'):
@@ -1153,13 +1155,6 @@ class parent_proxy(object):
                     self.gfwlist.insert(0, self.gfwlist.pop(i))
                 return True
 
-    @lru_cache(256, timeout=120)
-    def no_goagent(self, uri, host):
-        s = set(self.conf.parentdict.keys()) - set(['goagent', 'goagent-php', 'direct', 'local'])
-        a = self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent'
-        if s or a:  # two reasons not to use goagent
-            return True
-
     def if_gfwlist_force(self, uri, level):
         if level == 4:
             return True
@@ -1224,30 +1219,21 @@ class parent_proxy(object):
 
         if ifgfwed is False:
             if ip.is_private:
-                return ['local' if 'local' in self.conf.parentdict.keys() else 'direct']
-            return ['direct']
+                return [self.conf.parentlist.dict.get('local') or self.conf.parentlist.dict.get('direct')]
+            return [self.conf.parentlist.dict.get('direct')]
 
-        parentlist = list(self.conf.parentdict.keys())
+        parentlist = copy.copy(self.conf.parentlist.httpsparents if command == 'CONNECT' else self.conf.parentlist.httpparents)
         random.shuffle(parentlist)
-        parentlist = sorted(parentlist, key=lambda item: self.conf.parentdict[item][1])
+        parentlist = sorted(parentlist, key=lambda item: item.httpspriority if command == 'CONNECT' else item.httppriority)
 
-        if command == 'CONNECT' and 'goagent' in parentlist and self.no_goagent(uri, host):
-            self.logger.debug('skip goagent')
-            if 'goagent' in parentlist:
-                parentlist.remove('goagent')
-                parentlist.append('goagent')
-            if 'goagent-php' in parentlist:
-                parentlist.remove('goagent-php')
-                parentlist.append('goagent-php')
-
-        if 'local' in parentlist:
-            parentlist.remove('local')
+        if self.conf.parentlist.dict.get('local') in parentlist:
+            parentlist.remove(self.conf.parentlist.dict.get('local'))
 
         if ifgfwed or level == 3:
-            parentlist.remove('direct')
+            parentlist.remove(self.conf.parentlist.dict.get('direct'))
             if not parentlist:
                 self.logger.warning('No parent proxy available, direct connection is used')
-                return ['direct']
+                return [self.conf.parentlist.dict.get('direct')]
 
         if len(parentlist) > self.conf.maxretry + 1:
             parentlist = parentlist[:self.conf.maxretry + 1]
@@ -1444,7 +1430,7 @@ class goagentHandler(FGFWProxyHandler):
             goagent.set('iplist', 'google_cn', self.conf.userconf.dget('goagent', 'google_cn', ''))
         if self.conf.userconf.dget('goagent', 'google_hk', ''):
             goagent.set('iplist', 'google_hk', self.conf.userconf.dget('goagent', 'google_hk', ''))
-        self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20')
+        self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20 200')
 
         if self.conf.userconf.dget('goagent', 'phpfetchserver'):
             goagent.set('php', 'enable', '1')
@@ -1457,8 +1443,8 @@ class goagentHandler(FGFWProxyHandler):
         goagent.set('pac', 'enable', '0')
 
         goagent.set('proxy', 'autodetect', '0')
-        if self.conf.parentdict.get('direct')[0].startswith('http://'):
-            p = urlparse.urlparse(self.conf.parentdict.get('direct')[0])
+        if self.conf.parentlist.dict.get('direct') and self.conf.parentlist.dict.get('direct').proxy.startswith('http://'):
+            p = self.conf.parentlist.dict.get('direct').parse
             goagent.set('proxy', 'enable', '1')
             goagent.set('proxy', 'host', p.hostname)
             goagent.set('proxy', 'port', p.port)
@@ -1474,23 +1460,33 @@ class goagentHandler(FGFWProxyHandler):
 
 
 class ParentProxy(object):
-    def __init__(self, name, proxy, httppriority, httpspriority=None):
+    def __init__(self, name, proxy):
+        proxy, _, priority = proxy.partition(' ')
+        httppriority, _, httpspriority = priority.partition(' ')
+        httppriority = httppriority or 99
+        httpspriority = httpspriority or httppriority
+        if proxy == 'direct':
+            proxy = ''
         self.name = name
         self.proxy = proxy
         self.proxyparse = urlparse.urlparse(self.proxy)
-        self.httppriority = httppriority
-        self.httpspriority = httpspriority or httppriority
+        self.httppriority = int(httppriority)
+        self.httpspriority = int(httpspriority)
         if self.proxyparse.scheme.lower() == 'sni':
             self.httppriority = -1
 
     def __str__(self):
         return self.name
 
+    def __repr__(self):
+        return '<ParentProxy: %s %s %s>' % (self.name or 'direct', self.httppriority, self.httpspriority)
+
 
 class ParentProxyList(object):
     def __init__(self):
         self.httpparents = []
         self.httpsparents = []
+        self.dict = {}
 
     def add(self, parentproxy):
         assert isinstance(parentproxy, ParentProxy)
@@ -1498,6 +1494,10 @@ class ParentProxyList(object):
             self.httpparents.append(parentproxy)
         if parentproxy.httpspriority >= 0:
             self.httpsparents.append(parentproxy)
+        self.dict[parentproxy.name] = parentproxy
+
+    def addstr(self, name, proxy):
+        self.add(ParentProxy(name, proxy))
 
 
 class Config(object):
@@ -1509,7 +1509,7 @@ class Config(object):
         self.userconf = SConfigParser()
         self.reload()
         self.UPDATE_INTV = 6
-        self.parentdict = {'direct': ('', 0), }
+        self.parentlist = ParentProxyList()
         self.HOSTS = defaultdict(list)
         listen = self.userconf.dget('fgfwproxy', 'listen', '8118')
         if listen.isdigit():
@@ -1521,6 +1521,7 @@ class Config(object):
 
         self.xheaders = self.userconf.dgetbool('fgfwproxy', 'xheaders', False)
 
+        self.addparentproxy('direct', 'direct 0')
         if self.userconf.dget('fgfwproxy', 'parentproxy', ''):
             self.addparentproxy('direct', '%s 0' % self.userconf.dget('fgfwproxy', 'parentproxy', ''))
             self.addparentproxy('local', 'direct 100')
@@ -1559,20 +1560,8 @@ class Config(object):
         self.userconf.read('userconf.ini')
 
     def addparentproxy(self, name, proxy):
-        '''
-        {
-            'direct': ('', 0),
-            'goagent': ('http://127.0.0.1:8087', 20)
-        }
-        '''
-        proxy, _, priority = proxy.partition(' ')
-        if proxy == 'direct':
-            proxy = ''
-        priority = int(priority) if priority else (0 if name == 'direct' else 99)
-        if proxy and not '//' in proxy:
-            proxy = 'http://%s' % proxy
+        self.parentlist.addstr(name, proxy)
         self.logger.info('adding parent proxy: %s: %s' % (name, proxy))
-        self.parentdict[name] = (proxy, priority)
 
 
 @atexit.register
