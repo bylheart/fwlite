@@ -1185,14 +1185,14 @@ class parent_proxy(object):
         if any((ip.is_loopback, ip.is_private)):
             return False
 
+        if any(rule.match(uri) for rule in self.override):
+            return False
+
         if self.if_gfwlist_force(uri, level):
             return True
 
         if any(rule.match(uri) for rule in self.ignore):
             return None
-
-        if any(rule.match(uri) for rule in self.override):
-            return False
 
         if level == 2 and uri.startswith('http://'):
             return True
