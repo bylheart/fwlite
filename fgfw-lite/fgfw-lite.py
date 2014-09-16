@@ -180,7 +180,7 @@ class httpconn_pool(object):
     POOL = defaultdict(deque)
     timerwheel = defaultdict(list)
     timerwheel_index_iter = itertools.cycle(range(10))
-    timerwheel_index = timerwheel_index_iter.next()
+    timerwheel_index = next(timerwheel_index_iter)
     lock = RLock()
 
     def __init__(self, logger=logging):
@@ -209,7 +209,7 @@ class httpconn_pool(object):
                     i[0].close()
                     v.remove(i)
                     pcount += 1
-            self.timerwheel_index = self.timerwheel_index_iter.next()
+            self.timerwheel_index = next(self.timerwheel_index_iter)
             for upsname, soc in self.timerwheel[self.timerwheel_index]:
                 if soc in self.POOL[upsname]:
                     soc[0].close()
