@@ -145,16 +145,15 @@ class Encryptor(object):
     def iv_len(self):
         return len(self.cipher_iv)
 
-    def get_cipher(self, password, method, op, iv=None):
+    def get_cipher(self, password, method, op, iv):
         password = password.encode('utf-8')
         method = method.lower()
         m = self.get_cipher_len(method)
         if m:
-            key, iv_ = EVP_BytesToKey(password, m[0], m[1])
-            if iv is None:
-                iv = iv_[:m[1]]
+            key, _ = EVP_BytesToKey(password, m[0], 0)
+            iv = iv[:m[1]]
             if op == 1:
-                self.cipher_iv = iv[:m[1]]  # this iv is for cipher, not decipher
+                self.cipher_iv = iv  # this iv is for cipher, not decipher
             if method == 'rc4-md5':
                 return create_rc4_md5(method, key, iv, op)
             else:
