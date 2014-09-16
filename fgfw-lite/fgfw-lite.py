@@ -419,7 +419,19 @@ class ProxyHandler(HTTPRequestHandler):
         self.logger.debug('sending request body')
         # send request body
         content_length = int(self.headers.get('Content-Length', 0))
-        if content_length:
+        if self.headers.get("Transfer-Encoding") and self.headers.get("Transfer-Encoding") != "identity":
+            self.retryable = False
+            flag = 1
+            while flag:
+                trunk_lenth = self.rfile.readline()
+                self.remotesoc.sendall(trunk_lenth)
+                trunk_lenth = int(trunk_lenth.strip(), 16) + 2
+                flag = trunk_lenth != 2
+                while trunk_lenth:
+                    data = self.rfile.read(min(self.bufsize, trunk_lenth))
+                    trunk_lenth -= len(data)
+                    self.remotesoc.sendall(data)
+        elif content_length:
             if content_length > 102400:
                 self.retryable = False
             if self.rbuffer:
