@@ -96,10 +96,19 @@ method_supported = {
     'idea-cfb': (16, 8),
     'rc2-cfb': (16, 8),
     'rc4': (16, 0),
+    'rc4-md5': (16, 16),
     'seed-cfb': (16, 16),
 }
 
 USED_IV = defaultdict(sized_deque)
+
+
+def create_rc4_md5(method, key, iv, op):
+    md5 = hashlib.md5()
+    md5.update(key)
+    md5.update(iv)
+    rc4_key = md5.digest()
+    return Cipher('rc4', rc4_key, '', op)
 
 
 class Encryptor(object):
@@ -146,7 +155,10 @@ class Encryptor(object):
                 iv = iv_[:m[1]]
             if op == 1:
                 self.cipher_iv = iv[:m[1]]  # this iv is for cipher, not decipher
-            return Cipher(method.replace('-', '_'), key, iv, op)
+            if method == 'rc4-md5':
+                return create_rc4_md5(method, key, iv, op)
+            else:
+                return Cipher(method.replace('-', '_'), key, iv, op)
 
         logging.error('method %s not supported' % method)
         sys.exit(1)
