@@ -1,3 +1,9 @@
+2014.9.16 v4.4
+full python3 support(goagent still need python2)
+support rc4-md5 for shadowsocks
+support chunked HTTP request
+minor bug fix
+
 2014.9.15 v4.3
 new GUI
 add support for sni proxy
