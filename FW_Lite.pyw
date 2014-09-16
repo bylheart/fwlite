@@ -10,9 +10,7 @@ import shutil
 import threading
 import atexit
 import base64
-import httplib
 import json
-import urllib2
 import signal
 import subprocess
 import time
@@ -24,6 +22,12 @@ from ui_localrules import Ui_LocalRules
 from ui_localrule import Ui_LocalRule
 from ui_redirectorrules import Ui_RedirectorRules
 from util import SConfigParser
+try:
+    import httplib
+    import urllib2
+except ImportError:
+    import http.client as httplib
+    import urllib.request as urllib2
 try:
     from singleton import SingleInstance
     SINGLEINSTANCE = SingleInstance()
