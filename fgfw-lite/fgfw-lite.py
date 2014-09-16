@@ -420,18 +420,36 @@ class ProxyHandler(HTTPRequestHandler):
         # send request body
         content_length = int(self.headers.get('Content-Length', 0))
         if self.headers.get("Transfer-Encoding") and self.headers.get("Transfer-Encoding") != "identity":
-            self.retryable = False
+            if self.rbuffer:
+                try:
+                    self.remotesoc.sendall(b''.join(self.rbuffer))
+                except NetWorkIOError as e:
+                    return self.on_GET_Error(e)
             flag = 1
+            req_body_len = 0
             while flag:
                 trunk_lenth = self.rfile.readline()
-                self.remotesoc.sendall(trunk_lenth)
+                if self.retryable:
+                    self.rbuffer.append(trunk_lenth)
+                    req_body_len += len(trunk_lenth)
+                try:
+                    self.remotesoc.sendall(trunk_lenth)
+                except NetWorkIOError as e:
+                    return self.on_GET_Error(e)
                 trunk_lenth = int(trunk_lenth.strip(), 16) + 2
                 flag = trunk_lenth != 2
-                while trunk_lenth:
-                    data = self.rfile.read(min(self.bufsize, trunk_lenth))
-                    trunk_lenth -= len(data)
+                data = self.rfile.read(trunk_lenth)
+                if self.retryable:
+                    self.rbuffer.append(data)
+                    req_body_len += len(data)
+                try:
                     self.remotesoc.sendall(data)
-        elif content_length:
+                except NetWorkIOError as e:
+                    return self.on_GET_Error(e)
+                if req_body_len > 102400:
+                    self.retryable = False
+                    self.rbuffer = deque()
+        elif content_length > 0:
             if content_length > 102400:
                 self.retryable = False
             if self.rbuffer:
