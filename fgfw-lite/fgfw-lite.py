@@ -146,7 +146,7 @@ class stats(object):
         '''success rate by hostname'''
         if sincetime is None:
             sincetime = time.time() - 24 * 60 * 60
-        r = self.con.execute('select count(*), sum(success) from log where hostname = (?) and timestamp >= (?)', (hostname, sincetime)).next()
+        r = next(self.con.execute('select count(*), sum(success) from log where hostname = (?) and timestamp >= (?)', (hostname, sincetime)))
         if r[0] == 0:
             return(0, 0)
         return (r[1] / r[0], r[0])
@@ -155,7 +155,7 @@ class stats(object):
         '''success rate by ppname'''
         if sincetime is None:
             sincetime = time.time() - 24 * 60 * 60
-        r = self.con.execute('select count(*), sum(success) from log where ppname = (?) and timestamp >= (?)', (ppname, sincetime)).next()
+        r = next(self.con.execute('select count(*), sum(success) from log where ppname = (?) and timestamp >= (?)', (ppname, sincetime)))
         if r[0] == 0:
             return(0, 0)
         return (r[1] / r[0], r[0])
@@ -164,7 +164,7 @@ class stats(object):
         '''success rate by hostname and ppname'''
         if sincetime is None:
             sincetime = time.time() - 24 * 60 * 60
-        r = self.con.execute('select count(*), sum(success) from log where hostname = (?) and ppname = (?) and timestamp >= (?)', (hostname, ppname, sincetime)).next()
+        r = next(self.con.execute('select count(*), sum(success) from log where hostname = (?) and ppname = (?) and timestamp >= (?)', (hostname, ppname, sincetime)))
         if r[0] == 0:
             return(0, 0)
         return (r[1] / r[0], r[0])
