@@ -2,7 +2,7 @@ FW-Lite
 =========
 A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
 
-Works on Windows, Linux and Mac(untested).
+Works on Windows, Linux and Mac(untested) with python 2.7+ or python3.4+.
 
 Just [Download](http://fwlite.tk/fwlite.zip), and run it.
 

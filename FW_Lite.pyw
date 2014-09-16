@@ -45,18 +45,21 @@ PYTHON = '%s/Python27/python27.exe' % WORKINGDIR if sys.platform.startswith('win
 
 def setIEproxy(enable, proxy=u'', override=u'<local>'):
     import ctypes
-    import _winreg
+    try:
+        import _winreg as winreg
+    except:
+        import winreg
 
-    access = _winreg.KEY_ALL_ACCESS
+    access = winreg.KEY_ALL_ACCESS
     if 'PROGRAMFILES(X86)' in os.environ:
-        access |= _winreg.KEY_WOW64_64KEY
-    INTERNET_SETTINGS = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER,
-                                        r'Software\Microsoft\Windows\CurrentVersion\Internet Settings',
-                                        0, access)
+        access |= winreg.KEY_WOW64_64KEY
+    INTERNET_SETTINGS = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                       r'Software\Microsoft\Windows\CurrentVersion\Internet Settings',
+                                       0, access)
 
-    _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyEnable', 0, _winreg.REG_DWORD, enable)
-    _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyServer', 0, _winreg.REG_SZ, proxy)
-    _winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyOverride', 0, _winreg.REG_SZ, override)
+    winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyEnable', 0, winreg.REG_DWORD, enable)
+    winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyServer', 0, winreg.REG_SZ, proxy)
+    winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyOverride', 0, winreg.REG_SZ, override)
 
     ctypes.windll.Wininet.InternetSetOptionW(0, 39, 0, 0)
 
@@ -293,7 +296,7 @@ class LocalRules(QtGui.QWidget):
         self.widgetlist = []
 
     def refresh(self):
-        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=1).read())
+        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=1).read().decode())
         lst = []
         self.ui.LocalRulesLayout.removeItem(self.spacer)
         for rid, rule, exp in data:
@@ -314,7 +317,7 @@ class LocalRules(QtGui.QWidget):
 
     def addLocalRule(self):
         exp = int(self.ui.ExpireEdit.text()) if self.ui.ExpireEdit.text().isdigit() and int(self.ui.ExpireEdit.text()) > 0 else None
-        data = json.dumps((self.ui.LocalRuleEdit.text(), exp))
+        data = json.dumps((self.ui.LocalRuleEdit.text(), exp)).encode()
         urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, data, timeout=1)
         self.refresh()
 
@@ -331,7 +334,7 @@ class LocalRule(QtGui.QWidget):
 
     def delrule(self):
         conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
-        conn.request('DELETE', '/api/localrule/%d?rule=%s' % (self.rid, base64.urlsafe_b64encode(self.rule)))
+        conn.request('DELETE', '/api/localrule/%d?rule=%s' % (self.rid, base64.urlsafe_b64encode(self.rule.encode())))
         resp = conn.getresponse()
         content = resp.read()
         print(content)
@@ -364,7 +367,7 @@ class RedirectorRules(QtGui.QWidget):
         self.widgetlist = []
 
     def refresh(self):
-        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, timeout=1).read())
+        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, timeout=1).read().decode())
         lst = []
         self.ui.RedirectorRulesLayout.removeItem(self.spacer)
         for rid, rule, exp in data:
@@ -384,7 +387,7 @@ class RedirectorRules(QtGui.QWidget):
             self.timer.start(1000)
 
     def addRedirRule(self):
-        data = json.dumps((self.ui.RuleEdit.text(), self.ui.DestEdit.text()))
+        data = json.dumps((self.ui.RuleEdit.text(), self.ui.DestEdit.text())).encode()
         urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, data, timeout=1)
         self.refresh()
 
@@ -401,7 +404,7 @@ class RedirRule(QtGui.QWidget):
 
     def delrule(self):
         conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
-        conn.request('DELETE', '/api/redirector/%d?rule=%s' % (self.rid, base64.urlsafe_b64encode(self.rule)))
+        conn.request('DELETE', '/api/redirector/%d?rule=%s' % (self.rid, base64.urlsafe_b64encode(self.rule.encode())))
         resp = conn.getresponse()
         content = resp.read()
         print(content)
@@ -430,7 +433,7 @@ class RemoteResolve(QtGui.QWidget):
 
     def _do_resolve(self, host, server):
         try:
-            result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host).strip('='), server), timeout=1).read())
+            result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host.encode()).decode().strip('='), server), timeout=1).read().decode())
         except Exception as e:
             result = [repr(e)]
         self.trigger.emit('\n'.join(result))
