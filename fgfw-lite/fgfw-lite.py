@@ -565,14 +565,14 @@ class ProxyHandler(HTTPRequestHandler):
         if self.close_connection or is_connection_dropped(self.remotesoc):
             self.remotesoc.close()
         else:
-            self.conf.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else self.ppname + '(pooled)')
+            self.conf.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
         self.remotesoc = None
 
     def on_GET_Error(self, e):
         self.logger.warning('{} {} via {} failed! {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
         return self._do_GET(True)
 
-    do_POST = do_DELETE = do_TRACE = do_HEAD = do_PUT = do_GET
+    do_PATCH = do_POST = do_DELETE = do_TRACE = do_HEAD = do_PUT = do_GET
 
     def do_CONNECT(self):
         self.close_connection = 1
