@@ -5,68 +5,35 @@
 # License: GPLv2+
 
 import os
-from Crypto.Util.strxor import strxor
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 
 class StreamCipher(object):
     def __init__(self, method, key, iv, mode):
-        if method.lower().startswith('rc4'):
-            self._encrypt, self._decrypt = self._rc4_encrypt, self._rc4_decrypt
         self.method = method
         self.key = key
         self.iv = iv
         self.iv_len = len(iv)
-        self.cipher = self.get_cipher()
-        self.__ivecb = self.cipher.encrypt(iv)
-        self.__lase_cipher = b''
-        self.update = self._encrypt if mode else self._decrypt
-
-    def _encrypt(self, data):
-        result = []
-        index = 0
-        while index < len(data):
-            this_plaintext = data[index:index + len(self.__ivecb)]
-            index += len(this_plaintext)
-            cipher = strxor(self.__ivecb[:len(this_plaintext)], this_plaintext)
-            self.__ivecb = self.__ivecb[len(this_plaintext):]
-            result.append(cipher)
-            self.__lase_cipher = cipher if not self.__lase_cipher else b''.join([self.__lase_cipher, cipher])
-            if not self.__ivecb:
-                self.__ivecb, self.__lase_cipher = self.cipher.encrypt(self.__lase_cipher), b''
-        return b''.join(result)
-
-    def _decrypt(self, data):
-        result = []
-        index = 0
-        while index < len(data):
-            this_ciphertext = data[index:index + len(self.__ivecb)]
-            index += len(this_ciphertext)
-            result.append(strxor(self.__ivecb[:len(this_ciphertext)], this_ciphertext))
-            self.__ivecb = self.__ivecb[len(this_ciphertext):]
-            self.__lase_cipher = this_ciphertext if not self.__lase_cipher else b''.join([self.__lase_cipher, this_ciphertext])
-            if not self.__ivecb:
-                self.__ivecb, self.__lase_cipher = self.cipher.encrypt(self.__lase_cipher), b''
-        return b''.join(result)
-
-    def _rc4_encrypt(self, data):
-        return self.cipher.encrypt(data)
-
-    def _rc4_decrypt(self, data):
-        return self.cipher.decrypt(data)
+        self.cipher = self.get_cipher().encryptor() if mode else self.get_cipher().decryptor()
+        self.update = self.cipher.update
 
     def get_cipher(self):
-        if self.method.lower().startswith('aes'):
-            from Crypto.Cipher import AES
-            return AES.new(self.key)
-        if self.method.lower().startswith('bf'):
-            from Crypto.Cipher import Blowfish
-            return Blowfish.new(self.key)
-        if self.method.lower().startswith('cast'):
-            from Crypto.Cipher import CAST
-            return CAST.new(self.key)
-        if self.method.lower().startswith('rc4'):
-            from Crypto.Cipher import ARC4
-            return ARC4.new(self.key)
+        if self.method.startswith('aes'):
+            return Cipher(algorithms.AES(self.key), modes.CFB(self.iv), default_backend())
+        if self.method.startswith('bf'):
+            return Cipher(algorithms.Blowfish(self.key), modes.CFB(self.iv), default_backend())
+        if self.method.startswith('camellia'):
+            return Cipher(algorithms.Camellia(self.key), modes.CFB(self.iv), default_backend())
+        if self.method.startswith('cast5'):
+            return Cipher(algorithms.CAST5(self.key), modes.CFB(self.iv), default_backend())
+        if self.method.startswith('seed'):
+            return Cipher(algorithms.SEED(self.key), modes.CFB(self.iv), default_backend())
+        if self.method.startswith('idea'):
+            return Cipher(algorithms.IDEA(self.key), modes.CFB(self.iv), default_backend())
+        if self.method.startswith('rc4'):
+            return Cipher(algorithms.ARC4(self.key), None, default_backend())
         raise ValueError('crypto method %s not supported!' % self.method)
 
 
