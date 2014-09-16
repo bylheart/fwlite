@@ -7,7 +7,7 @@ Current Version: 4.4
 
 Works on Windows, Linux and Mac(untested).
 
-Just [Download](http://fwlite.tk/fwlite.zip), and run it.
+[Download](http://fwlite.tk/fwlite.zip)
 
 Inspired by [COW]
 
@@ -37,13 +37,9 @@ Inspired by [COW]
 
 ##Quick Start
 
-FW-Lite is Portable Software, just [Download](http://fwlite.tk/fwlite.zip), and it works out of the box.
+FW-Lite is Portable Software. You can set your own GoAgent APPID and other parent proxys in the main configuration file **userconf.ini**.
 
-You can set your own GoAgent APPID and other parent proxys in the main configuration file **userconf.ini**.
-
-**WARNING**: check your GoAgent password setting.
-
-Set your browser's proxy settings to *http://127.0.0.1:8118*, and you're set.
+Set your browser's proxy settings to *http://127.0.0.1:8118*, enjoy.
 
 For Windows, run FW_Lite.exe
 
