@@ -1428,32 +1428,28 @@ class goagentHandler(FGFWProxyHandler):
         self.cwd = '%s/goagent' % WORKINGDIR
         self.cmd = '{} {}/goagent/proxy.py'.format(PYTHON2, WORKINGDIR)
         self.enable = self.conf.userconf.dgetbool('goagent', 'enable', True)
-        with open('%s/goagent/proxy.py' % WORKINGDIR, 'rb') as f:
-            t = f.read()
-        with open('%s/goagent/proxy.py' % WORKINGDIR, 'wb') as f:
-            t = t.replace(b"ctypes.windll.kernel32.SetConsoleTitleW(u'GoAgent v%s' % __version__)", b'pass')
-            f.write(t)
         if self.enable:
-            self._config()
+            if self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent':
+                self.logger.warning('GoAgent APPID is NOT set!')
+                self.enable = False
+            else:
+                self._config()
 
     def _config(self):
         goagent = SConfigParser()
         goagent.read('./goagent/proxy.sample.ini')
 
-        if self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') != 'goagent':
-            goagent.set('gae', 'appid', self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'))
-            goagent.set("gae", "password", self.conf.userconf.dget('goagent', 'gaepassword', ''))
-        else:
-            self.logger.warning('GoAgent APPID is NOT set! Fake APPID is used.')
-            goagent.set('gae', 'appid', 'dummy')
+        goagent.set('gae', 'appid', self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'))
+        goagent.set("gae", "password", self.conf.userconf.dget('goagent', 'gaepassword', ''))
         goagent.set('gae', 'mode', self.conf.userconf.dget('goagent', 'mode', 'https'))
-        goagent.set('gae', 'profile', self.conf.userconf.dget('goagent', 'profile', 'ipv4'))
+        goagent.set('gae', 'ipv6', self.conf.userconf.dget('goagent', 'ipv6', '0'))
+        goagent.set('gae', 'sslversion', self.conf.userconf.dget('goagent', 'options', 'TLSv1'))
         goagent.set('gae', 'keepalive', self.conf.userconf.dget('goagent', 'keepalive', '0'))
         goagent.set('gae', 'obfuscate', self.conf.userconf.dget('goagent', 'obfuscate', '0'))
-        goagent.set('gae', 'validate', self.conf.userconf.dget('goagent', 'validate', '0'))
         goagent.set('gae', 'pagespeed', self.conf.userconf.dget('goagent', 'pagespeed', '0'))
+        goagent.set('gae', 'validate', self.conf.userconf.dget('goagent', 'validate', '0'))
         goagent.set('gae', 'options', self.conf.userconf.dget('goagent', 'options', ''))
-        goagent.set('gae', 'sslversion', self.conf.userconf.dget('goagent', 'options', 'TLSv1'))
+
         if self.conf.userconf.dget('goagent', 'google_cn', ''):
             goagent.set('iplist', 'google_cn', self.conf.userconf.dget('goagent', 'google_cn', ''))
         if self.conf.userconf.dget('goagent', 'google_hk', ''):
