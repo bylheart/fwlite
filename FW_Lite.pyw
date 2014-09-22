@@ -293,6 +293,7 @@ class LocalRules(QtGui.QWidget):
         self.timer.timeout.connect(self.refresh)
         self.timer.start(1000)
         self.port = parent.port
+        self.icon = parent
         self.widgetlist = []
 
     def refresh(self):
@@ -317,8 +318,15 @@ class LocalRules(QtGui.QWidget):
 
     def addLocalRule(self):
         exp = int(self.ui.ExpireEdit.text()) if self.ui.ExpireEdit.text().isdigit() and int(self.ui.ExpireEdit.text()) > 0 else None
-        data = json.dumps((self.ui.LocalRuleEdit.text(), exp)).encode()
-        urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, data, timeout=1)
+        rule = self.ui.LocalRuleEdit.text()
+        data = json.dumps((rule, exp)).encode()
+        try:
+            urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, data, timeout=1)
+        except:
+            self.icon.showMessage('add localrule %s failed!' % rule)
+        else:
+            self.ui.LocalRuleEdit.clear()
+            self.ui.ExpireEdit.clear()
         self.refresh()
 
 
@@ -364,6 +372,7 @@ class RedirectorRules(QtGui.QWidget):
         self.timer.timeout.connect(self.refresh)
         self.timer.start(1000)
         self.port = parent.port
+        self.icon = parent
         self.widgetlist = []
 
     def refresh(self):
@@ -387,8 +396,16 @@ class RedirectorRules(QtGui.QWidget):
             self.timer.start(1000)
 
     def addRedirRule(self):
-        data = json.dumps((self.ui.RuleEdit.text(), self.ui.DestEdit.text())).encode()
-        urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, data, timeout=1)
+        rule = self.ui.RuleEdit.text()
+        dest = self.ui.DestEdit.text()
+        data = json.dumps((rule, dest)).encode()
+        try:
+            urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, data, timeout=1)
+        except:
+            self.icon.showMessage('add redirrule %s %s failed!' % (rule, dest))
+        else:
+            self.ui.RuleEdit.clear()
+            self.ui.DestEdit.clear()
         self.refresh()
 
 
