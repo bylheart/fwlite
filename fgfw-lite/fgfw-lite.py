@@ -20,7 +20,7 @@
 
 from __future__ import print_function, division
 
-__version__ = '4.3'
+__version__ = '4.4.1'
 
 import sys
 import os
@@ -844,6 +844,7 @@ class ProxyHandler(HTTPRequestHandler):
                 if rule:
                     assert base64.urlsafe_b64decode(rule) == self.conf.PARENT_PROXY.gfwlist_force[int(parse.path[15:])].rule
                 result = self.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[15:]))
+                self.conf.PARENT_PROXY.temp_rules.discard(result.rule)
                 return self.write(200, json.dumps([int(parse.path[15:]), result.rule, result.expire]), 'application/json')
             except Exception as e:
                 return self.send_error(404, repr(e))

@@ -1,9 +1,9 @@
-FW-Lite
+vFW-Lite
 =========
 
 A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
 
-Current Version: 4.4
+Current Version: 4.4.1
 
 Works on Windows, Linux and Mac(untested).
 
