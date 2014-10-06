@@ -472,9 +472,12 @@ def atexit_do():
 
 if __name__ == "__main__":
     if os.name == 'nt':
-        import ctypes
-        myappid = 'v3aqb.fgfw-lite'  # arbitrary string
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        try:
+            import ctypes
+            myappid = 'v3aqb.fgfw-lite'  # arbitrary string
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        except:
+            pass
     app = QtGui.QApplication('')
     win = MainWindow()
     sys.exit(app.exec_())
