@@ -158,7 +158,7 @@ class MainWindow(QtGui.QMainWindow):
             self.settingIEproxyMenu = self.trayIconMenu.addMenu(u'设置代理')
             self.setIEProxyMenu()
 
-        advancedMenu = self.trayIconMenu.addMenu(u'高級')
+        advancedMenu = self.trayIconMenu.addMenu(u'高级')
         advancedMenu.addAction(self.flushDNSAction)
         advancedMenu.addAction(self.remoteDNSAction)
 
