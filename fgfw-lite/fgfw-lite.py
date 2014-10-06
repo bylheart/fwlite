@@ -28,9 +28,6 @@ import glob
 
 sys.dont_write_bytecode = True
 WORKINGDIR = '/'.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')).split('/')[:-1])
-if ' ' in WORKINGDIR:
-    sys.stderr.write('no spacebar allowed in path\n')
-    sys.exit(-1)
 os.chdir(WORKINGDIR)
 sys.path.append(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')))
 sys.path += glob.glob('%s/goagent/*.egg' % WORKINGDIR)
@@ -102,7 +99,7 @@ logging.basicConfig(level=logging.INFO,
                     datefmt='%H:%M:%S', filemode='a+')
 
 if sys.platform.startswith('win'):
-    PYTHON2 = '%s/Python27/python27.exe' % WORKINGDIR
+    PYTHON2 = '"%s/Python27/python27.exe"' % WORKINGDIR
 else:
     for cmd in ('python2.7', 'python27', 'python2'):
         if subprocess.call(shlex.split('which %s' % cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
@@ -1427,7 +1424,7 @@ class goagentHandler(FGFWProxyHandler):
     """docstring for ClassName"""
     def config(self):
         self.cwd = '%s/goagent' % WORKINGDIR
-        self.cmd = '{} {}/goagent/proxy.py'.format(PYTHON2, WORKINGDIR)
+        self.cmd = '%s %s/goagent/proxy.py' % (PYTHON2, WORKINGDIR.replace(' ', '\ '))
         self.enable = self.conf.userconf.dgetbool('goagent', 'enable', True)
         if self.enable:
             if self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent':

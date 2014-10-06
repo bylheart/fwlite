@@ -40,7 +40,6 @@ except ImportError:
     pynotify = None
 
 TRAY_ICON = '%s/fgfw-lite/ui/icon.png' % WORKINGDIR
-PYTHON = '%s/Python27/python27.exe' % WORKINGDIR if sys.platform.startswith('win') else '/usr/bin/env python2.7'
 
 
 def setIEproxy(enable, proxy=u'', override=u'<local>'):
@@ -123,7 +122,9 @@ class MainWindow(QtGui.QMainWindow):
         self.killProcess()
         self.runner.readyReadStandardError.connect(self.newStderrInfo)
         self.runner.readyReadStandardOutput.connect(self.newStdoutInfo)
-        self.runner.start('%s -B %s/fgfw-lite/fgfw-lite.py' % (PYTHON, WORKINGDIR))
+        python = '"%s/Python27/python27.exe"' % WORKINGDIR if sys.platform.startswith('win') else '/usr/bin/env python'
+        cmd = '%s -B ./fgfw-lite/fgfw-lite.py' % (python)
+        self.runner.start(cmd)
 
     def newStderrInfo(self):
         self.update_text(str(self.runner.readAllStandardError()).strip())
