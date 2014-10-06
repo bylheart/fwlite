@@ -96,11 +96,11 @@ class MainWindow(QtGui.QMainWindow):
 
         self.LocalRules = LocalRules(self)
         self.ui.tabWidget.addTab(self.LocalRules, "")
-        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.LocalRules), QtGui.QApplication.translate("MainWindow", "LocalRules", None, QtGui.QApplication.UnicodeUTF8))
+        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.LocalRules), QtGui.QApplication.translate("MainWindow", "用户规则", None, QtGui.QApplication.UnicodeUTF8))
 
         self.RedirRules = RedirectorRules(self)
         self.ui.tabWidget.addTab(self.RedirRules, "")
-        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.RedirRules), QtGui.QApplication.translate("MainWindow", "RedirectorRules", None, QtGui.QApplication.UnicodeUTF8))
+        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.RedirRules), QtGui.QApplication.translate("MainWindow", "重定向规则", None, QtGui.QApplication.UnicodeUTF8))
 
         self.trayIcon = None
         self.createActions()

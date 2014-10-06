@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\localrule.ui'
 #
-# Created: Tue Aug 19 00:19:06 2014
+# Created: Tue Oct  7 00:49:13 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!

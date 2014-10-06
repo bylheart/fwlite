@@ -22,7 +22,7 @@
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
-        <string>Console</string>
+        <string>控制台</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>

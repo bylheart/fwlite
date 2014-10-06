@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\mainwindow.ui'
 #
-# Created: Tue Aug 19 00:19:07 2014
+# Created: Tue Oct  7 00:49:15 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -43,5 +43,5 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "FGFW-Lite", None, QtGui.QApplication.UnicodeUTF8))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QtGui.QApplication.translate("MainWindow", "Console", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QtGui.QApplication.translate("MainWindow", "控制台", None, QtGui.QApplication.UnicodeUTF8))
 
