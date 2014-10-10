@@ -479,6 +479,8 @@ class ProxyHandler(HTTPRequestHandler):
         protocol_version, _, response_status = response_line.rstrip(b'\r\n').partition(b' ')
         response_status, _, response_reason = response_status.partition(b' ')
         response_status = int(response_status)
+        if response_status > 500 and self.ppname.startswith('goagent'):
+            return self.on_GET_Error(OSError(0, 'bad response status code from goagent: %d' % response_status))
         # read response headers
         self.logger.debug('reading response header')
         header_data = []
