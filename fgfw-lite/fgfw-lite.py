@@ -1257,7 +1257,7 @@ class parent_proxy(object):
         if self.conf.parentlist.dict.get('local') in parentlist:
             parentlist.remove(self.conf.parentlist.dict.get('local'))
 
-        if ifgfwed or level == 3:
+        if ifgfwed:
             parentlist.remove(self.conf.parentlist.dict.get('direct'))
             if not parentlist:
                 self.logger.warning('No parent proxy available, direct connection is used')
