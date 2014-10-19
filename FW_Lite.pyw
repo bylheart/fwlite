@@ -454,7 +454,7 @@ class RemoteResolve(QtGui.QWidget):
 
     def _do_resolve(self, host, server):
         try:
-            result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host.encode()).decode().strip('='), server), timeout=1).read().decode())
+            # result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host.encode()).decode().strip('='), server), timeout=1).read().decode())
             result = dns_via_http_connect(host, '127.0.0.1:8118', server)
         except Exception as e:
             result = [repr(e)]
