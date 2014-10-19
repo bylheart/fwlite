@@ -20,9 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import base64
 import re
 import socket
 import select
+import struct
+import dnslib
 from repoze.lru import lru_cache
 try:
     import configparser
@@ -93,6 +96,38 @@ def get_ip_address(host, port=80):
         return ip_address(getaddrinfo(host, port)[0][4][0])
 
 
+def dns_via_http_connect(query, httpproxy, dnsserver='8.8.8.8:53', user=None, passwd=None):
+    server, port = parse_hostport(dnsserver, default_port=53)
+    if ':' in server:
+        server = '[%s]' % server
+    dnsserver = '%s:%d' % (server, port)
+    qtype = dnslib.QTYPE.AAAA if ':' in server else dnslib.QTYPE.A
+    query = dnslib.DNSRecord(q=dnslib.DNSQuestion(query, qtype=qtype))
+    query_data = query.pack()
+    sock = create_connection(parse_hostport(httpproxy), timeout=3)
+    rfile = sock.makefile('r', 1024)
+
+    s = [b'CONNECT %s HTTP/1.1\r\n' % dnsserver]
+    if user:
+        a = '%s:%s' % (user, passwd)
+        s.append(('Proxy-Authorization: Basic %s\r\n' % base64.b64encode(a.encode())).encode())
+    s.append(b'\r\n')
+    sock.sendall(''.join(s).encode())
+    remoterfile = sock.makefile('rb', 0)
+    data = remoterfile.readline()
+    while not data in (b'\r\n', b'\n', b'\r'):
+        data = remoterfile.readline()
+
+    sock.send(struct.pack('>h', len(query_data)) + query_data)
+    rfile = sock.makefile('r', 1024)
+    reply_data_length = rfile.read(2)
+    reply_data = rfile.read(struct.unpack('>h', reply_data_length)[0])
+    record = dnslib.DNSRecord.parse(reply_data)
+    iplist = [str(x.rdata) for x in record.rr if x.rtype in (1, 28, 255)]
+    sock.close()
+    return iplist
+
+
 def create_connection(address, timeout=object(), source_address=None):
     """Connect to *address* and return the socket object.
 
@@ -131,7 +166,6 @@ def create_connection(address, timeout=object(), source_address=None):
         raise socket.error("getaddrinfo returns an empty list")
 
 
-@lru_cache(1024)
 def parse_hostport(host, default_port=80):
     m = re.match(r'(.+):(\d+)$', host)
     if m:
@@ -170,8 +204,8 @@ def sizeof_fmt(num):
 
 
 if __name__ == "__main__":
-    t = socket.getaddrinfo('www.baidu.com', 80)
-    r = getaddrinfo('www.baidu.com')
+    t = socket.getaddrinfo('twitter.com', 80)
+    r = dns_via_http_connect('twitter.com', '127.0.0.1:8118')
     print(t)
     print(r)
-    print(r[0][4][0])
+    # print(r[0][4][0])

@@ -40,6 +40,8 @@ if raw_input('update? y/n: ').lower().startswith('y'):
 filelst = ['./goagent/proxy.py',
            './goagent/proxylib.py',
            './fgfw-lite/fgfw-lite.py',
+           './fgfw-lite/util.py',
+           './FW_Lite.pyw',
            ]
 for path in filelst:
     with open(path, 'rb') as f:

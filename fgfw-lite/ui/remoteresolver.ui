@@ -50,12 +50,10 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QComboBox" name="serverComboBox">
-        <item>
-         <property name="text">
-          <string/>
-         </property>
-        </item>
+       <widget class="QLineEdit" name="serverlineEdit">
+        <property name="text">
+         <string>8.8.8.8</string>
+        </property>
        </widget>
       </item>
      </layout>

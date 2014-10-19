@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\redirectorrules.ui'
 #
-# Created: Tue Oct  7 00:49:16 2014
+# Created: Sun Oct 19 23:31:16 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!

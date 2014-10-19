@@ -3,8 +3,10 @@
 
 import os
 import sys
+import glob
 WORKINGDIR = os.path.dirname(os.path.abspath(__file__).replace('\\', '/'))
 os.chdir(WORKINGDIR)
+sys.path += glob.glob('%s/goagent/*.egg' % WORKINGDIR)
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 import shutil
 import threading
@@ -38,6 +40,7 @@ try:
     pynotify.init('FGFW-Lite Notify')
 except ImportError:
     pynotify = None
+from util import dns_via_http_connect
 
 TRAY_ICON = '%s/fgfw-lite/ui/icon.png' % WORKINGDIR
 
@@ -447,11 +450,12 @@ class RemoteResolve(QtGui.QWidget):
 
     def do_resolve(self):
         self.ui.resultTextEdit.setPlainText('resolving...')
-        threading.Thread(target=self._do_resolve, args=(self.ui.hostLineEdit.text(), self.ui.serverComboBox.currentText())).start()
+        threading.Thread(target=self._do_resolve, args=(self.ui.hostLineEdit.text(), self.ui.serverlineEdit.text())).start()
 
     def _do_resolve(self, host, server):
         try:
             result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host.encode()).decode().strip('='), server), timeout=1).read().decode())
+            result = dns_via_http_connect(host, '127.0.0.1:8118', server)
         except Exception as e:
             result = [repr(e)]
         self.trigger.emit('\n'.join(result))

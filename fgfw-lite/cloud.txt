@@ -8,3 +8,4 @@
 ||twimg.com auto
 |http://220.115.251.25:8084/ 403
 |https://www.mozilla.org
+||8.8.8.8
