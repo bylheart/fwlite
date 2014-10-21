@@ -16,8 +16,8 @@
     "./fgfw-lite/util.py": "94fde8dcfea0f256e3e40aa69b41e9bf1eb921e2aef21c37eb75576c4e6d215f",
     "./goagent/GeoIP.dat": "642680a7c98da514dfbd1b4921cf590fca9a913141843fd773e7330145579d3c",
     "./goagent/cacert.pem": "eb1288b800cb2fdf7c5d8d14fb79a5c00a8b05722c7f2a08763919ef6df11dc3",
-    "./goagent/proxy.py": "b96123fbc19869220f30751f4a8bfa9dbd38db31d44ff088d97f6551b6c94ef0",
-    "./goagent/proxy.sample.ini": "560fb3b9238dd7f035b852a0953b19489cf4988c36f698e5e92d562bc5d8cbcf",
-    "./goagent/proxylib.py": "6469bcb615f28fc8eb7bb68da6932ab43d52cf07670450db1ee5e1738bad5f94",
+    "./goagent/proxy.py": "5af8f80f318ee63283a506eb1619ca7505d2632e740ae6c3f63900aefe7ddb78",
+    "./goagent/proxy.sample.ini": "03dc4e50fb11a2b7e81630393fc2e386942d39787e8e54b2689b813e18f181b1",
+    "./goagent/proxylib.py": "a03964e533e0c46e70b4a82d8f8ead5c9286e62f84f3099da1cc81812d9a5a4c",
     "./userconf.sample.ini": "eff45605b6a46f2b23727246f66e9dc59d7d3c720fe9222f8f250b616856ea63"
 }
