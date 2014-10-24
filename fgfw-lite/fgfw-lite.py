@@ -571,7 +571,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.logger.warning('{} {} via {} failed! {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
         return self._do_GET(True)
 
-    do_PATCH = do_POST = do_DELETE = do_TRACE = do_HEAD = do_PUT = do_GET
+    do_OPTIONS = do_PATCH = do_POST = do_DELETE = do_TRACE = do_HEAD = do_PUT = do_GET
 
     def do_CONNECT(self):
         self.close_connection = 1
