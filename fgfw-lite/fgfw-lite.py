@@ -1447,7 +1447,7 @@ class goagentHandler(FGFWProxyHandler):
         goagent.set('gae', 'keepalive', self.conf.userconf.dget('goagent', 'keepalive', '0'))
         goagent.set('gae', 'obfuscate', self.conf.userconf.dget('goagent', 'obfuscate', '0'))
         goagent.set('gae', 'pagespeed', self.conf.userconf.dget('goagent', 'pagespeed', '0'))
-        goagent.set('gae', 'validate', self.conf.userconf.dget('goagent', 'validate', '0'))
+        goagent.set('gae', 'validate', self.conf.userconf.dget('goagent', 'validate', '1'))
         goagent.set('gae', 'options', self.conf.userconf.dget('goagent', 'options', ''))
 
         if self.conf.userconf.dget('goagent', 'google_cn', ''):
