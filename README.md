@@ -34,13 +34,13 @@ Inspired by [COW]
 
 ##Quick Start
 
-FW-Lite is Portable Software. You can set your own GoAgent APPID and other parent proxys in the main configuration file **userconf.ini**.
+FW-Lite is Portable Software. You can set your own GoAgent APPID and other parent proxys in the main configuration file `userconf.ini`.
 
-Set your browser's proxy settings to *http://127.0.0.1:8118*, enjoy.
+Set your browser's proxy setting to `http://127.0.0.1:8118`, enjoy.
 
-For Windows, run FW_Lite.exe
+For Windows, run `FW_Lite.exe`
 
-For Linux and Mac, run FW_Lite.pyw
+For Linux and Mac, run `FW_Lite.pyw`
 
 requirements under openSUSE:
 
