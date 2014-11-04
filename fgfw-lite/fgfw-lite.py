@@ -58,7 +58,6 @@ import base64
 import itertools
 import json
 import ftplib
-import logging
 import random
 import select
 import shutil
@@ -79,6 +78,12 @@ from threading import Thread, RLock, Timer
 from repoze.lru import lru_cache
 import encrypt
 from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt
+import logging
+
+logging.basicConfig(level=logging.INFO,
+                    format='FW-Lite %(asctime)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S', filemode='a+')
+logger = logging.getLogger('FW_Lite')
 try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
@@ -93,10 +98,6 @@ except ImportError:
     from SocketServer import ThreadingMixIn
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
     from ipaddr import IPAddress as ip_address
-
-logging.basicConfig(level=logging.INFO,
-                    format='FGFW-Lite %(asctime)s %(levelname)s %(message)s',
-                    datefmt='%H:%M:%S', filemode='a+')
 
 if sys.platform.startswith('win'):
     PYTHON2 = '"%s/Python27/python27.exe"' % WORKINGDIR
@@ -184,8 +185,8 @@ class httpconn_pool(object):
     timerwheel_index = next(timerwheel_index_iter)
     lock = RLock()
 
-    def __init__(self, logger=logging):
-        self.logger = logger
+    def __init__(self):
+        self.logger = logging.getLogger('FW_Lite')
         Timer(30, self.purge, ()).start()
 
     def put(self, upstream_name, soc, ppname):
@@ -1046,10 +1047,10 @@ class ExpiredError(Exception):
 
 
 class autoproxy_rule(object):
-    def __init__(self, arg, expire=None, logger=logging):
+    def __init__(self, arg, expire=None):
         super(autoproxy_rule, self).__init__()
         self.rule = arg.strip()
-        self.logger = logger
+        self.logger = logging.getLogger('FW_Lite')
         self.logger.debug('parsing autoproxy rule: %r' % self.rule)
         if len(self.rule) < 3 or self.rule.startswith(('!', '[')) or '#' in self.rule:
             raise TypeError("invalid autoproxy_rule: %s" % self.rule)
@@ -1528,10 +1529,10 @@ class ParentProxyList(object):
 
 
 class Config(object):
-    def __init__(self, logger=logging):
-        self.logger = logger
+    def __init__(self):
+        self.logger = logging.getLogger('FW_Lite')
         self.STATS = stats()
-        self.HTTPCONN_POOL = httpconn_pool(self.logger)
+        self.HTTPCONN_POOL = httpconn_pool()
         self.version = SConfigParser()
         self.userconf = SConfigParser()
         self.reload()
@@ -1588,7 +1589,7 @@ class Config(object):
 
     def addparentproxy(self, name, proxy):
         self.parentlist.addstr(name, proxy)
-        self.logger.info('adding parent proxy: %s: %s' % (name, proxy))
+        self.logger.info('add parent: %s: %s' % (name, proxy))
 
 
 @atexit.register
