@@ -3,7 +3,6 @@
 ||googleapis.com
 ||google.com.hk
 ||ggpht.com
-||googlevideo.com
 ||google-analytics.com
 |http://220.115.251.25:8084/ 403
 |https://www.mozilla.org
