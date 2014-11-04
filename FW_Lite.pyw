@@ -130,10 +130,21 @@ class MainWindow(QtGui.QMainWindow):
         self.runner.start(cmd)
 
     def newStderrInfo(self):
-        self.update_text(str(self.runner.readAllStandardError()).strip())
+        freload = False
+        lines = str(self.runner.readAllStandardError()).strip().splitlines()
+        self.consoleText.extend(lines)
+        for line in lines:
+            if 'Update Completed' in line:
+                self.showMessage(u'已升级到最新版，重新载入中...')
+                freload = True
+        self.ui.console.setPlainText(u'\n'.join(self.consoleText))
+        self.ui.console.moveCursor(QtGui.QTextCursor.End)
+        if freload:
+            self.reload(clear=False)
 
     def newStdoutInfo(self):
-        self.update_text(str(self.runner.readAllStandardOutput()).strip())
+        sys.stderr.write(str(self.runner.readAllStandardOutput()))
+        sys.stderr.flush()
 
     def center(self):
         qr = self.frameGeometry()
@@ -249,19 +260,6 @@ class MainWindow(QtGui.QMainWindow):
 
     def on_Quit(self):
         QtGui.qApp.quit()
-
-    def update_text(self, text):
-        freload = False
-        lines = text.splitlines()
-        self.consoleText.extend(lines)
-        for line in lines:
-            if 'Update Completed' in line:
-                self.showMessage(u'已升级到最新版，重新载入中...')
-                freload = True
-        self.ui.console.setPlainText(u'\n'.join(self.consoleText))
-        self.ui.console.moveCursor(QtGui.QTextCursor.End)
-        if freload:
-            self.reload(clear=False)
 
     def showToggle(self):
         if self.isVisible():
