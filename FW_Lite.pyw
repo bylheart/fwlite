@@ -40,7 +40,7 @@ try:
     pynotify.init('FGFW-Lite Notify')
 except ImportError:
     pynotify = None
-from util import dns_via_http_connect
+from util import dns_via_tcp
 
 TRAY_ICON = '%s/fgfw-lite/ui/icon.png' % WORKINGDIR
 
@@ -455,7 +455,7 @@ class RemoteResolve(QtGui.QWidget):
     def _do_resolve(self, host, server):
         try:
             # result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host.encode()).decode().strip('='), server), timeout=1).read().decode())
-            result = dns_via_http_connect(host, '127.0.0.1:8118', server)
+            result = dns_via_tcp(host, '127.0.0.1:8118', server)
         except Exception as e:
             result = [repr(e)]
         self.trigger.emit('\n'.join(result))

@@ -96,28 +96,30 @@ def get_ip_address(host, port=80):
         return ip_address(getaddrinfo(host, port)[0][4][0])
 
 
-def dns_via_http_connect(query, httpproxy, dnsserver='8.8.8.8:53', user=None, passwd=None):
+def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd=None):
     server, port = parse_hostport(dnsserver, default_port=53)
     if ':' in server:
         server = '[%s]' % server
     dnsserver = '%s:%d' % (server, port)
-    qtype = dnslib.QTYPE.AAAA if ':' in server else dnslib.QTYPE.A
+    if httpproxy:
+        sock = create_connection(parse_hostport(httpproxy), timeout=3)
+        s = [b'CONNECT %s HTTP/1.1\r\n' % dnsserver]
+        if user:
+            a = '%s:%s' % (user, passwd)
+            s.append(('Proxy-Authorization: Basic %s\r\n' % base64.b64encode(a.encode())).encode())
+        s.append(b'\r\n')
+        sock.sendall(''.join(s).encode())
+        remoterfile = sock.makefile('rb', 0)
+        data = remoterfile.readline()
+        while not data in (b'\r\n', b'\n', b'\r'):
+            data = remoterfile.readline()
+            if not data:
+                break
+    else:
+        sock = create_connection(parse_hostport(dnsserver), timeout=3)
+    qtype = dnslib.QTYPE.A
     query = dnslib.DNSRecord(q=dnslib.DNSQuestion(query, qtype=qtype))
     query_data = query.pack()
-    sock = create_connection(parse_hostport(httpproxy), timeout=3)
-    rfile = sock.makefile('r', 1024)
-
-    s = [b'CONNECT %s HTTP/1.1\r\n' % dnsserver]
-    if user:
-        a = '%s:%s' % (user, passwd)
-        s.append(('Proxy-Authorization: Basic %s\r\n' % base64.b64encode(a.encode())).encode())
-    s.append(b'\r\n')
-    sock.sendall(''.join(s).encode())
-    remoterfile = sock.makefile('rb', 0)
-    data = remoterfile.readline()
-    while not data in (b'\r\n', b'\n', b'\r'):
-        data = remoterfile.readline()
-
     sock.send(struct.pack('>h', len(query_data)) + query_data)
     rfile = sock.makefile('r', 1024)
     reply_data_length = rfile.read(2)
@@ -205,7 +207,7 @@ def sizeof_fmt(num):
 
 if __name__ == "__main__":
     t = socket.getaddrinfo('twitter.com', 80)
-    r = dns_via_http_connect('twitter.com', '127.0.0.1:8118')
+    r = dns_via_tcp('www.google.com')
     print(t)
     print(r)
     # print(r[0][4][0])
