@@ -1333,7 +1333,10 @@ def update(conf, auto=False):
         try:
             r = urllib2.urlopen(req)
         except Exception as e:
-            conf.logger.info('%s NOT updated. Reason: %r' % (path, e))
+            if isinstance(e, urllib2.HTTPError):
+                conf.logger.info('%s NOT updated. Reason: %s' % (path, e.reason))
+            else:
+                conf.logger.info('%s NOT updated. Reason: %r' % (path, e))
         else:
             data = r.read()
             if r.getcode() == 200 and data:
@@ -1582,6 +1585,8 @@ def main():
         ctypes.windll.kernel32.SetConsoleTitleW(u'FGFW-Lite v%s' % __version__)
     conf = Config()
     Timer(10, updater, (conf, )).start()
+    d = {'http': '127.0.0.1:%d' % conf.listen[1], 'https': '127.0.0.1:%d' % conf.listen[1]}
+    urllib2.install_opener(urllib2.build_opener(urllib2.ProxyHandler(d)))
     for i, level in enumerate(list(conf.userconf.dget('fgfwproxy', 'profile', '134'))):
         server = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + i), ProxyHandler, conf=conf, level=int(level))
         t = Thread(target=server.serve_forever)
