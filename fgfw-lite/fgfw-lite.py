@@ -75,7 +75,7 @@ except ImportError:
         from StringIO import StringIO
     except ImportError:
         from io import BytesIO as StringIO
-from threading import Thread, RLock
+from threading import Thread, RLock, Timer
 from repoze.lru import lru_cache
 import encrypt
 from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt
@@ -135,6 +135,9 @@ class stats(object):
     con = sqlite3.connect(":memory:", check_same_thread=False)
     con.execute("create table log (timestamp real, date text, command text, hostname text, url text, ppname text, success integer)")
 
+    def __init__(self):
+        Timer(3600, self.purge, ()).start()
+
     def log(self, command, hostname, url, ppname, success):
         with self.con:
             self.con.execute('insert into log values (?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success))
@@ -171,6 +174,7 @@ class stats(object):
             befortime = time.time() - 24 * 60 * 60
         with self.con:
             self.con.execute('delete from log where timestamp < ?', (befortime, ))
+        Timer(3600, self.purge, ()).start()
 
 
 class httpconn_pool(object):
@@ -182,6 +186,7 @@ class httpconn_pool(object):
 
     def __init__(self, logger=logging):
         self.logger = logger
+        Timer(30, self.purge, ()).start()
 
     def put(self, upstream_name, soc, ppname):
         with self.lock:
@@ -216,6 +221,7 @@ class httpconn_pool(object):
         count -= pcount
         if pcount:
             self.logger.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
+        Timer(30, self.purge, ()).start()
 
 
 class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
@@ -1301,19 +1307,16 @@ class parent_proxy(object):
 
 
 def updater(conf):
-    while 1:
-        time.sleep(30)
-        conf.HTTPCONN_POOL.purge()
-        lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
-        if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
-            conf.STATS.purge()
-            update(conf, auto=True)
-        global CTIMEOUT, ctimer
-        if ctimer:
-            conf.logger.info('max connection time: %ss in %s' % (max(ctimer), len(ctimer)))
-            CTIMEOUT = min(max(3, max(ctimer) * 5), 15)
-            conf.logger.info('conn timeout set to: %s' % CTIMEOUT)
-            ctimer = []
+    lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
+    if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
+        update(conf, auto=True)
+    # global CTIMEOUT, ctimer
+    # if ctimer:
+    #     conf.logger.info('max connection time: %ss in %s' % (max(ctimer), len(ctimer)))
+    #     CTIMEOUT = min(max(3, max(ctimer) * 5), 15)
+    #     conf.logger.info('conn timeout set to: %s' % CTIMEOUT)
+    #     ctimer = []
+    Timer(random.randint(600, 3600), updater, (conf, )).start()
 
 
 def update(conf, auto=False):
@@ -1599,9 +1602,7 @@ def main():
         import ctypes
         ctypes.windll.kernel32.SetConsoleTitleW(u'FGFW-Lite v%s' % __version__)
     conf = Config()
-    updatedaemon = Thread(target=updater, args=([conf]))
-    updatedaemon.daemon = True
-    updatedaemon.start()
+    Timer(10, updater, (conf, )).start()
     for i, level in enumerate(list(conf.userconf.dget('fgfwproxy', 'profile', '134'))):
         server = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + i), ProxyHandler, conf=conf, level=int(level))
         t = Thread(target=server.serve_forever)
