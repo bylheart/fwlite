@@ -77,13 +77,14 @@ except ImportError:
 from threading import Thread, RLock, Timer
 from repoze.lru import lru_cache
 import encrypt
-from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt
 import logging
 
 logging.basicConfig(level=logging.INFO,
                     format='FW-Lite %(asctime)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S', filemode='a+')
 logger = logging.getLogger('FW_Lite')
+
+from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt, ParentProxy
 try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
@@ -1485,29 +1486,6 @@ class goagentHandler(FGFWProxyHandler):
 
         with open('./goagent/proxy.ini', 'w') as configfile:
             goagent.write(configfile)
-
-
-class ParentProxy(object):
-    def __init__(self, name, proxy):
-        proxy, _, priority = proxy.partition(' ')
-        httppriority, _, httpspriority = priority.partition(' ')
-        httppriority = httppriority or 99
-        httpspriority = httpspriority or httppriority
-        if proxy == 'direct':
-            proxy = ''
-        self.name = name
-        self.proxy = proxy
-        self.parse = urlparse.urlparse(self.proxy)
-        self.httppriority = int(httppriority)
-        self.httpspriority = int(httpspriority)
-        if self.parse.scheme.lower() == 'sni':
-            self.httppriority = -1
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return '<ParentProxy: %s %s %s>' % (self.name or 'direct', self.httppriority, self.httpspriority)
 
 
 class ParentProxyList(object):
