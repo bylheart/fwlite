@@ -1,6 +1,6 @@
 A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
 
-Current Version: 4.4.1
+Current Version: 4.4.3
 
 Works on Windows, Linux and Mac(untested).
 
@@ -44,10 +44,10 @@ For Linux and Mac, run `FW_Lite.pyw`
 
 requirements under openSUSE:
 
-    zypper install python-M2Crypto python-repoze.lru python-ipaddr
+    zypper install python-repoze.lru python-ipaddr python-gevent
     zypper install python-pyOpenSSL python-pycrypto  # for goagent
-    zypper install python-gevent  # for better performance
-    zypper install python-pyside  # https://software.opensuse.org/package/python-pyside
+    zypper install python-M2Crypto  # or python-cryptography, take your pick. for shadowsocks
+    zypper install python-pyside  # for GUI
 
 ##Self Defined Rules(./fgfw-lite/local.txt)
 
