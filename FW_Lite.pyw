@@ -338,9 +338,16 @@ class LocalRule(QtGui.QWidget):
         self.ui = Ui_LocalRule()
         self.ui.setupUi(self)
         self.ui.delButton.clicked.connect(self.delrule)
+        self.ui.copyButton.clicked.connect(self.rulecopy)
         self.port = port
         self.ref = ref
+        self.rule = rule
         self.updaterule(rid, rule, exp)
+
+    def rulecopy(self):
+        cb = QtGui.QApplication.clipboard()
+        cb.clear(mode=cb.Clipboard)
+        cb.setText(self.rule, mode=cb.Clipboard)
 
     def delrule(self):
         conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)

@@ -28,6 +28,13 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="copyButton">
+     <property name="text">
+      <string>复制</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="delButton">
      <property name="text">
       <string>删除</string>

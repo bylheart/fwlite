@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\mainwindow.ui'
 #
-# Created: Sun Oct 19 23:31:15 2014
+# Created: Wed Nov  5 07:55:25 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
