@@ -89,6 +89,7 @@ try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
     urlquote = urlparse.quote
+    urlquote = urlparse.unquote
     from socketserver import ThreadingMixIn
     from http.server import BaseHTTPRequestHandler, HTTPServer
     from ipaddress import ip_address
@@ -96,6 +97,7 @@ except ImportError:
     import urllib2
     import urlparse
     urlquote = urllib2.quote
+    unquote = urllib2.unquote
     from SocketServer import ThreadingMixIn
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
     from ipaddr import IPAddress as ip_address
@@ -769,13 +771,13 @@ class ProxyHandler(HTTPRequestHandler):
         user, passwd = p.username or "anonymous", p.password or None
         if self.command == "GET":
             if p.path.endswith('/'):
-                return self.do_FTP_LIST(p.netloc, p.path, user, passwd)
+                return self.do_FTP_LIST(p.netloc, unquote(p.path), user, passwd)
             else:
                 try:
                     ftp = ftplib.FTP(p.netloc)
                     ftp.login(user, passwd)
                     lst = []
-                    response = ftp.retrlines("LIST %s" % p.path, lst.append)
+                    response = ftp.retrlines("LIST %s" % unquote(p.path), lst.append)
                     if not lst:
                         return self.send_error(504, response)
                     if len(lst) != 1 or lst[0].startswith('d'):
@@ -784,7 +786,7 @@ class ProxyHandler(HTTPRequestHandler):
                     self.send_header('Content-Length', lst[0].split()[4])
                     self.send_header('Connection', 'keep_alive')
                     self.end_headers()
-                    ftp.retrbinary("RETR %s" % p.path, self.wfile.write, self.bufsize)
+                    ftp.retrbinary("RETR %s" % unquote(p.path), self.wfile.write, self.bufsize)
                     ftp.quit()
                 except Exception as e:  # Possibly no such file
                     self.logger.warning("FTP Exception: %r" % e)
@@ -803,10 +805,11 @@ class ProxyHandler(HTTPRequestHandler):
             response = ftp.retrlines("LIST %s" % path, lst.append)
             ftp.quit()
             for line in lst:
-                line_split = line.split()
+                self.logger.debug(line)
+                line_split = line.split(None, 8)
                 if line.startswith('d'):
                     line_split[8] += '/'
-                table += '<tr><td align="left"><a href="%s%s">%s</a></td><td align="right">%s</td><td align="right">%s %s %s</td></tr>\r\n' % (self.path, line_split[8], line_split[8], line_split[4] if line.startswith('d') else sizeof_fmt(int(line_split[4])), line_split[5], line_split[6], line_split[7])
+                table += '<tr><td align="left"><a href="%s%s">%s</a></td><td align="right">%s</td><td align="right">%s %s %s</td></tr>\r\n' % (self.path, urlquote(line_split[8]), line_split[8], line_split[4] if line.startswith('d') else sizeof_fmt(int(line_split[4])), line_split[5], line_split[6], line_split[7])
             table += '<tr><td align="left">================</td><td align="right">==========</td><td align="right">=============</td></tr></tbody></table>\r\n'
             table += '<p>%s</p>' % response
         except Exception as e:
