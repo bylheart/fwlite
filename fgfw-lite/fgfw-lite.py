@@ -528,7 +528,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.wfile_write(s)
         self.wfile_write(header_data)
         # read response body
-        if self.command == 'HEAD' or 100 <= response_status < 200 or response_status in (204, 304):
+        if self.command == 'HEAD' or 100 <= response_status < 200 or response_status in (204, 205, 304):
             pass
         elif response_header.get("Transfer-Encoding") and response_header.get("Transfer-Encoding") != "identity":
             flag = 1
