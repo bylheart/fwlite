@@ -4,6 +4,7 @@
 import os
 import sys
 import glob
+sys.dont_write_bytecode = True
 WORKINGDIR = os.path.dirname(os.path.abspath(__file__).replace('\\', '/'))
 os.chdir(WORKINGDIR)
 sys.path += glob.glob('%s/goagent/*.egg' % WORKINGDIR)
@@ -125,8 +126,8 @@ class MainWindow(QtGui.QMainWindow):
         self.killProcess()
         self.runner.readyReadStandardError.connect(self.newStderrInfo)
         self.runner.readyReadStandardOutput.connect(self.newStdoutInfo)
-        python = '"%s/Python27/python27.exe"' % WORKINGDIR if sys.platform.startswith('win') else '/usr/bin/env python'
-        cmd = '%s -B ./fgfw-lite/fgfw-lite.py' % (python)
+        python = ('"%s/Python27/python27.exe"' % WORKINGDIR) if sys.platform.startswith('win') else '/usr/bin/env python'
+        cmd = '%s -B ./fgfw-lite/fgfw-lite.py -GUI' % python
         self.runner.start(cmd)
 
     def newStderrInfo(self):
