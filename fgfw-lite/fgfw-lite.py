@@ -847,7 +847,8 @@ class ProxyHandler(HTTPRequestHandler):
             'accept a json encoded tuple: (str rule, int exp)'
             rule, exp = json.loads(body)
             result = self.conf.PARENT_PROXY.add_temp(rule, exp)
-            return self.write(400 if result else 201, result, 'application/json')
+            self.write(400 if result else 201, result, 'application/json')
+            return self.conf.stdout()
         elif parse.path.startswith('/api/localrule/') and self.command == 'DELETE':
             try:
                 rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
@@ -855,7 +856,8 @@ class ProxyHandler(HTTPRequestHandler):
                     assert base64.urlsafe_b64decode(rule) == self.conf.PARENT_PROXY.gfwlist_force[int(parse.path[15:])].rule
                 result = self.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[15:]))
                 self.conf.PARENT_PROXY.temp_rules.discard(result.rule)
-                return self.write(200, json.dumps([int(parse.path[15:]), result.rule, result.expire]), 'application/json')
+                self.write(200, json.dumps([int(parse.path[15:]), result.rule, result.expire]), 'application/json')
+                return self.conf.stdout()
             except Exception as e:
                 return self.send_error(404, repr(e))
         elif parse.path == '/api/redirector' and self.command == 'GET':
@@ -865,14 +867,16 @@ class ProxyHandler(HTTPRequestHandler):
             'accept a json encoded tuple: (str rule, str dest)'
             rule, dest = json.loads(body)
             self.conf.PARENT_PROXY.add_rule('%s %s' % (rule, dest))
-            return self.write(200, data, 'application/json')
+            self.write(200, data, 'application/json')
+            return self.conf.stdout()
         elif parse.path.startswith('/api/redirector/') and self.command == 'DELETE':
             try:
                 rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
                 if rule:
                     assert base64.urlsafe_b64decode(rule) == self.conf.PARENT_PROXY.redirlst[int(parse.path[16:])][0].rule
                 rule, dest = self.conf.PARENT_PROXY.redirlst.pop(int(parse.path[16:]))
-                return self.write(200, json.dumps([int(parse.path[16:]), rule.rule, dest]), 'application/json')
+                self.write(200, json.dumps([int(parse.path[16:]), rule.rule, dest]), 'application/json')
+                return self.conf.stdout()
             except Exception as e:
                 return self.send_error(404, repr(e))
         elif parse.path == '/api/goagent/pid' and self.command == 'GET':
@@ -1203,6 +1207,7 @@ class parent_proxy(object):
                     return True
             except ExpiredError:
                 self.logger.info('%s expired' % rule.rule)
+                self.conf.stdout()
                 self.gfwlist_force.remove(rule)
                 self.temp_rules.discard(rule.rule)
 
@@ -1301,6 +1306,7 @@ class parent_proxy(object):
                 else:
                     exp = 1
                 self.add_temp(rule, exp)
+                self.conf.stdout()
 
     def add_temp(self, rule, exp=None):
         if rule not in self.temp_rules:
@@ -1523,6 +1529,7 @@ class Config(object):
         self.UPDATE_INTV = 6
         self.parentlist = ParentProxyList()
         self.HOSTS = defaultdict(list)
+        self.GUI = '-GUI' in sys.argv
         listen = self.userconf.dget('fgfwproxy', 'listen', '8118')
         if listen.isdigit():
             self.listen = ('127.0.0.1', int(listen))
@@ -1575,6 +1582,11 @@ class Config(object):
         self.parentlist.addstr(name, proxy)
         self.logger.info('add parent: %s: %s' % (name, proxy))
 
+    def stdout(self, text=b''):
+        if self.GUI:
+            sys.stdout.write(text + b'\r\n')
+            sys.stdout.flush()
+
 
 @atexit.register
 def atexit_do():
@@ -1594,6 +1606,7 @@ def main():
         server = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + i), ProxyHandler, conf=conf, level=int(level))
         t = Thread(target=server.serve_forever)
         t.start()
+    conf.stdout()
     t.join()
 
 if __name__ == "__main__":

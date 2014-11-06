@@ -9,6 +9,7 @@ WORKINGDIR = os.path.dirname(os.path.abspath(__file__).replace('\\', '/'))
 os.chdir(WORKINGDIR)
 sys.path += glob.glob('%s/goagent/*.egg' % WORKINGDIR)
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
+import datetime
 import shutil
 import threading
 import atexit
@@ -16,7 +17,6 @@ import base64
 import json
 import signal
 import subprocess
-import time
 from collections import deque
 from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
@@ -44,6 +44,9 @@ except ImportError:
 from util import dns_via_tcp
 
 TRAY_ICON = '%s/fgfw-lite/ui/icon.png' % WORKINGDIR
+
+if not os.path.isfile('./userconf.ini'):
+    shutil.copyfile('./userconf.sample.ini', './userconf.ini')
 
 
 def setIEproxy(enable, proxy=u'', override=u'<local>'):
@@ -86,8 +89,7 @@ class MainWindow(QtGui.QMainWindow):
         self.setWindowIcon(QtGui.QIcon(TRAY_ICON))
         self.center()
         self.consoleText = deque(maxlen=300)
-        if not os.path.isfile('./userconf.ini'):
-            shutil.copyfile('./userconf.sample.ini', './userconf.ini')
+
         self.runner = QtCore.QProcess(self)
 
         self.conf = SConfigParser()
@@ -103,11 +105,12 @@ class MainWindow(QtGui.QMainWindow):
         self.ui.tabWidget.addTab(self.RedirRules, "")
         self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.RedirRules), QtGui.QApplication.translate("MainWindow", "重定向规则", None, QtGui.QApplication.UnicodeUTF8))
 
+        self.resolve = RemoteResolve()
+
         self.trayIcon = None
         self.createActions()
         self.createTrayIcon()
         self.createProcess()
-        self.resolve = RemoteResolve()
 
     def killProcess(self):
         if self.runner.state() == QtCore.QProcess.ProcessState.Running:
@@ -142,8 +145,10 @@ class MainWindow(QtGui.QMainWindow):
             self.reload(clear=False)
 
     def newStdoutInfo(self):
-        sys.stderr.write(str(self.runner.readAllStandardOutput()))
+        sys.stderr.write('stdout: %r\r\n' % self.runner.readAllStandardOutput())
         sys.stderr.flush()
+        self.LocalRules.ref.emit()
+        self.RedirRules.ref.emit()
 
     def center(self):
         qr = self.frameGeometry()
@@ -309,9 +314,6 @@ class LocalRules(QtGui.QWidget):
         self.spacer = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         self.ui.LocalRulesLayout.addItem(self.spacer)
         self.ref.connect(self.refresh)
-        self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.refresh)
-        self.timer.start(1000)
         self.port = parent.port
         self.icon = parent
         self.widgetlist = []
@@ -326,15 +328,13 @@ class LocalRules(QtGui.QWidget):
                 w.updaterule(rid, rule, exp)
                 w.setVisible(True)
             else:
-                w = LocalRule(rid, rule, exp, self.port, self.ref)
+                w = LocalRule(rid, rule, exp, self.port)
                 self.ui.LocalRulesLayout.addWidget(w)
             lst.append(w)
         for w in self.widgetlist:
             w.setVisible(False)
         self.ui.LocalRulesLayout.addItem(self.spacer)
         self.widgetlist = lst
-        if not self.timer.isActive():
-            self.timer.start(1000)
 
     def addLocalRule(self):
         exp = int(self.ui.ExpireEdit.text()) if self.ui.ExpireEdit.text().isdigit() and int(self.ui.ExpireEdit.text()) > 0 else None
@@ -347,18 +347,16 @@ class LocalRules(QtGui.QWidget):
         else:
             self.ui.LocalRuleEdit.clear()
             self.ui.ExpireEdit.clear()
-        self.refresh()
 
 
 class LocalRule(QtGui.QWidget):
-    def __init__(self, rid, rule, exp, port, ref, parent=None):
+    def __init__(self, rid, rule, exp, port, parent=None):
         super(LocalRule, self).__init__(parent)
         self.ui = Ui_LocalRule()
         self.ui.setupUi(self)
         self.ui.delButton.clicked.connect(self.delrule)
         self.ui.copyButton.clicked.connect(self.rulecopy)
         self.port = port
-        self.ref = ref
         self.rule = rule
         self.updaterule(rid, rule, exp)
 
@@ -373,14 +371,13 @@ class LocalRule(QtGui.QWidget):
         resp = conn.getresponse()
         content = resp.read()
         print(content)
-        self.ref.emit()
 
     def updaterule(self, rid, rule, exp):
         self.rid = rid
         self.rule = rule
         self.exp = exp
-        exp = exp - time.time() if exp else None
-        text = '%s%s' % (self.rule, (' expire %.1fs' % exp if exp else ''))
+        exp = datetime.datetime.fromtimestamp(float(exp)).strftime('%H:%M:%S') if exp else None
+        text = '%s%s' % (self.rule, (' expire at %s' % exp if exp else ''))
         self.ui.lineEdit.setText(text)
 
 
@@ -395,9 +392,6 @@ class RedirectorRules(QtGui.QWidget):
         self.spacer = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
         self.ui.RedirectorRulesLayout.addItem(self.spacer)
         self.ref.connect(self.refresh)
-        self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.refresh)
-        self.timer.start(1000)
         self.port = parent.port
         self.icon = parent
         self.widgetlist = []
@@ -412,15 +406,13 @@ class RedirectorRules(QtGui.QWidget):
                 w.updaterule(rid, rule, exp)
                 w.setVisible(True)
             else:
-                w = RedirRule(rid, rule, exp, self.port, self.ref)
+                w = RedirRule(rid, rule, exp, self.port)
                 self.ui.RedirectorRulesLayout.addWidget(w)
             lst.append(w)
         for w in self.widgetlist:
             w.setVisible(False)
         self.ui.RedirectorRulesLayout.addItem(self.spacer)
         self.widgetlist = lst
-        if not self.timer.isActive():
-            self.timer.start(1000)
 
     def addRedirRule(self):
         rule = self.ui.RuleEdit.text()
@@ -433,17 +425,16 @@ class RedirectorRules(QtGui.QWidget):
         else:
             self.ui.RuleEdit.clear()
             self.ui.DestEdit.clear()
-        self.refresh()
 
 
 class RedirRule(QtGui.QWidget):
-    def __init__(self, rid, rule, dest, port, ref, parent=None):
+    def __init__(self, rid, rule, dest, port, parent=None):
         super(RedirRule, self).__init__(parent)
         self.ui = Ui_LocalRule()
         self.ui.setupUi(self)
         self.ui.delButton.clicked.connect(self.delrule)
+        self.ui.copyButton.hide()
         self.port = port
-        self.ref = ref
         self.updaterule(rid, rule, dest)
 
     def delrule(self):
@@ -452,7 +443,6 @@ class RedirRule(QtGui.QWidget):
         resp = conn.getresponse()
         content = resp.read()
         print(content)
-        self.ref.emit()
 
     def updaterule(self, rid, rule, dest):
         self.rid = rid
