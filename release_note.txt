@@ -1,6 +1,7 @@
-2014.11.5 v4.4.3
+2014.11.7 v4.4.3
 new dns resolve method
 copy local rule to clipboard
+fix unable to set ie proxy
 fix youku upload
 fix update problem on linux
 some bug fix
