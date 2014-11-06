@@ -52,13 +52,11 @@ def setIEproxy(enable, proxy=u'', override=u'<local>'):
         import _winreg as winreg
     except:
         import winreg
-
-    access = winreg.KEY_ALL_ACCESS
-    if 'PROGRAMFILES(X86)' in os.environ:
-        access |= winreg.KEY_WOW64_64KEY
+    if enable == 0:
+        proxy = u''
     INTERNET_SETTINGS = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                                        r'Software\Microsoft\Windows\CurrentVersion\Internet Settings',
-                                       0, access)
+                                       0, winreg.KEY_WRITE)
 
     winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyEnable', 0, winreg.REG_DWORD, enable)
     winreg.SetValueEx(INTERNET_SETTINGS, 'ProxyServer', 0, winreg.REG_SZ, proxy)
@@ -202,10 +200,29 @@ class MainWindow(QtGui.QMainWindow):
                  4: u'全局代理%d',
                  }
             title = d[p] % (self.port + i) if p in d else (u'127.0.0.1:%d profile%d' % ((self.port + i), p))
-            self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=lambda: setIEproxy(1, u'127.0.0.1:%d' % (self.port + i))))
+            if i < 6:
+                self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=getattr(self, 'set_ie_p%d' % i)))
         self.settingIEproxyMenu.addAction(self.setIENoneAction)
         if self.conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
             setIEproxy(1, u'127.0.0.1:%d' % self.port)
+
+    def set_ie_p0(self):
+        setIEproxy(1, u'127.0.0.1:%d' % self.port)
+
+    def set_ie_p1(self):
+        setIEproxy(1, u'127.0.0.1:%d' % (self.port + 1))
+
+    def set_ie_p2(self):
+        setIEproxy(1, u'127.0.0.1:%d' % (self.port + 2))
+
+    def set_ie_p3(self):
+        setIEproxy(1, u'127.0.0.1:%d' % (self.port + 3))
+
+    def set_ie_p4(self):
+        setIEproxy(1, u'127.0.0.1:%d' % (self.port + 4))
+
+    def set_ie_p5(self):
+        setIEproxy(1, u'127.0.0.1:%d' % (self.port + 5))
 
     def flushDNS(self):
         if sys.platform.startswith('win'):
@@ -478,7 +495,10 @@ class RemoteResolve(QtGui.QWidget):
 def atexit_do():
     if sys.platform.startswith('win'):
         setIEproxy(0)
-    win.killProcess()
+    try:
+        win.killProcess()
+    except:
+        pass
 
 
 if __name__ == "__main__":
