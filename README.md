@@ -17,7 +17,7 @@ Inspired by [COW]
 - Automatic Update
 - Multiple Method to detect blocked sites
   - autoproxy-gfwlist
-  - self-defined rules
+  - user-defined rules
   - connect timeout
   - read timeout
   - connect reset
