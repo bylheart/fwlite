@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\settings.ui'
 #
-# Created: Sun Nov  9 03:08:39 2014
+# Created: Sun Nov  9 05:51:54 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -64,7 +64,6 @@ class Ui_Settings(object):
         self.groupBox_2 = QtGui.QGroupBox(Settings)
         self.groupBox_2.setObjectName("groupBox_2")
         self.verticalLayout_3 = QtGui.QVBoxLayout(self.groupBox_2)
-        self.verticalLayout_3.setContentsMargins(-1, -1, -1, 0)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
         self.formLayout_4 = QtGui.QFormLayout()
         self.formLayout_4.setFieldGrowthPolicy(QtGui.QFormLayout.AllNonFixedFieldsGrow)
@@ -117,6 +116,15 @@ class Ui_Settings(object):
         self.horizontalLayout_3.addWidget(self.shadowsocksAddButton)
         self.verticalLayout_3.addLayout(self.horizontalLayout_3)
         self.verticalLayout.addWidget(self.groupBox_2)
+        self.horizontalLayout_2 = QtGui.QHBoxLayout()
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.editConfButton = QtGui.QPushButton(Settings)
+        self.editConfButton.setObjectName("editConfButton")
+        self.horizontalLayout_2.addWidget(self.editConfButton)
+        self.editLocalButton = QtGui.QPushButton(Settings)
+        self.editLocalButton.setObjectName("editLocalButton")
+        self.horizontalLayout_2.addWidget(self.editLocalButton)
+        self.verticalLayout.addLayout(self.horizontalLayout_2)
         self.horizontalLayout_5.addLayout(self.verticalLayout)
 
         self.retranslateUi(Settings)
@@ -136,8 +144,10 @@ class Ui_Settings(object):
         self.label_4.setText(QtGui.QApplication.translate("Settings", "服务器端口", None, QtGui.QApplication.UnicodeUTF8))
         self.label_5.setText(QtGui.QApplication.translate("Settings", "　加密方式", None, QtGui.QApplication.UnicodeUTF8))
         self.label_6.setText(QtGui.QApplication.translate("Settings", "　　　密码", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_7.setText(QtGui.QApplication.translate("Settings", "服务器名称", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_7.setText(QtGui.QApplication.translate("Settings", "　　　名称", None, QtGui.QApplication.UnicodeUTF8))
         self.label_8.setText(QtGui.QApplication.translate("Settings", "　　优先级", None, QtGui.QApplication.UnicodeUTF8))
         self.ssPriorityEdit.setText(QtGui.QApplication.translate("Settings", "99", None, QtGui.QApplication.UnicodeUTF8))
         self.shadowsocksAddButton.setText(QtGui.QApplication.translate("Settings", "添加", None, QtGui.QApplication.UnicodeUTF8))
+        self.editConfButton.setText(QtGui.QApplication.translate("Settings", "编辑 userconf.ini", None, QtGui.QApplication.UnicodeUTF8))
+        self.editLocalButton.setText(QtGui.QApplication.translate("Settings", "编辑 local.txt", None, QtGui.QApplication.UnicodeUTF8))
 

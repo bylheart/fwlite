@@ -169,8 +169,7 @@ class MainWindow(QtGui.QMainWindow):
         self.setIENoneAction = QtGui.QAction(u"直接连接", self, triggered=lambda: setIEproxy(0))
         self.flushDNSAction = QtGui.QAction(u"清空DNS缓存", self, triggered=self.flushDNS)
         self.remoteDNSAction = QtGui.QAction(u"远程DNS解析", self, triggered=self.remoteDNS)
-        self.openlocalAction = QtGui.QAction(u"local.txt", self, triggered=self.openlocal)
-        self.openconfAction = QtGui.QAction(u"userconf.ini", self, triggered=self.openconf)
+        self.settingDNSAction = QtGui.QAction(u"设置", self, triggered=self.openSetting)
         self.quitAction = QtGui.QAction(u"退出", self, triggered=self.on_Quit)
 
     def createTrayIcon(self):
@@ -188,9 +187,7 @@ class MainWindow(QtGui.QMainWindow):
         advancedMenu.addAction(self.flushDNSAction)
         advancedMenu.addAction(self.remoteDNSAction)
 
-        settingMenu = self.trayIconMenu.addMenu(u'设置')
-        settingMenu.addAction(self.openconfAction)
-        settingMenu.addAction(self.openlocalAction)
+        self.trayIconMenu.addAction(self.settingDNSAction)
         self.trayIconMenu.addSeparator()
         self.trayIconMenu.addAction(self.quitAction)
 
@@ -270,26 +267,15 @@ class MainWindow(QtGui.QMainWindow):
         if reason is self.trayIcon.Trigger:
             self.showToggle()
 
-    def openlocal(self):
-        self.openfile('./fgfw-lite/local.txt')
-
-    def openconf(self):
-        self.openfile('userconf.ini')
-
-    def openfile(self, path):
-        if sys.platform.startswith('win'):
-            cmd = 'start'
-        elif sys.platform.startswith('linux'):
-            cmd = 'xdg-open'
-        elif sys.platform.startswith('darwin'):
-            cmd = 'open'
-        else:
-            return self.showMessage('OS not recognised')
-        subprocess.Popen('%s %s' % (cmd, path), shell=True)
-        self.showMessage(u'新的设置将在重新载入后生效')
-
     def on_Quit(self):
         QtGui.qApp.quit()
+
+    def openSetting(self):
+        self.ui.tabWidget.setCurrentIndex(3)
+        self.show()
+        if self.isMinimized():
+            self.showNormal()
+        self.activateWindow()
 
     def showToggle(self):
         if self.isVisible():
@@ -496,6 +482,9 @@ class Settings(QtGui.QWidget):
         self.ui = Ui_Settings()
         self.ui.setupUi(self)
         self.ui.shadowsocksAddButton.clicked.connect(self.addSS)
+        self.ui.parentRemoveButton.clicked.connect(self.delParent)
+        self.ui.editConfButton.clicked.connect(self.openconf)
+        self.ui.editLocalButton.clicked.connect(self.openlocal)
         self.ref.connect(self.refresh)
         self.port = parent.port
         self.icon = parent
@@ -523,18 +512,51 @@ class Settings(QtGui.QWidget):
         sMethod = self.ui.ssMethodBox.currentText()
         sPass = self.ui.ssPassEdit.text()
         sPriority = self.ui.ssPriorityEdit.text()
-        ss = 'ss://%s:%s@%s:%s %s' % (sMethod, sPass, sServer, sPort, sPriority)
-        data = json.dumps((sName, ss)).encode()
+
+        if not sName:
+            sName = '%s-%s' % (sServer, sPort)
+        if not sPriority:
+            sPriority = 99
+        if not all([sServer, sPort, sMethod, sPass]):
+            self.icon.showMessage(u'出错啦！')
+            return
+        data = json.dumps((sName, ('ss://%s:%s@%s:%s %s' % (sMethod, sPass, sServer, sPort, sPriority)))).encode()
         try:
             urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, data, timeout=1)
         except:
-            self.icon.showMessage('add parent %s %s failed!' % (sName, ss))
+            self.icon.showMessage('add parent %s failed!' % sName)
         else:
             self.ui.ssNameEdit.clear()
             self.ui.ssServerEdit.clear()
             self.ui.ssPortEdit.clear()
             self.ui.ssPassEdit.clear()
             self.ui.ssPriorityEdit.clear()
+
+    def delParent(self):
+        index = self.ui.tableView.currentIndex().row()
+        conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
+        conn.request('DELETE', '/api/parent/%s' % (self.table_model.mylist[index][0]))
+        resp = conn.getresponse()
+        content = resp.read()
+        print(content)
+
+    def openlocal(self):
+        self.openfile('./fgfw-lite/local.txt')
+
+    def openconf(self):
+        self.openfile('userconf.ini')
+
+    def openfile(self, path):
+        if sys.platform.startswith('win'):
+            cmd = 'start'
+        elif sys.platform.startswith('linux'):
+            cmd = 'xdg-open'
+        elif sys.platform.startswith('darwin'):
+            cmd = 'open'
+        else:
+            return self.showMessage('OS not recognised')
+        subprocess.Popen('%s %s' % (cmd, path), shell=True)
+        self.icon.showMessage(u'新的设置将在重新载入后生效')
 
 
 class MyTableModel(QtCore.QAbstractTableModel):

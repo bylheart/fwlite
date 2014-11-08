@@ -882,6 +882,22 @@ class ProxyHandler(HTTPRequestHandler):
         elif parse.path == '/api/goagent/pid' and self.command == 'GET':
             data = json.dumps(self.conf.goagent.pid)
             return self.write(200, data, 'application/json')
+        elif parse.path == '/api/parent' and self.command == 'GET':
+            data = json.dumps([(p.name, ('%s://%s:%s' % (p.parse.scheme, p.parse.hostname, p.parse.port)) if p.proxy else '', p.httppriority) for p in self.conf.parentlist.httpparents])
+            return self.write(200, data, 'application/json')
+        elif parse.path == '/api/parent' and self.command == 'POST':
+            'accept a json encoded tuple: (str rule, str dest)'
+            name, proxy = json.loads(body)
+            self.conf.addparentproxy(name, proxy)
+            self.write(200, data, 'application/json')
+            return self.conf.stdout()
+        elif parse.path.startswith('/api/parent/') and self.command == 'DELETE':
+            try:
+                self.conf.parentlist.remove(parse.path[12:])
+                self.write(200, parse.path[12:], 'application/json')
+                return self.conf.stdout()
+            except Exception as e:
+                return self.send_error(404, repr(e))
         elif parse.path == '/' and self.command == 'GET':
             return self.write(200, 'Hello World !', 'text/html')
         self.send_error(404)
@@ -1514,6 +1530,16 @@ class ParentProxyList(object):
             self.httpsparents.append(parentproxy)
         self.dict[parentproxy.name] = parentproxy
 
+    def remove(self, name):
+        a = self.dict[name]
+        try:
+            self.httpparents.remove(a)
+        finally:
+            try:
+                self.httpsparents.remove(a)
+            except:
+                pass
+
     def addstr(self, name, proxy):
         self.add(ParentProxy(name, proxy))
 
@@ -1584,7 +1610,7 @@ class Config(object):
 
     def stdout(self, text=b''):
         if self.GUI:
-            sys.stdout.write(text + b'\r\n')
+            sys.stdout.write(text + b'\n')
             sys.stdout.flush()
 
 
