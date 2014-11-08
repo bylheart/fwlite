@@ -143,7 +143,6 @@ class MainWindow(QtGui.QMainWindow):
         self.consoleText.extend(lines)
         for line in lines:
             if 'Update Completed' in line:
-                self.showMessage(u'已升级到最新版，重新载入中...')
                 freload = True
         self.ui.console.setPlainText(u'\n'.join(self.consoleText))
         self.ui.console.moveCursor(QtGui.QTextCursor.End)
