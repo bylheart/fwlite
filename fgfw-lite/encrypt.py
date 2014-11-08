@@ -41,6 +41,7 @@ except ImportError:
         Cipher = None
 
 
+@lru_cache(128)
 def get_table(key):
     m = hashlib.md5()
     m.update(key)
