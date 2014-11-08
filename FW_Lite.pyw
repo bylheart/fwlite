@@ -14,6 +14,7 @@ import shutil
 import threading
 import atexit
 import base64
+import operator
 import json
 import signal
 import subprocess
@@ -24,6 +25,7 @@ from ui_remoteresolver import Ui_remote_resolver
 from ui_localrules import Ui_LocalRules
 from ui_localrule import Ui_LocalRule
 from ui_redirectorrules import Ui_RedirectorRules
+from ui_settings import Ui_Settings
 from util import SConfigParser
 try:
     import httplib
@@ -105,6 +107,10 @@ class MainWindow(QtGui.QMainWindow):
         self.ui.tabWidget.addTab(self.RedirRules, "")
         self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.RedirRules), QtGui.QApplication.translate("MainWindow", "重定向规则", None, QtGui.QApplication.UnicodeUTF8))
 
+        self.Settings = Settings(self)
+        self.ui.tabWidget.addTab(self.Settings, "")
+        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.Settings), QtGui.QApplication.translate("MainWindow", "设置", None, QtGui.QApplication.UnicodeUTF8))
+
         self.resolve = RemoteResolve()
 
         self.trayIcon = None
@@ -145,10 +151,11 @@ class MainWindow(QtGui.QMainWindow):
             self.reload(clear=False)
 
     def newStdoutInfo(self):
-        sys.stderr.write('stdout: %r\r\n' % self.runner.readAllStandardOutput())
+        sys.stderr.write('stdout: %r\r\n' % str(self.runner.readAllStandardOutput()))
         sys.stderr.flush()
         self.LocalRules.ref.emit()
         self.RedirRules.ref.emit()
+        self.Settings.ref.emit()
 
     def center(self):
         qr = self.frameGeometry()
@@ -479,6 +486,93 @@ class RemoteResolve(QtGui.QWidget):
             self.hide()
         self.ui.resultTextEdit.clear()
         event.ignore()
+
+
+class Settings(QtGui.QWidget):
+    ref = QtCore.Signal()
+
+    def __init__(self, parent=None):
+        super(Settings, self).__init__(parent)
+        self.ui = Ui_Settings()
+        self.ui.setupUi(self)
+        self.ui.shadowsocksAddButton.clicked.connect(self.addSS)
+        self.ref.connect(self.refresh)
+        self.port = parent.port
+        self.icon = parent
+
+        header = [u'名称', u'地址', u'优先级']
+        data = []
+        self.table_model = MyTableModel(self, data, header)
+        self.ui.tableView.setModel(self.table_model)
+
+        import encrypt
+        l = ['', ]
+        l.extend(sorted(encrypt.method_supported.keys()))
+        self.ui.ssMethodBox.addItems(l)
+
+    def refresh(self):
+        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, timeout=1).read().decode())
+        self.table_model.update(data)
+        self.ui.tableView.resizeRowsToContents()
+        self.ui.tableView.resizeColumnsToContents()
+
+    def addSS(self):
+        sName = self.ui.ssNameEdit.text()
+        sServer = self.ui.ssServerEdit.text()
+        sPort = self.ui.ssPortEdit.text()
+        sMethod = self.ui.ssMethodBox.currentText()
+        sPass = self.ui.ssPassEdit.text()
+        sPriority = self.ui.ssPriorityEdit.text()
+        ss = 'ss://%s:%s@%s:%s %s' % (sMethod, sPass, sServer, sPort, sPriority)
+        data = json.dumps((sName, ss)).encode()
+        try:
+            urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, data, timeout=1)
+        except:
+            self.icon.showMessage('add parent %s %s failed!' % (sName, ss))
+        else:
+            self.ui.ssNameEdit.clear()
+            self.ui.ssServerEdit.clear()
+            self.ui.ssPortEdit.clear()
+            self.ui.ssPassEdit.clear()
+            self.ui.ssPriorityEdit.clear()
+
+
+class MyTableModel(QtCore.QAbstractTableModel):
+    def __init__(self, parent, mylist, header, *args):
+        QtCore.QAbstractTableModel.__init__(self, parent, *args)
+        self.mylist = mylist
+        self.header = header
+
+    def rowCount(self, parent):
+        return len(self.mylist)
+
+    def columnCount(self, parent):
+        return len(self.header)
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        elif role != QtCore.Qt.DisplayRole:
+            return None
+        return self.mylist[index.row()][index.column()]
+
+    def update(self, mylist):
+        self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
+        self.mylist = mylist
+        self.emit(QtCore.SIGNAL("layoutChanged()"))
+
+    def headerData(self, col, orientation, role):
+        if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+            return self.header[col]
+        return None
+
+    def sort(self, col, order):
+        """sort table by given column number col"""
+        self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
+        self.mylist = sorted(self.mylist, key=operator.itemgetter(col))
+        if order == QtCore.Qt.DescendingOrder:
+            self.mylist.reverse()
+        self.emit(QtCore.SIGNAL("layoutChanged()"))
 
 
 @atexit.register
