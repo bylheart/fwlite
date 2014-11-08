@@ -22,16 +22,12 @@ class StreamCipher(object):
     def get_cipher(self):
         if self.method.startswith('aes'):
             return Cipher(algorithms.AES(self.key), modes.CFB(self.iv), default_backend())
-        if self.method.startswith('bf'):
-            return Cipher(algorithms.Blowfish(self.key), modes.CFB(self.iv), default_backend())
         if self.method.startswith('camellia'):
             return Cipher(algorithms.Camellia(self.key), modes.CFB(self.iv), default_backend())
         if self.method.startswith('cast5'):
             return Cipher(algorithms.CAST5(self.key), modes.CFB(self.iv), default_backend())
         if self.method.startswith('seed'):
             return Cipher(algorithms.SEED(self.key), modes.CFB(self.iv), default_backend())
-        if self.method.startswith('idea'):
-            return Cipher(algorithms.IDEA(self.key), modes.CFB(self.iv), default_backend())
         if self.method.startswith('rc4'):
             return Cipher(algorithms.ARC4(self.key), None, default_backend())
         raise ValueError('crypto method %s not supported!' % self.method)
