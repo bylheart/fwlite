@@ -494,7 +494,7 @@ class Settings(QtGui.QWidget):
         self.ui.tableView.setModel(self.table_model)
 
         import encrypt
-        l = ['', ]
+        l = ['', 'table']
         l.extend(sorted(encrypt.method_supported.keys()))
         self.ui.ssMethodBox.addItems(l)
 
