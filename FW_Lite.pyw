@@ -493,6 +493,8 @@ class Settings(QtGui.QWidget):
         self.ui.editLocalButton.clicked.connect(self.openlocal)
         self.ui.goagentSaveButton.clicked.connect(self.savegoagent)
         self.ui.goagentResetButton.clicked.connect(self.loadgoagent)
+        self.ui.gfwlistToggle.stateChanged.connect(self.gfwlistToggle)
+        self.ui.updateToggle.stateChanged.connect(self.autoUpdateToggle)
         self.ref.connect(self.refresh)
         self.port = parent.port
         self.icon = parent
@@ -512,6 +514,8 @@ class Settings(QtGui.QWidget):
         self.table_model.update(data)
         self.ui.tableView.resizeRowsToContents()
         self.ui.tableView.resizeColumnsToContents()
+        self.ui.gfwlistToggle.setCheckState(QtCore.Qt.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/gfwlist' % self.port, timeout=1).read().decode()) else QtCore.Qt.UnChecked)
+        self.ui.updateToggle.setCheckState(QtCore.Qt.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/autoupdate' % self.port, timeout=1).read().decode()) else QtCore.Qt.UnChecked)
         self.loadgoagent()
 
     def addSS(self):
@@ -526,12 +530,12 @@ class Settings(QtGui.QWidget):
             sName = '%s-%s' % (sServer, sPort)
         if not sPriority:
             sPriority = 99
-        if not all([sServer, sPort, sMethod, sPass]):
+        if not all([sServer, sPort.isdigit(), sMethod, sPass]):
             self.icon.showMessage(u'出错啦！')
             return
         data = json.dumps((sName, ('ss://%s:%s@%s:%s %s' % (sMethod, sPass, sServer, sPort, sPriority)))).encode()
         try:
-            urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, data, timeout=1)
+            urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, data, timeout=1).read()
         except:
             self.icon.showMessage('add parent %s failed!' % sName)
         else:
@@ -540,6 +544,12 @@ class Settings(QtGui.QWidget):
             self.ui.ssPortEdit.clear()
             self.ui.ssPassEdit.clear()
             self.ui.ssPriorityEdit.clear()
+
+    def gfwlistToggle(self):
+        urllib2.urlopen('http://127.0.0.1:%d/api/gfwlist' % self.port, json.dumps(self.ui.gfwlistToggle.isChecked()).encode(), timeout=1).read()
+
+    def autoUpdateToggle(self):
+        urllib2.urlopen('http://127.0.0.1:%d/api/autoupdate' % self.port, json.dumps(self.ui.updateToggle.isChecked()).encode(), timeout=1).read()
 
     def delParent(self):
         index = self.ui.tableView.currentIndex().row()

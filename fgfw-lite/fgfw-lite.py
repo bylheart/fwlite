@@ -829,6 +829,7 @@ class ProxyHandler(HTTPRequestHandler):
         path: supported command
         /api/localrule: GET POST DELETE
         '''
+        self.logger.debug('{} {}'.format(self.command, self.path))
         content_length = int(self.headers.get('Content-Length', 0))
         if content_length > 102400:
             return
@@ -912,6 +913,21 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.conf.stdout()
             except Exception as e:
                 return self.send_error(404, repr(e))
+        elif parse.path == '/api/gfwlist' and self.command == 'GET':
+            return self.write(200, json.dumps(self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True)), 'application/json')
+        elif parse.path == '/api/gfwlist' and self.command == 'POST':
+            self.conf.userconf.set('fgfwproxy', 'gfwlist', '1' if json.loads(body) else '0')
+            self.conf.confsave()
+            self.conf.PARENT_PROXY.config()
+            self.write(200, data, 'application/json')
+            return self.conf.stdout()
+        elif parse.path == '/api/autoupdate' and self.command == 'GET':
+            return self.write(200, json.dumps(self.conf.userconf.dgetbool('FGFW_Lite', 'autoupdate', True)), 'application/json')
+        elif parse.path == '/api/autoupdate' and self.command == 'POST':
+            self.conf.userconf.set('FGFW_Lite', 'autoupdate', '1' if json.loads(body) else '0')
+            self.conf.confsave()
+            self.write(200, data, 'application/json')
+            return self.conf.stdout()
         elif parse.path == '/' and self.command == 'GET':
             return self.write(200, 'Hello World !', 'text/html')
         self.send_error(404)
@@ -1128,7 +1144,6 @@ class parent_proxy(object):
     """docstring for parent_proxy"""
     def __init__(self, conf):
         self.conf = conf
-        self.enable_gfwlist = self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True)
         self.logger = self.conf.logger
         self.config()
 
@@ -1146,7 +1161,8 @@ class parent_proxy(object):
         for line in open('./fgfw-lite/cloud.txt'):
             self.add_rule(line, force=True)
 
-        if self.enable_gfwlist:
+        if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True):
+            self.logger.info('loading  gfwlist...')
             try:
                 with open('./fgfw-lite/gfwlist.txt') as f:
                     data = f.read()
@@ -1361,7 +1377,7 @@ def updater(conf):
 
 
 def update(conf, auto=False):
-    if auto and conf.userconf.dgetbool('FGFW_Lite', 'autoupdate') is False:
+    if auto and not conf.userconf.dgetbool('FGFW_Lite', 'autoupdate'):
         return
     filelist = [('https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt', './fgfw-lite/gfwlist.txt'), ]
     count = 0

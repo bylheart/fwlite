@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\settings.ui'
 #
-# Created: Sun Nov  9 05:51:54 2014
+# Created: Sun Nov  9 23:31:26 2014
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from PySide import QtCore, QtGui
 class Ui_Settings(object):
     def setupUi(self, Settings):
         Settings.setObjectName("Settings")
-        Settings.resize(573, 380)
+        Settings.resize(573, 411)
         self.horizontalLayout_5 = QtGui.QHBoxLayout(Settings)
         self.horizontalLayout_5.setObjectName("horizontalLayout_5")
         self.verticalLayout_2 = QtGui.QVBoxLayout()
@@ -29,6 +29,16 @@ class Ui_Settings(object):
         self.horizontalLayout_5.addLayout(self.verticalLayout_2)
         self.verticalLayout = QtGui.QVBoxLayout()
         self.verticalLayout.setObjectName("verticalLayout")
+        self.horizontalLayout_6 = QtGui.QHBoxLayout()
+        self.horizontalLayout_6.setContentsMargins(12, -1, -1, -1)
+        self.horizontalLayout_6.setObjectName("horizontalLayout_6")
+        self.gfwlistToggle = QtGui.QCheckBox(Settings)
+        self.gfwlistToggle.setObjectName("gfwlistToggle")
+        self.horizontalLayout_6.addWidget(self.gfwlistToggle)
+        self.updateToggle = QtGui.QCheckBox(Settings)
+        self.updateToggle.setObjectName("updateToggle")
+        self.horizontalLayout_6.addWidget(self.updateToggle)
+        self.verticalLayout.addLayout(self.horizontalLayout_6)
         self.goagentBox = QtGui.QGroupBox(Settings)
         self.goagentBox.setObjectName("goagentBox")
         self.verticalLayout_4 = QtGui.QVBoxLayout(self.goagentBox)
@@ -133,6 +143,8 @@ class Ui_Settings(object):
     def retranslateUi(self, Settings):
         Settings.setWindowTitle(QtGui.QApplication.translate("Settings", "设置", None, QtGui.QApplication.UnicodeUTF8))
         self.parentRemoveButton.setText(QtGui.QApplication.translate("Settings", "移除", None, QtGui.QApplication.UnicodeUTF8))
+        self.gfwlistToggle.setText(QtGui.QApplication.translate("Settings", "gfwlist", None, QtGui.QApplication.UnicodeUTF8))
+        self.updateToggle.setText(QtGui.QApplication.translate("Settings", "自动更新", None, QtGui.QApplication.UnicodeUTF8))
         self.goagentBox.setTitle(QtGui.QApplication.translate("Settings", "GoAgent", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("Settings", "APPID", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("Settings", "Password", None, QtGui.QApplication.UnicodeUTF8))
