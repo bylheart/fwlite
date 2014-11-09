@@ -514,8 +514,8 @@ class Settings(QtGui.QWidget):
         self.table_model.update(data)
         self.ui.tableView.resizeRowsToContents()
         self.ui.tableView.resizeColumnsToContents()
-        self.ui.gfwlistToggle.setCheckState(QtCore.Qt.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/gfwlist' % self.port, timeout=1).read().decode()) else QtCore.Qt.UnChecked)
-        self.ui.updateToggle.setCheckState(QtCore.Qt.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/autoupdate' % self.port, timeout=1).read().decode()) else QtCore.Qt.UnChecked)
+        self.ui.gfwlistToggle.setCheckState(QtCore.Qt.CheckState.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/gfwlist' % self.port, timeout=1).read().decode()) else QtCore.Qt.CheckState.Unchecked)
+        self.ui.updateToggle.setCheckState(QtCore.Qt.CheckState.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/autoupdate' % self.port, timeout=1).read().decode()) else QtCore.Qt.CheckState.Unchecked)
         self.loadgoagent()
 
     def addSS(self):
@@ -561,7 +561,7 @@ class Settings(QtGui.QWidget):
 
     def loadgoagent(self):
         enable, appid, passwd = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/goagent/setting' % self.port, timeout=1).read().decode())
-        self.ui.goagentEnableBox.setCheckState(QtCore.Qt.Checked if enable else QtCore.Qt.UnChecked)
+        self.ui.goagentEnableBox.setCheckState(QtCore.Qt.CheckState.Checked if enable else QtCore.Qt.CheckState.UnChecked)
         self.ui.goagentAPPIDEdit.setText(appid)
         self.ui.goagentPassEdit.setText(passwd)
 
