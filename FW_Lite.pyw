@@ -14,6 +14,7 @@ import shutil
 import threading
 import atexit
 import base64
+import operator
 import json
 import signal
 import subprocess
@@ -24,6 +25,7 @@ from ui_remoteresolver import Ui_remote_resolver
 from ui_localrules import Ui_LocalRules
 from ui_localrule import Ui_LocalRule
 from ui_redirectorrules import Ui_RedirectorRules
+from ui_settings import Ui_Settings
 from util import SConfigParser
 try:
     import httplib
@@ -38,7 +40,7 @@ except ImportError as e:
     print(repr(e))
 try:
     import pynotify
-    pynotify.init('FGFW-Lite Notify')
+    pynotify.init('FW-Lite Notify')
 except ImportError:
     pynotify = None
 from util import dns_via_tcp
@@ -105,6 +107,10 @@ class MainWindow(QtGui.QMainWindow):
         self.ui.tabWidget.addTab(self.RedirRules, "")
         self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.RedirRules), QtGui.QApplication.translate("MainWindow", "重定向规则", None, QtGui.QApplication.UnicodeUTF8))
 
+        self.Settings = Settings(self)
+        self.ui.tabWidget.addTab(self.Settings, "")
+        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.Settings), QtGui.QApplication.translate("MainWindow", "设置", None, QtGui.QApplication.UnicodeUTF8))
+
         self.resolve = RemoteResolve()
 
         self.trayIcon = None
@@ -137,7 +143,6 @@ class MainWindow(QtGui.QMainWindow):
         self.consoleText.extend(lines)
         for line in lines:
             if 'Update Completed' in line:
-                self.showMessage(u'已升级到最新版，重新载入中...')
                 freload = True
         self.ui.console.setPlainText(u'\n'.join(self.consoleText))
         self.ui.console.moveCursor(QtGui.QTextCursor.End)
@@ -145,10 +150,11 @@ class MainWindow(QtGui.QMainWindow):
             self.reload(clear=False)
 
     def newStdoutInfo(self):
-        sys.stderr.write('stdout: %r\r\n' % self.runner.readAllStandardOutput())
+        sys.stderr.write('stdout: %r\r\n' % str(self.runner.readAllStandardOutput()))
         sys.stderr.flush()
         self.LocalRules.ref.emit()
         self.RedirRules.ref.emit()
+        self.Settings.ref.emit()
 
     def center(self):
         qr = self.frameGeometry()
@@ -162,8 +168,7 @@ class MainWindow(QtGui.QMainWindow):
         self.setIENoneAction = QtGui.QAction(u"直接连接", self, triggered=lambda: setIEproxy(0))
         self.flushDNSAction = QtGui.QAction(u"清空DNS缓存", self, triggered=self.flushDNS)
         self.remoteDNSAction = QtGui.QAction(u"远程DNS解析", self, triggered=self.remoteDNS)
-        self.openlocalAction = QtGui.QAction(u"local.txt", self, triggered=self.openlocal)
-        self.openconfAction = QtGui.QAction(u"userconf.ini", self, triggered=self.openconf)
+        self.settingDNSAction = QtGui.QAction(u"设置", self, triggered=self.openSetting)
         self.quitAction = QtGui.QAction(u"退出", self, triggered=self.on_Quit)
 
     def createTrayIcon(self):
@@ -181,14 +186,12 @@ class MainWindow(QtGui.QMainWindow):
         advancedMenu.addAction(self.flushDNSAction)
         advancedMenu.addAction(self.remoteDNSAction)
 
-        settingMenu = self.trayIconMenu.addMenu(u'设置')
-        settingMenu.addAction(self.openconfAction)
-        settingMenu.addAction(self.openlocalAction)
+        self.trayIconMenu.addAction(self.settingDNSAction)
         self.trayIconMenu.addSeparator()
         self.trayIconMenu.addAction(self.quitAction)
 
         self.trayIcon = QtGui.QSystemTrayIcon(self)
-        self.trayIcon.setToolTip(u'FGFW-Lite')
+        self.trayIcon.setToolTip(u'FW-Lite')
         self.trayIcon.setContextMenu(self.trayIconMenu)
         self.trayIcon.setIcon(QtGui.QIcon(TRAY_ICON))
         self.trayIcon.activated.connect(self.on_trayActive)
@@ -244,14 +247,14 @@ class MainWindow(QtGui.QMainWindow):
 
     def showMessage(self, msg, timeout=None):
         if pynotify:
-            notification = pynotify.Notification('FGFW-Lite Notify', msg)
+            notification = pynotify.Notification('FW-Lite Notify', msg)
             notification.set_hint('x', 200)
             notification.set_hint('y', 400)
             if timeout:
                 notification.set_timeout(timeout)
             notification.show()
         else:
-            self.trayIcon.showMessage(u'FGFW-Lite', msg)
+            self.trayIcon.showMessage(u'FW-Lite', msg)
 
     def closeEvent(self, event):
         # hide mainwindow when close
@@ -263,26 +266,15 @@ class MainWindow(QtGui.QMainWindow):
         if reason is self.trayIcon.Trigger:
             self.showToggle()
 
-    def openlocal(self):
-        self.openfile('./fgfw-lite/local.txt')
-
-    def openconf(self):
-        self.openfile('userconf.ini')
-
-    def openfile(self, path):
-        if sys.platform.startswith('win'):
-            cmd = 'start'
-        elif sys.platform.startswith('linux'):
-            cmd = 'xdg-open'
-        elif sys.platform.startswith('darwin'):
-            cmd = 'open'
-        else:
-            return self.showMessage('OS not recognised')
-        subprocess.Popen('%s %s' % (cmd, path), shell=True)
-        self.showMessage(u'新的设置将在重新载入后生效')
-
     def on_Quit(self):
         QtGui.qApp.quit()
+
+    def openSetting(self):
+        self.ui.tabWidget.setCurrentIndex(3)
+        self.show()
+        if self.isMinimized():
+            self.showNormal()
+        self.activateWindow()
 
     def showToggle(self):
         if self.isVisible():
@@ -479,6 +471,145 @@ class RemoteResolve(QtGui.QWidget):
             self.hide()
         self.ui.resultTextEdit.clear()
         event.ignore()
+
+
+class Settings(QtGui.QWidget):
+    ref = QtCore.Signal()
+
+    def __init__(self, parent=None):
+        super(Settings, self).__init__(parent)
+        self.ui = Ui_Settings()
+        self.ui.setupUi(self)
+        self.ui.shadowsocksAddButton.clicked.connect(self.addSS)
+        self.ui.parentRemoveButton.clicked.connect(self.delParent)
+        self.ui.editConfButton.clicked.connect(self.openconf)
+        self.ui.editLocalButton.clicked.connect(self.openlocal)
+        self.ui.goagentSaveButton.clicked.connect(self.savegoagent)
+        self.ui.goagentResetButton.clicked.connect(self.loadgoagent)
+        self.ref.connect(self.refresh)
+        self.port = parent.port
+        self.icon = parent
+
+        header = [u'名称', u'地址', u'优先级']
+        data = []
+        self.table_model = MyTableModel(self, data, header)
+        self.ui.tableView.setModel(self.table_model)
+
+        import encrypt
+        l = ['', 'table']
+        l.extend(sorted(encrypt.method_supported.keys()))
+        self.ui.ssMethodBox.addItems(l)
+
+    def refresh(self):
+        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, timeout=1).read().decode())
+        self.table_model.update(data)
+        self.ui.tableView.resizeRowsToContents()
+        self.ui.tableView.resizeColumnsToContents()
+        self.loadgoagent()
+
+    def addSS(self):
+        sName = self.ui.ssNameEdit.text()
+        sServer = self.ui.ssServerEdit.text()
+        sPort = self.ui.ssPortEdit.text()
+        sMethod = self.ui.ssMethodBox.currentText()
+        sPass = self.ui.ssPassEdit.text()
+        sPriority = self.ui.ssPriorityEdit.text()
+
+        if not sName:
+            sName = '%s-%s' % (sServer, sPort)
+        if not sPriority:
+            sPriority = 99
+        if not all([sServer, sPort, sMethod, sPass]):
+            self.icon.showMessage(u'出错啦！')
+            return
+        data = json.dumps((sName, ('ss://%s:%s@%s:%s %s' % (sMethod, sPass, sServer, sPort, sPriority)))).encode()
+        try:
+            urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, data, timeout=1)
+        except:
+            self.icon.showMessage('add parent %s failed!' % sName)
+        else:
+            self.ui.ssNameEdit.clear()
+            self.ui.ssServerEdit.clear()
+            self.ui.ssPortEdit.clear()
+            self.ui.ssPassEdit.clear()
+            self.ui.ssPriorityEdit.clear()
+
+    def delParent(self):
+        index = self.ui.tableView.currentIndex().row()
+        conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
+        conn.request('DELETE', '/api/parent/%s' % (self.table_model.mylist[index][0]))
+        resp = conn.getresponse()
+        content = resp.read()
+        print(content)
+
+    def loadgoagent(self):
+        enable, appid, passwd = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/goagent/setting' % self.port, timeout=1).read().decode())
+        self.ui.goagentEnableBox.setCheckState(QtCore.Qt.Checked if enable else QtCore.Qt.UnChecked)
+        self.ui.goagentAPPIDEdit.setText(appid)
+        self.ui.goagentPassEdit.setText(passwd)
+
+    def savegoagent(self):
+        enable = self.ui.goagentEnableBox.isChecked()
+        appid = self.ui.goagentAPPIDEdit.text()
+        passwd = self.ui.goagentPassEdit.text()
+        data = json.dumps((enable, appid, passwd)).encode()
+        urllib2.urlopen('http://127.0.0.1:%d/api/goagent/setting' % self.port, data, timeout=1)
+
+    def openlocal(self):
+        self.openfile('./fgfw-lite/local.txt')
+
+    def openconf(self):
+        self.openfile('userconf.ini')
+
+    def openfile(self, path):
+        if sys.platform.startswith('win'):
+            cmd = 'start'
+        elif sys.platform.startswith('linux'):
+            cmd = 'xdg-open'
+        elif sys.platform.startswith('darwin'):
+            cmd = 'open'
+        else:
+            return self.showMessage('OS not recognised')
+        subprocess.Popen('%s %s' % (cmd, path), shell=True)
+        self.icon.showMessage(u'新的设置将在重新载入后生效')
+
+
+class MyTableModel(QtCore.QAbstractTableModel):
+    def __init__(self, parent, mylist, header, *args):
+        QtCore.QAbstractTableModel.__init__(self, parent, *args)
+        self.mylist = mylist
+        self.header = header
+
+    def rowCount(self, parent):
+        return len(self.mylist)
+
+    def columnCount(self, parent):
+        return len(self.header)
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        elif role != QtCore.Qt.DisplayRole:
+            return None
+        return self.mylist[index.row()][index.column()]
+
+    def update(self, mylist):
+        self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
+        self.mylist = mylist
+        self.emit(QtCore.SIGNAL("layoutChanged()"))
+
+    def headerData(self, col, orientation, role):
+        if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+            return self.header[col]
+        return None
+
+    def sort(self, col, order):
+        """sort table by given column number col"""
+        self.emit(QtCore.SIGNAL("layoutAboutToBeChanged()"))
+        self.mylist = sorted(self.mylist, key=operator.itemgetter(col))
+        if order == QtCore.Qt.DescendingOrder:
+            self.mylist.reverse()
+        self.emit(QtCore.SIGNAL("layoutChanged()"))
 
 
 @atexit.register

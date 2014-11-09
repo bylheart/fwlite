@@ -882,6 +882,28 @@ class ProxyHandler(HTTPRequestHandler):
         elif parse.path == '/api/goagent/pid' and self.command == 'GET':
             data = json.dumps(self.conf.goagent.pid)
             return self.write(200, data, 'application/json')
+        elif parse.path == '/api/goagent/setting' and self.command == 'GET':
+            data = json.dumps(self.conf.goagent.setting())
+            return self.write(200, data, 'application/json')
+        elif parse.path == '/api/goagent/setting' and self.command == 'POST':
+            self.conf.goagent.setting(json.loads(body))
+            return self.write(200, data, 'application/json')
+        elif parse.path == '/api/parent' and self.command == 'GET':
+            data = json.dumps([(p.name, ('%s://%s:%s' % (p.parse.scheme, p.parse.hostname, p.parse.port)) if p.proxy else '', p.httppriority) for p in self.conf.parentlist.httpparents])
+            return self.write(200, data, 'application/json')
+        elif parse.path == '/api/parent' and self.command == 'POST':
+            'accept a json encoded tuple: (str rule, str dest)'
+            name, proxy = json.loads(body)
+            self.conf.addparentproxy(name, proxy)
+            self.write(200, data, 'application/json')
+            return self.conf.stdout()
+        elif parse.path.startswith('/api/parent/') and self.command == 'DELETE':
+            try:
+                self.conf.parentlist.remove(parse.path[12:])
+                self.write(200, parse.path[12:], 'application/json')
+                return self.conf.stdout()
+            except Exception as e:
+                return self.send_error(404, repr(e))
         elif parse.path == '/' and self.command == 'GET':
             return self.write(200, 'Hello World !', 'text/html')
         self.send_error(404)
@@ -1499,6 +1521,16 @@ class goagentHandler(FGFWProxyHandler):
         with open('./goagent/proxy.ini', 'w') as configfile:
             goagent.write(configfile)
 
+    def setting(self, conf=None):
+        if not conf:
+            return (self.enable, self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'), self.conf.userconf.dget('goagent', 'gaepassword', ''))
+        else:
+            self.enable, appid, passwd = conf
+            self.conf.userconf.set('goagent', 'gaeappid', appid)
+            self.conf.userconf.set('goagent', 'gaepassword', passwd)
+            self.conf.confsave()
+            self.restart()
+
 
 class ParentProxyList(object):
     def __init__(self):
@@ -1513,6 +1545,16 @@ class ParentProxyList(object):
         if parentproxy.httpspriority >= 0:
             self.httpsparents.append(parentproxy)
         self.dict[parentproxy.name] = parentproxy
+
+    def remove(self, name):
+        a = self.dict[name]
+        try:
+            self.httpparents.remove(a)
+        finally:
+            try:
+                self.httpsparents.remove(a)
+            except:
+                pass
 
     def addstr(self, name, proxy):
         self.add(ParentProxy(name, proxy))
@@ -1576,7 +1618,8 @@ class Config(object):
     def confsave(self):
         with open('version.ini', 'w') as f:
             self.version.write(f)
-        self.userconf.read('userconf.ini')
+        with open('userconf.ini', 'w') as f:
+            self.userconf.write(f)
 
     def addparentproxy(self, name, proxy):
         self.parentlist.addstr(name, proxy)
@@ -1584,7 +1627,7 @@ class Config(object):
 
     def stdout(self, text=b''):
         if self.GUI:
-            sys.stdout.write(text + b'\r\n')
+            sys.stdout.write(text + b'\n')
             sys.stdout.flush()
 
 
