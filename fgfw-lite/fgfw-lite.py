@@ -20,7 +20,7 @@
 
 from __future__ import print_function, division
 
-__version__ = '4.4.2'
+__version__ = '4.5'
 
 import sys
 import os
@@ -894,12 +894,20 @@ class ProxyHandler(HTTPRequestHandler):
         elif parse.path == '/api/parent' and self.command == 'POST':
             'accept a json encoded tuple: (str rule, str dest)'
             name, proxy = json.loads(body)
+            if proxy.startswith('ss://') and self.conf.userconf.has_option('parents', 'shadowsocks_0'):
+                self.conf.userconf.remove_option('parents', 'shadowsocks_0')
+            self.conf.parentlist.remove('shadowsocks_0')
             self.conf.addparentproxy(name, proxy)
+            self.conf.userconf.set('parents', name, proxy)
+            self.conf.confsave()
             self.write(200, data, 'application/json')
             return self.conf.stdout()
         elif parse.path.startswith('/api/parent/') and self.command == 'DELETE':
             try:
                 self.conf.parentlist.remove(parse.path[12:])
+                if self.conf.userconf.has_option('parents', parse.path[12:]):
+                    self.conf.userconf.remove_option('parents', parse.path[12:])
+                    self.conf.confsave()
                 self.write(200, parse.path[12:], 'application/json')
                 return self.conf.stdout()
             except Exception as e:
@@ -1530,6 +1538,7 @@ class goagentHandler(FGFWProxyHandler):
             self.conf.userconf.set('goagent', 'gaepassword', passwd)
             self.conf.confsave()
             self.restart()
+            self.conf.stdout()
 
 
 class ParentProxyList(object):
@@ -1547,7 +1556,9 @@ class ParentProxyList(object):
         self.dict[parentproxy.name] = parentproxy
 
     def remove(self, name):
-        a = self.dict[name]
+        a = self.dict.get(name)
+        if not a or name == 'direct':
+            return 1
         try:
             self.httpparents.remove(a)
         finally:

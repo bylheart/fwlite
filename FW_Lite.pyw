@@ -9,6 +9,7 @@ WORKINGDIR = os.path.dirname(os.path.abspath(__file__).replace('\\', '/'))
 os.chdir(WORKINGDIR)
 sys.path += glob.glob('%s/goagent/*.egg' % WORKINGDIR)
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
+import copy
 import datetime
 import shutil
 import threading
@@ -140,10 +141,14 @@ class MainWindow(QtGui.QMainWindow):
     def newStderrInfo(self):
         freload = False
         lines = str(self.runner.readAllStandardError()).strip().splitlines()
-        self.consoleText.extend(lines)
-        for line in lines:
+        for line in copy.copy(lines):
             if 'Update Completed' in line:
                 freload = True
+            elif 'dnslib_resolve_over_' in line:
+                lines.remove(line)
+            elif 'extend_iplist' in line:
+                lines.remove(line)
+        self.consoleText.extend(lines)
         self.ui.console.setPlainText(u'\n'.join(self.consoleText))
         self.ui.console.moveCursor(QtGui.QTextCursor.End)
         if freload:

@@ -1,3 +1,6 @@
+2014.11.7 v4.5
+add settings in GUI
+
 2014.11.7 v4.4.3
 new dns resolve method
 copy local rule to clipboard

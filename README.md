@@ -1,6 +1,6 @@
 A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
 
-Current Version: 4.4.3
+Current Version: 4.5
 
 Works on Windows, Linux and Mac(untested).
 
