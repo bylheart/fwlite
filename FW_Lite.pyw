@@ -148,6 +148,8 @@ class MainWindow(QtGui.QMainWindow):
                 lines.remove(line)
             elif 'extend_iplist' in line:
                 lines.remove(line)
+            elif 'DNS Question' in line:
+                lines.remove(line)
         self.consoleText.extend(lines)
         self.ui.console.setPlainText(u'\n'.join(self.consoleText))
         self.ui.console.moveCursor(QtGui.QTextCursor.End)
