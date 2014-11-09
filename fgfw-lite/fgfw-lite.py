@@ -882,6 +882,12 @@ class ProxyHandler(HTTPRequestHandler):
         elif parse.path == '/api/goagent/pid' and self.command == 'GET':
             data = json.dumps(self.conf.goagent.pid)
             return self.write(200, data, 'application/json')
+        elif parse.path == '/api/goagent/setting' and self.command == 'GET':
+            data = json.dumps(self.conf.goagent.setting())
+            return self.write(200, data, 'application/json')
+        elif parse.path == '/api/goagent/setting' and self.command == 'POST':
+            self.conf.goagent.setting(json.loads(body))
+            return self.write(200, data, 'application/json')
         elif parse.path == '/api/parent' and self.command == 'GET':
             data = json.dumps([(p.name, ('%s://%s:%s' % (p.parse.scheme, p.parse.hostname, p.parse.port)) if p.proxy else '', p.httppriority) for p in self.conf.parentlist.httpparents])
             return self.write(200, data, 'application/json')
@@ -1515,6 +1521,16 @@ class goagentHandler(FGFWProxyHandler):
         with open('./goagent/proxy.ini', 'w') as configfile:
             goagent.write(configfile)
 
+    def setting(self, conf=None):
+        if not conf:
+            return (self.enable, self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'), self.conf.userconf.dget('goagent', 'gaepassword', ''))
+        else:
+            self.enable, appid, passwd = conf
+            self.conf.userconf.set('goagent', 'gaeappid', appid)
+            self.conf.userconf.set('goagent', 'gaepassword', passwd)
+            self.conf.confsave()
+            self.restart()
+
 
 class ParentProxyList(object):
     def __init__(self):
@@ -1602,7 +1618,8 @@ class Config(object):
     def confsave(self):
         with open('version.ini', 'w') as f:
             self.version.write(f)
-        self.userconf.read('userconf.ini')
+        with open('userconf.ini', 'w') as f:
+            self.userconf.write(f)
 
     def addparentproxy(self, name, proxy):
         self.parentlist.addstr(name, proxy)

@@ -40,7 +40,7 @@ except ImportError as e:
     print(repr(e))
 try:
     import pynotify
-    pynotify.init('FGFW-Lite Notify')
+    pynotify.init('FW-Lite Notify')
 except ImportError:
     pynotify = None
 from util import dns_via_tcp
@@ -191,7 +191,7 @@ class MainWindow(QtGui.QMainWindow):
         self.trayIconMenu.addAction(self.quitAction)
 
         self.trayIcon = QtGui.QSystemTrayIcon(self)
-        self.trayIcon.setToolTip(u'FGFW-Lite')
+        self.trayIcon.setToolTip(u'FW-Lite')
         self.trayIcon.setContextMenu(self.trayIconMenu)
         self.trayIcon.setIcon(QtGui.QIcon(TRAY_ICON))
         self.trayIcon.activated.connect(self.on_trayActive)
@@ -247,14 +247,14 @@ class MainWindow(QtGui.QMainWindow):
 
     def showMessage(self, msg, timeout=None):
         if pynotify:
-            notification = pynotify.Notification('FGFW-Lite Notify', msg)
+            notification = pynotify.Notification('FW-Lite Notify', msg)
             notification.set_hint('x', 200)
             notification.set_hint('y', 400)
             if timeout:
                 notification.set_timeout(timeout)
             notification.show()
         else:
-            self.trayIcon.showMessage(u'FGFW-Lite', msg)
+            self.trayIcon.showMessage(u'FW-Lite', msg)
 
     def closeEvent(self, event):
         # hide mainwindow when close
@@ -484,6 +484,8 @@ class Settings(QtGui.QWidget):
         self.ui.parentRemoveButton.clicked.connect(self.delParent)
         self.ui.editConfButton.clicked.connect(self.openconf)
         self.ui.editLocalButton.clicked.connect(self.openlocal)
+        self.ui.goagentSaveButton.clicked.connect(self.savegoagent)
+        self.ui.goagentResetButton.clicked.connect(self.loadgoagent)
         self.ref.connect(self.refresh)
         self.port = parent.port
         self.icon = parent
@@ -503,6 +505,7 @@ class Settings(QtGui.QWidget):
         self.table_model.update(data)
         self.ui.tableView.resizeRowsToContents()
         self.ui.tableView.resizeColumnsToContents()
+        self.loadgoagent()
 
     def addSS(self):
         sName = self.ui.ssNameEdit.text()
@@ -538,6 +541,19 @@ class Settings(QtGui.QWidget):
         resp = conn.getresponse()
         content = resp.read()
         print(content)
+
+    def loadgoagent(self):
+        enable, appid, passwd = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/goagent/setting' % self.port, timeout=1).read().decode())
+        self.ui.goagentEnableBox.setCheckState(QtCore.Qt.Checked if enable else QtCore.Qt.UnChecked)
+        self.ui.goagentAPPIDEdit.setText(appid)
+        self.ui.goagentPassEdit.setText(passwd)
+
+    def savegoagent(self):
+        enable = self.ui.goagentEnableBox.isChecked()
+        appid = self.ui.goagentAPPIDEdit.text()
+        passwd = self.ui.goagentPassEdit.text()
+        data = json.dumps((enable, appid, passwd)).encode()
+        urllib2.urlopen('http://127.0.0.1:%d/api/goagent/setting' % self.port, data, timeout=1)
 
     def openlocal(self):
         self.openfile('./fgfw-lite/local.txt')
