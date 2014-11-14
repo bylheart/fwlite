@@ -42,6 +42,8 @@ filelst = ['./goagent/proxy.py',
            './fgfw-lite/fgfw-lite.py',
            './fgfw-lite/util.py',
            './FW_Lite.pyw',
+           './fgfw-lite/ui_settings.py',
+           './fgfw-lite/encrypt.py',
            ]
 for path in filelst:
     with open(path, 'rb') as f:
