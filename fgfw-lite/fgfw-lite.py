@@ -1491,18 +1491,19 @@ class goagentHandler(FGFWProxyHandler):
         self.cwd = '%s/goagent' % WORKINGDIR
         self.cmd = '%s %s/goagent/proxy.py' % (PYTHON2, WORKINGDIR.replace(' ', '\ '))
         self.enable = self.conf.userconf.dgetbool('goagent', 'enable', True)
-        if self.enable:
-            if self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent':
-                self.logger.warning('GoAgent APPID is NOT set!')
-                self.enable = False
-            else:
-                self._config()
+
+        self._config()
 
     def _config(self):
+        self.conf.parentlist.remove('goagent')
+        self.conf.parentlist.remove('goagent-php')
         goagent = SConfigParser()
         goagent.read('./goagent/proxy.sample.ini')
 
         goagent.set('gae', 'appid', self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'))
+        if self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent':
+            self.logger.warning('GoAgent APPID is NOT set!')
+            self.enable = False
         goagent.set("gae", "password", self.conf.userconf.dget('goagent', 'gaepassword', ''))
         goagent.set('gae', 'mode', self.conf.userconf.dget('goagent', 'mode', 'https'))
         goagent.set('gae', 'ipv6', self.conf.userconf.dget('goagent', 'ipv6', '0'))
@@ -1517,7 +1518,8 @@ class goagentHandler(FGFWProxyHandler):
             goagent.set('iplist', 'google_cn', self.conf.userconf.dget('goagent', 'google_cn', ''))
         if self.conf.userconf.dget('goagent', 'google_hk', ''):
             goagent.set('iplist', 'google_hk', self.conf.userconf.dget('goagent', 'google_hk', ''))
-        self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20 200')
+        if self.enable:
+            self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20 200')
 
         if self.conf.userconf.dget('goagent', 'phpfetchserver'):
             goagent.set('php', 'enable', '1')
@@ -1547,9 +1549,10 @@ class goagentHandler(FGFWProxyHandler):
 
     def setting(self, conf=None):
         if not conf:
-            return (self.enable, self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'), self.conf.userconf.dget('goagent', 'gaepassword', ''))
+            return (self.conf.userconf.dgetbool('goagent', 'enable', True), self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'), self.conf.userconf.dget('goagent', 'gaepassword', ''))
         else:
             self.enable, appid, passwd = conf
+            self.conf.userconf.set('goagent', 'enable', '1' if self.enable else '0')
             self.conf.userconf.set('goagent', 'gaeappid', appid)
             self.conf.userconf.set('goagent', 'gaepassword', passwd)
             self.conf.confsave()
