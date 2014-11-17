@@ -1327,6 +1327,8 @@ class parent_proxy(object):
 
         if len(parentlist) > self.conf.maxretry + 1:
             parentlist = parentlist[:self.conf.maxretry + 1]
+            if self.conf.parentlist.dict.get('goagent') and self.conf.parentlist.dict.get('direct') not in parentlist:
+                parentlist.append(self.conf.parentlist.dict.get('goagent'))
         return parentlist
 
     def notify(self, command, url, requesthost, success, failed_parents, current_parent):
@@ -1367,12 +1369,6 @@ def updater(conf):
     lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
     if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
         update(conf, auto=True)
-    # global CTIMEOUT, ctimer
-    # if ctimer:
-    #     conf.logger.info('max connection time: %ss in %s' % (max(ctimer), len(ctimer)))
-    #     CTIMEOUT = min(max(3, max(ctimer) * 5), 15)
-    #     conf.logger.info('conn timeout set to: %s' % CTIMEOUT)
-    #     ctimer = []
     Timer(random.randint(600, 3600), updater, (conf, )).start()
 
 
