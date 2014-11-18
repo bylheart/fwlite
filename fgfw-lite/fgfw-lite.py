@@ -131,8 +131,25 @@ def prestart():
 ! rules: https://autoproxy.org/zh-CN/Rules
 ! /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1/
 ''')
+    if not os.path.isfile('./fgfw-lite/userfilter.py'):
+        with open('./fgfw-lite/userfilter.py', 'w') as f:
+            f.write('''\
+#!/usr/bin/env python
+#-*- coding: UTF-8 -*-
+# This file is designed for expirenced user to edit
+
+
+def userfilter(handler, status_code, reason, headers):
+    # this function runs after response header is read
+    # if it is a bad response, raise an IOError or OSError like this:
+    #if status_code == 302 and headers.get('Location').startswith('http://some_evil_site_owned_by_isp/'):
+    #    return self.on_GET_Error(IOError(0, 'ISP MITM Attrack detected!'))
+    pass
+''')
 
 prestart()
+
+from userfilter import userfilter
 
 
 class stats(object):
@@ -489,8 +506,6 @@ class ProxyHandler(HTTPRequestHandler):
         protocol_version, _, response_status = response_line.rstrip(b'\r\n').partition(b' ')
         response_status, _, response_reason = response_status.partition(b' ')
         response_status = int(response_status)
-        if response_status > 500 and self.ppname.startswith('goagent'):
-            return self.on_GET_Error(OSError(0, 'bad response status code from goagent: %d' % response_status))
         # read response headers
         self.logger.debug('reading response header')
         header_data = []
@@ -527,6 +542,17 @@ class ProxyHandler(HTTPRequestHandler):
             content_length = None
         self.wfile_write(s)
         self.wfile_write(header_data)
+        # verify
+        if response_status > 500 and self.ppname.startswith('goagent'):
+            return self.on_GET_Error(OSError(0, 'bad response status code from goagent: %d' % response_status))
+        try:
+            userfilter(self, response_status, response_reason, response_header)
+        except EnvironmentError as e:
+            return self.on_GET_Error(e)
+        except Exception as e:
+            self.logger.error('unknown userfilter Exception!')
+            os.rename('./fgfw-lite/userfilter.py', './fgfw-lite/userfilter.py.bak')
+            prestart()
         # read response body
         if self.command == 'HEAD' or 100 <= response_status < 200 or response_status in (204, 205, 304):
             pass

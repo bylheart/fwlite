@@ -35,22 +35,6 @@ if raw_input('update? y/n: ').lower().startswith('y'):
                 with open(path, 'wb') as localfile:
                     localfile.write(data)
 
-# CRLF --> LF
-
-filelst = ['./goagent/proxy.py',
-           './goagent/proxylib.py',
-           './fgfw-lite/fgfw-lite.py',
-           './fgfw-lite/util.py',
-           './FW_Lite.pyw',
-           './fgfw-lite/ui_settings.py',
-           './fgfw-lite/encrypt.py',
-           ]
-for path in filelst:
-    with open(path, 'rb') as f:
-        data = f.read()
-    with open(path, 'wb') as f:
-        f.write(data.replace(b'\r\n', b'\n'))
-
 BLOCKSIZE = 8192
 v = {}
 flist = ['./fgfw-lite/fgfw-lite.py',
