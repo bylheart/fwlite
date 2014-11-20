@@ -116,6 +116,15 @@ def getaddrinfo(host, port=None, family=0, socktype=0, proto=0, flags=0):
     return socket.getaddrinfo(host, port, family, socktype, proto, flags)
 
 
+@lru_cache(4096, timeout=90)
+def resolver(host, backupserver='8.8.8.8'):
+    """return (family, ipaddr)
+       >>>
+       [(2, '82.94.164.162'),
+        (10, '2001:888:2000:d::a2')]"""
+    return [(i[0], i[4][0]) for i in socket.getaddrinfo(host)]
+
+
 @lru_cache(1024, timeout=90)
 def get_ip_address(host, port=80):
     try:
@@ -235,7 +244,7 @@ def sizeof_fmt(num):
 
 if __name__ == "__main__":
     t = socket.getaddrinfo('twitter.com', 80)
-    r = dns_via_tcp('www.google.com')
+    r = resolver('www.google.com')
     print(t)
     print(r)
     # print(r[0][4][0])

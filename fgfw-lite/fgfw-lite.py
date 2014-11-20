@@ -110,10 +110,6 @@ else:
             PYTHON2 = cmd
             break
 
-ctimer = []
-CTIMEOUT = 5
-NetWorkIOError = (socket.error, ssl.SSLError, OSError)
-
 
 def prestart():
     s = 'FGFW_Lite ' + __version__
@@ -277,7 +273,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         """make python2 BaseHTTPRequestHandler happy"""
         try:
             BaseHTTPRequestHandler.finish(self)
-        except (IOError, OSError) as e:
+        except EnvironmentError as e:
             if e[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.EPIPE):
                 raise
 
@@ -416,7 +412,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.upstream_name = self.ppname if self.pproxy.proxy.startswith('http') else self.requesthost
         try:
             self.remotesoc = self._http_connect_via_proxy(self.requesthost)
-        except NetWorkIOError as e:
+        except EnvironmentError as e:
             return self.on_GET_Error(e)
         self.wbuffer = deque()
         self.wbuffer_size = 0
@@ -438,7 +434,7 @@ class ProxyHandler(HTTPRequestHandler):
         s.append("\r\n")
         try:
             self.remotesoc.sendall(''.join(s).encode('latin1'))
-        except NetWorkIOError as e:
+        except EnvironmentError as e:
             return self.on_GET_Error(e)
         self.logger.debug('sending request body')
         # send request body
@@ -447,7 +443,7 @@ class ProxyHandler(HTTPRequestHandler):
             if self.rbuffer:
                 try:
                     self.remotesoc.sendall(b''.join(self.rbuffer))
-                except NetWorkIOError as e:
+                except EnvironmentError as e:
                     return self.on_GET_Error(e)
             flag = 1
             req_body_len = 0
@@ -458,7 +454,7 @@ class ProxyHandler(HTTPRequestHandler):
                     req_body_len += len(trunk_lenth)
                 try:
                     self.remotesoc.sendall(trunk_lenth)
-                except NetWorkIOError as e:
+                except EnvironmentError as e:
                     return self.on_GET_Error(e)
                 trunk_lenth = int(trunk_lenth.strip(), 16) + 2
                 flag = trunk_lenth != 2
@@ -468,7 +464,7 @@ class ProxyHandler(HTTPRequestHandler):
                     req_body_len += len(data)
                 try:
                     self.remotesoc.sendall(data)
-                except NetWorkIOError as e:
+                except EnvironmentError as e:
                     return self.on_GET_Error(e)
                 if req_body_len > 102400:
                     self.retryable = False
@@ -481,7 +477,7 @@ class ProxyHandler(HTTPRequestHandler):
                 content_length -= len(s)
                 try:
                     self.remotesoc.sendall(s)
-                except NetWorkIOError as e:
+                except EnvironmentError as e:
                     return self.on_GET_Error(e)
             while content_length:
                 data = self.rfile.read(min(self.bufsize, content_length))
@@ -492,7 +488,7 @@ class ProxyHandler(HTTPRequestHandler):
                     self.rbuffer.append(data)
                 try:
                     self.remotesoc.sendall(data)
-                except NetWorkIOError as e:
+                except EnvironmentError as e:
                     return self.on_GET_Error(e)
         # read response line
         self.logger.debug('reading response_line')
@@ -500,8 +496,8 @@ class ProxyHandler(HTTPRequestHandler):
         try:
             s = response_line = remoterfile.readline()
             if not s.startswith(b'HTTP'):
-                raise OSError(0, 'bad response line: %r' % response_line)
-        except NetWorkIOError as e:
+                raise IOError(0, 'bad response line: %r' % response_line)
+        except EnvironmentError as e:
             return self.on_GET_Error(e)
         protocol_version, _, response_status = response_line.rstrip(b'\r\n').partition(b' ')
         response_status, _, response_reason = response_status.partition(b' ')
@@ -516,8 +512,8 @@ class ProxyHandler(HTTPRequestHandler):
                 if line in (b'\r\n', b'\n', b'\r'):  # header ends with a empty line
                     break
                 if not line:
-                    raise OSError(0, 'remote socket closed')
-        except NetWorkIOError as e:
+                    raise IOError(0, 'remote socket closed')
+        except EnvironmentError as e:
             return self.on_GET_Error(e)
         header_data = b''.join(header_data)
         response_header = email.message_from_string(str(header_data))
@@ -544,13 +540,13 @@ class ProxyHandler(HTTPRequestHandler):
         self.wfile_write(header_data)
         # verify
         if response_status > 500 and self.ppname.startswith('goagent'):
-            return self.on_GET_Error(OSError(0, 'bad response status code from goagent: %d' % response_status))
+            return self.on_GET_Error(IOError(0, 'bad response status code from goagent: %d' % response_status))
         try:
             userfilter(self, response_status, response_reason, response_header)
         except EnvironmentError as e:
             return self.on_GET_Error(e)
         except Exception as e:
-            self.logger.error('unknown userfilter Exception!')
+            self.logger.error('unknown userfilter Exception! %r' % e)
             os.rename('./fgfw-lite/userfilter.py', './fgfw-lite/userfilter.py.bak')
             prestart()
         # read response body
@@ -561,7 +557,7 @@ class ProxyHandler(HTTPRequestHandler):
             while flag:
                 try:
                     trunk_lenth = remoterfile.readline()
-                except NetWorkIOError as e:
+                except EnvironmentError as e:
                     return self.on_GET_Error(e)
                 self.wfile_write(trunk_lenth)
                 trunk_lenth = int(trunk_lenth.strip(), 16) + 2
@@ -569,7 +565,7 @@ class ProxyHandler(HTTPRequestHandler):
                 while trunk_lenth:
                     try:
                         data = self.remotesoc.recv(min(self.bufsize, trunk_lenth))
-                    except NetWorkIOError as e:
+                    except EnvironmentError as e:
                         return self.on_GET_Error(e)
                     trunk_lenth -= len(data)
                     self.wfile_write(data)
@@ -578,8 +574,8 @@ class ProxyHandler(HTTPRequestHandler):
                 try:
                     data = self.remotesoc.recv(min(self.bufsize, content_length))
                     if not data:
-                        raise OSError(0, 'remote socket closed')
-                except NetWorkIOError as e:
+                        raise IOError(0, 'remote socket closed')
+                except EnvironmentError as e:
                     return self.on_GET_Error(e)
                 content_length -= len(data)
                 self.wfile_write(data)
@@ -635,7 +631,7 @@ class ProxyHandler(HTTPRequestHandler):
         try:
             self.remotesoc = self._connect_via_proxy(self.requesthost)
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        except NetWorkIOError as e:
+        except EnvironmentError as e:
             self.logger.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT(True)
 
