@@ -317,7 +317,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 
     def _request_is_localhost(self, req):
         try:
-            return get_ip_address(req[0], req[1]).is_loopback
+            return get_ip_address(req[0]).is_loopback
         except Exception:
             pass
 
@@ -1325,7 +1325,7 @@ class parent_proxy(object):
         host, port = host
 
         try:
-            ip = get_ip_address(host, port)
+            ip = get_ip_address(host)
         except Exception as e:
             self.logger.warning('resolve %s failed! %s' % (host, repr(e)))
             ip = None

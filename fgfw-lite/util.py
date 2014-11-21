@@ -108,29 +108,20 @@ class ParentProxy(object):
 
 
 @lru_cache(4096, timeout=90)
-def getaddrinfo(host, port=None, family=0, socktype=0, proto=0, flags=0):
-    """return (family, socktype, proto, canonname, sockaddr)
-       >>> socket.getaddrinfo("www.python.org", 80, 0, 0, socket.SOL_TCP)
-       [(2, 1, 6, '', ('82.94.164.162', 80)),
-        (10, 1, 6, '', ('2001:888:2000:d::a2', 80, 0, 0))]"""
-    return socket.getaddrinfo(host, port, family, socktype, proto, flags)
-
-
-@lru_cache(4096, timeout=90)
 def resolver(host, backupserver='8.8.8.8'):
     """return (family, ipaddr)
        >>>
        [(2, '82.94.164.162'),
         (10, '2001:888:2000:d::a2')]"""
-    return [(i[0], i[4][0]) for i in socket.getaddrinfo(host)]
+    return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
 
 
 @lru_cache(1024, timeout=90)
-def get_ip_address(host, port=80):
+def get_ip_address(host):
     try:
         return ip_address(host)
     except Exception:
-        return ip_address(getaddrinfo(host, port)[0][4][0])
+        return ip_address(resolver(host)[0][1])
 
 
 def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd=None):
@@ -182,16 +173,16 @@ def create_connection(address, timeout=object(), source_address=None):
 
     host, port = address
     err = None
-    for res in getaddrinfo(host, port):
-        af, socktype, proto, canonname, sa = res
+    for res in resolver(host):
+        af, addr = res
         sock = None
         try:
-            sock = socket.socket(af, socktype, proto)
+            sock = socket.socket(af)
             if timeout is not object():
                 sock.settimeout(timeout)
             if source_address:
                 sock.bind(source_address)
-            sock.connect(sa)
+            sock.connect((addr, port))
             return sock
 
         except socket.error as _:
