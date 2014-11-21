@@ -85,6 +85,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger('FW_Lite')
 
 from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt, ParentProxy
+from apfilter import ap_rule, ap_filter, ExpiredError
 try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
@@ -869,7 +870,7 @@ class ProxyHandler(HTTPRequestHandler):
             body.write(data)
         body = body.getvalue()
         if parse.path == '/api/localrule' and self.command == 'GET':
-            data = json.dumps([(index, rule.rule, rule.expire) for index, rule in enumerate(self.conf.PARENT_PROXY.gfwlist_force)])
+            data = json.dumps([(index, rule.rule, rule.expire) for index, rule in enumerate(self.conf.PARENT_PROXY.temp)])
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/localrule' and self.command == 'POST':
             'accept a json encoded tuple: (str rule, int exp)'
@@ -881,8 +882,8 @@ class ProxyHandler(HTTPRequestHandler):
             try:
                 rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
                 if rule:
-                    assert base64.urlsafe_b64decode(rule) == self.conf.PARENT_PROXY.gfwlist_force[int(parse.path[15:])].rule
-                result = self.conf.PARENT_PROXY.gfwlist_force.pop(int(parse.path[15:]))
+                    assert base64.urlsafe_b64decode(rule) == self.conf.PARENT_PROXY.temp[int(parse.path[15:])].rule
+                result = self.conf.PARENT_PROXY.temp.pop(int(parse.path[15:]))
                 self.conf.PARENT_PROXY.temp_rules.discard(result.rule)
                 self.write(200, json.dumps([int(parse.path[15:]), result.rule, result.expire]), 'application/json')
                 return self.conf.stdout()
@@ -945,7 +946,6 @@ class ProxyHandler(HTTPRequestHandler):
         elif parse.path == '/api/gfwlist' and self.command == 'POST':
             self.conf.userconf.set('fgfwproxy', 'gfwlist', '1' if json.loads(body) else '0')
             self.conf.confsave()
-            self.conf.PARENT_PROXY.config()
             self.write(200, data, 'application/json')
             return self.conf.stdout()
         elif parse.path == '/api/autoupdate' and self.command == 'GET':
@@ -1123,50 +1123,6 @@ class sssocket(object):
         self.close()
 
 
-class ExpiredError(Exception):
-    pass
-
-
-class autoproxy_rule(object):
-    def __init__(self, arg, expire=None):
-        super(autoproxy_rule, self).__init__()
-        self.rule = arg.strip()
-        self.logger = logging.getLogger('FW_Lite')
-        self.logger.debug('parsing autoproxy rule: %r' % self.rule)
-        if len(self.rule) < 3 or self.rule.startswith(('!', '[')) or '#' in self.rule:
-            raise TypeError("invalid autoproxy_rule: %s" % self.rule)
-        self.expire = expire
-        self._ptrn = self._autopxy_rule_parse(self.rule)
-
-    def _autopxy_rule_parse(self, rule):
-        def parse(rule):
-            if rule.startswith('||'):
-                regex = rule.replace('.', r'\.').replace('?', r'\?').replace('/', '').replace('*', '[^/]*').replace('^', r'[^\w%._-]').replace('||', '^(?:https?://)?(?:[^/]+\.)?') + r'(?:[:/]|$)'
-                return re.compile(regex)
-            elif rule.startswith('/') and rule.endswith('/'):
-                return re.compile(rule[1:-1])
-            elif rule.startswith('|https://'):
-                i = rule.find('/', 9)
-                regex = rule[9:] if i == -1 else rule[9:i]
-                regex = r'^(?:https://)?%s(?:[:/])' % regex.replace('.', r'\.').replace('*', '[^/]*')
-                return re.compile(regex)
-            else:
-                regex = rule.replace('.', r'\.').replace('?', r'\?').replace('*', '.*').replace('^', r'[^\w%._-]')
-                regex = re.sub(r'^\|', r'^', regex)
-                regex = re.sub(r'\|$', r'$', regex)
-                if not rule.startswith(('|', 'http://')):
-                    regex = re.sub(r'^', r'^http://.*', regex)
-                return re.compile(regex)
-
-        self.override = rule.startswith('@@')
-        return parse(rule[2:]) if self.override else parse(rule)
-
-    def match(self, uri):
-        if self.expire and self.expire < time.time():
-            raise ExpiredError
-        return self._ptrn.search(uri)
-
-
 class parent_proxy(object):
     """docstring for parent_proxy"""
     def __init__(self, conf):
@@ -1175,31 +1131,35 @@ class parent_proxy(object):
         self.config()
 
     def config(self):
-        self.gfwlist = []
-        self.override = []
-        self.gfwlist_force = []
+        self.gfwlist = ap_filter()
+        self.force = ap_filter()
+        self.temp = []
         self.temp_rules = set()
         self.redirlst = []
         self.ignore = []
 
         for line in open('./fgfw-lite/local.txt'):
-            self.add_rule(line, force=True)
+            rule = line.strip().split()
+            if len(rule) == 2:  # |http://www.google.com/url forcehttps
+                rule, dest = rule
+                self.add_redirect(rule, dest)
+            else:
+                self.add_temp(line, quiet=True)
 
         for line in open('./fgfw-lite/cloud.txt'):
             self.add_rule(line, force=True)
 
-        if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True):
-            self.logger.info('loading  gfwlist...')
-            try:
-                with open('./fgfw-lite/gfwlist.txt') as f:
-                    data = f.read()
-                    if '!' not in data:
-                        data = ''.join(data.split())
-                        data = base64.b64decode(data).decode()
-                    for line in data.splitlines():
-                        self.add_rule(line)
-            except TypeError:
-                self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
+        self.logger.info('loading  gfwlist...')
+        try:
+            with open('./fgfw-lite/gfwlist.txt') as f:
+                data = f.read()
+                if '!' not in data:
+                    data = ''.join(data.split())
+                    data = base64.b64decode(data).decode()
+                for line in data.splitlines():
+                    self.add_rule(line)
+        except TypeError:
+            self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
 
         self.geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
 
@@ -1209,30 +1169,22 @@ class parent_proxy(object):
                 self.logger.warning('multiple redirector rule! %s' % rule)
                 return
             if dest.lower() == 'auto':
-                self.ignore.append(autoproxy_rule(rule))
+                self.ignore.append(ap_rule(rule))
                 return
-            self.redirlst.append((autoproxy_rule(rule), dest))
+            self.redirlst.append((ap_rule(rule), dest))
         except TypeError as e:
             self.logger.debug('create autoproxy rule failed: %s' % e)
 
     def add_rule(self, line, force=False):
-        rule = line.strip().split()
-        if len(rule) == 2:  # |http://www.google.com/url forcehttps
-            rule, dest = rule
-            self.add_redirect(rule, dest)
-        elif len(rule) == 1:
-            try:
-                o = autoproxy_rule(rule[0])
-                if o.override:
-                    self.override.append(o)
-                elif force:
-                    self.gfwlist_force.append(o)
-                else:
-                    self.gfwlist.append(o)
-            except TypeError as e:
-                self.logger.debug('create autoproxy rule failed: %s' % e)
-        elif rule and not line.startswith(('!', '#')):
-            self.logger.warning('Bad autoproxy rule: %r' % line)
+        try:
+            if line.startswith('@@'):
+                self.force.add(line)
+            elif force:
+                self.force.add(line)
+            else:
+                self.gfwlist.add(line)
+        except TypeError as e:
+            self.logger.debug('create autoproxy rule failed: %s' % e)
 
     def redirect(self, uri, host=None):
         searchword = re.match(r'^http://([\w-]+)/$', uri)
@@ -1264,24 +1216,15 @@ class parent_proxy(object):
         except socket.error:
             return None
 
-    def gfwlist_match(self, uri):
-        for i, rule in enumerate(self.gfwlist):
-            if rule.match(uri):
-                if i > 300:
-                    self.gfwlist.insert(0, self.gfwlist.pop(i))
-                return True
-
-    def if_gfwlist_force(self, uri, level):
-        if level == 4:
-            return True
-        for rule in self.gfwlist_force:
+    def if_temp(self, uri, level):
+        for rule in self.temp:
             try:
                 if rule.match(uri):
                     return True
             except ExpiredError:
                 self.logger.info('%s expired' % rule.rule)
                 self.conf.stdout()
-                self.gfwlist_force.remove(rule)
+                self.temp.remove(rule)
                 self.temp_rules.discard(rule.rule)
 
     def ifgfwed(self, uri, host, port, ip, level=1):
@@ -1294,10 +1237,14 @@ class parent_proxy(object):
         if any((ip.is_loopback, ip.is_private)):
             return False
 
-        if any(rule.match(uri) for rule in self.override):
-            return False
+        if level == 4:
+            return True
 
-        if self.if_gfwlist_force(uri, level):
+        a = self.force.match(uri, host)
+        if a is not None:
+            return a
+
+        if self.if_temp(uri, level):
             return True
 
         if any(rule.match(uri) for rule in self.ignore):
@@ -1309,7 +1256,10 @@ class parent_proxy(object):
         if self.conf.HOSTS.get(host) or self.ifhost_in_region(host, str(ip)):
             return None
 
-        if level == 3 or self.gfwlist_match(uri):
+        if level == 3:
+            return True
+
+        if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True) and self.gfwlist.match(uri):
             return True
 
     def parentproxy(self, uri, host, command, level=1):
@@ -1383,10 +1333,12 @@ class parent_proxy(object):
                 self.add_temp(rule, exp)
                 self.conf.stdout()
 
-    def add_temp(self, rule, exp=None):
+    def add_temp(self, rule, exp=None, quiet=False):
+        rule = rule.strip()
         if rule not in self.temp_rules:
-            self.logger.info('add autoproxy rule: %s%s' % (rule, (' expire in %.1f min' % exp) if exp else ''))
-            self.gfwlist_force.append(autoproxy_rule(rule, expire=None if not exp else (time.time() + 60 * exp)))
+            if not quiet:
+                self.logger.info('add autoproxy rule: %s%s' % (rule, (' expire in %.1f min' % exp) if exp else ''))
+            self.temp.append(ap_rule(rule, expire=None if not exp else (time.time() + 60 * exp)))
             self.temp_rules.add(rule)
         else:
             return 'already in there'
