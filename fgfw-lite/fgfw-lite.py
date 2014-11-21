@@ -388,10 +388,10 @@ class ProxyHandler(HTTPRequestHandler):
         if self.path.lower().startswith('ftp://'):
             return self.do_FTP()
         # transparent proxy
-        if self.path.startswith('/') and 'Host' in self.headers:
-            self.path = 'http://%s%s' % (self.headers['Host'], self.path)
         if self.path.startswith('/'):
-            return self.send_error(403)
+            if 'Host' not in self.headers:
+                return self.send_error(403)
+            self.path = 'http://%s%s' % (self.headers['Host'], self.path)
         # redirector
         new_url = self.conf.PARENT_PROXY.redirect(self.path)
         if new_url:
@@ -411,10 +411,14 @@ class ProxyHandler(HTTPRequestHandler):
         self.requesthost = parse_hostport(self.headers['Host'], 80)
 
         if self._request_is_localhost(self.requesthost):
-            if ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.conf.listen[1], self.conf.listen[1] + 1, self.conf.listen[1] + 2):
+            if ip_address(self.client_address[0]).is_loopback:
+                if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + len(self.conf.userconf.dget('fgfwproxy', 'profile', '134'))):
+                    return self.api(parse)
+            return self.send_error(403)
+
+        if str(get_ip_address(self.requesthost[0])) == self.connection.getsockname()[0]:
+            if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + len(self.conf.userconf.dget('fgfwproxy', 'profile', '134'))):
                 return self.api(parse)
-            if not ip_address(self.client_address[0]).is_loopback:
-                return self.send_error(403)
 
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
