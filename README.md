@@ -51,7 +51,7 @@ requirements under openSUSE:
 
 ##Self Defined Rules(./fgfw-lite/local.txt)
 
-FW-Lite uses [autoproxy rules](https://autoproxy.org/zh-CN/Rules), the differences are:
+FW-Lite uses [autoproxy rules](http://mydf.github.io/blog/autoproxy/), the differences are:
 
 URL end with keyword, used to counteract ISP conducted MITM hijack(GWBN):
 
