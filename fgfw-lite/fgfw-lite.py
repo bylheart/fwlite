@@ -418,7 +418,9 @@ class ProxyHandler(HTTPRequestHandler):
 
         if str(get_ip_address(self.requesthost[0])) == self.connection.getsockname()[0]:
             if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + len(self.conf.userconf.dget('fgfwproxy', 'profile', '134'))):
-                return self.api(parse)
+                if self.conf.userconf.dgetbool('fgfwproxy', 'remoteapi', False):
+                    return self.api(parse)
+                return self.send_error(403)
 
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
