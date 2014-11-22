@@ -44,8 +44,16 @@
 #      zwhfly            <zwhfly@163.com>
 #      Hubertzhang       <hubert.zyk@gmail.com>
 #      arrix             <arrixzhou@gmail.com>
+#      gwjwin            <gwjwin@sina.com>
+#      Jobin             <1149225004@qq.com>
+#      Zhuhao Wang       <zhuhaow@gmail.com>
+#      YFdyh000          <yfdyh000@gmail.com>
+#      zzq1015           <zzq1015@users.noreply.github.com>
+#      Zhengfa Dang      <zfdang@users.noreply.github.com>
+#      haosdent          <haosdent@gmail.com>
+#      xk liu            <lxk1012@gmail.com>
 
-__version__ = '3.2.2'
+__version__ = '3.2.3'
 
 import os
 import sys
@@ -199,6 +207,7 @@ from proxylib import spawn_later
 from proxylib import SSLConnection
 from proxylib import StaticFileFilter
 from proxylib import StripPlugin
+from proxylib import StripPluginEx
 from proxylib import URLRewriteFilter
 from proxylib import UserAgentFilter
 from proxylib import XORCipher
@@ -1617,7 +1626,6 @@ def pre_start():
     RangeFetch.waitsize = common.AUTORANGE_WAITSIZE
     if True:
         GAEProxyHandler.handler_filters.insert(0, AutoRangeFilter(common.AUTORANGE_HOSTS, common.AUTORANGE_ENDSWITH, common.AUTORANGE_NOENDSWITH, common.AUTORANGE_MAXSIZE))
-        #PHPProxyHandler.handler_filters.insert(0, AutoRangeFilter(common.AUTORANGE_HOSTS, common.AUTORANGE_ENDSWITH, common.AUTORANGE_NOENDSWITH, common.AUTORANGE_MAXSIZE))
     if common.GAE_REGIONS:
         GAEProxyHandler.handler_filters.insert(0, DirectRegionFilter(common.GAE_REGIONS))
     if common.HOST_MAP or common.HOST_POSTFIX_MAP or common.HOSTPORT_MAP or common.HOSTPORT_POSTFIX_MAP or common.URLRE_MAP:
@@ -1677,6 +1685,8 @@ def main():
         HandlerClass = GAEProxyHandler if not common.PROXY_ENABLE else ProxyGAEProxyHandler
         if common.PHP_ENABLE:
             HandlerClass.handler_plugins['php'] = php_server.RequestHandlerClass.handler_plugins['php']
+        if os.name == 'nt':
+            HandlerClass.handler_plugins['strip'] = StripPluginEx()
         gae_server = LocalProxyServer((common.LISTEN_IP, common.LISTEN_PORT), HandlerClass)
         gae_server.serve_forever()
     else:
