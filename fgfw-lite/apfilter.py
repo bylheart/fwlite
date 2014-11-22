@@ -6,6 +6,7 @@ import time
 import urlparse
 import logging
 from collections import defaultdict
+from repoze.lru import lru_cache
 from util import parse_hostport
 
 
@@ -79,22 +80,22 @@ class ap_filter(object):
             return
         if '*' not in rule:
             if rule.startswith('||'):
-                return self.add_domain(rule)
+                return self._add_domain(rule)
             if rule.startswith('@@||'):
-                return self.add_exclude_domain(rule)
+                return self._add_exclude_domain(rule)
         if rule.startswith(('|', '@', '/')):
-            return self.add_slow(rule)
+            return self._add_slow(rule)
         if any(len(s) > (self.KEYLEN) for s in rule.split('*')):
-            return self.add_fast(rule)
-        self.add_slow(rule)
+            return self._add_fast(rule)
+        self._add_slow(rule)
 
-    def add_fast(self, rule):
+    def _add_fast(self, rule):
         lst = [s for s in rule.split('*') if len(s) > self.KEYLEN]
         o = ap_rule(rule)
         key = lst[0][:self.KEYLEN]
         self.fast[key].append(o)
 
-    def add_slow(self, rule):
+    def _add_slow(self, rule):
         try:
             o = ap_rule(rule)
             lst = self.excludes if o.override else self.matches
@@ -102,14 +103,14 @@ class ap_filter(object):
         except TypeError:
             logging.warning(rule)
 
-    def add_exclude_domain(self, rule):
+    def _add_exclude_domain(self, rule):
         rule = rule.rstrip('/')
         self.exclude_domains.add(rule[4:])
         temp = set(self.exclude_domain_endswith)
         temp.add('.' + rule[4:])
         self.exclude_domain_endswith = tuple(temp)
 
-    def add_domain(self, rule):
+    def _add_domain(self, rule):
         rule = rule.rstrip('/')
         self.domains.add(rule[2:])
         temp = set(self.domain_endswith)
@@ -122,16 +123,27 @@ class ap_filter(object):
                 host = urlparse.urlparse(url).hostname
             else:  # www.google.com:443
                 host = parse_hostport(url)[0]
+        if self._listmatch(self.excludes, url):
+            return False
+        if self._domainmatch(host) is not None:
+            return self._domainmatch(host)
+        if self._fastmatch(url):
+            return True
+        if self._listmatch(self.matches, url):
+            return True
+
+    @lru_cache(1024, timeout=30)
+    def _domainmatch(self, host):
         if host in self.exclude_domains:
             return False
         if host.endswith(self.exclude_domain_endswith):
-            return False
-        if self._listmatch(self.excludes, url):
             return False
         if host in self.domains:
             return True
         if host.endswith(self.domain_endswith):
             return True
+
+    def _fastmatch(self, url):
         if url.startswith('http://'):
             i, j = 0, self.KEYLEN
             while j < len(url):
@@ -140,18 +152,12 @@ class ap_filter(object):
                     if self._listmatch(self.fast[s], url):
                         return True
                 i, j = i + 1, j + 1
-        if self._listmatch(self.matches, url):
-            return True
 
     def _listmatch(self, lst, url):
-        if len(lst) > 300:
-            for i, rule in enumerate(lst):
-                if rule.match(url):
-                    if i > len(lst) * 0.1:
-                        lst.insert(0, lst.pop(i))
-                    return True
-        else:
-            return any(r.match(url) for r in lst)
+        return any(r.match(url) for r in lst)
+
+    def remove(self, rule):
+        pass
 
 if __name__ == "__main__":
     import sys
@@ -179,7 +185,7 @@ if __name__ == "__main__":
     print('%s, %s' % (url, host))
     print(gfwlist.match(url, host))
     t = time.time()
-    for _ in range(1000):
+    for _ in range(10000):
         gfwlist.match(url, host)
     print('KEYLEN = %d' % gfwlist.KEYLEN)
     print('1000 query for %s, %fs' % (url, time.time() - t))
