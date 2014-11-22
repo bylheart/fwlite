@@ -20,7 +20,7 @@ class ap_rule(object):
         super(ap_rule, self).__init__()
         self.rule = rule.strip()
         if len(self.rule) < 3 or self.rule.startswith(('!', '[')) or '#' in self.rule:
-            raise TypeError("invalid abp_rule: %s" % self.rule)
+            raise ValueError("invalid abp_rule: %s" % self.rule)
         self.msg = msg
         self.expire = expire
         self.override = self.rule.startswith('@@')
