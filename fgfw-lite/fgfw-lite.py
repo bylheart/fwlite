@@ -1220,7 +1220,7 @@ class parent_proxy(object):
         for rule in self.temp:
             try:
                 if rule.match(uri):
-                    return True
+                    return not rule.override
             except ExpiredError:
                 self.logger.info('%s expired' % rule.rule)
                 self.conf.stdout()
@@ -1244,8 +1244,9 @@ class parent_proxy(object):
         if a is not None:
             return a
 
-        if self.if_temp(uri, level):
-            return True
+        a = self.if_temp(uri, level)
+        if a is not None:
+            return a
 
         if any(rule.match(uri) for rule in self.ignore):
             return None
