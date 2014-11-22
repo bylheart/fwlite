@@ -56,7 +56,7 @@ class ap_rule(object):
         return self._regex.search(uri)
 
     def __repr__(self):
-        return '<ap_rule object>: %s' % self.rule
+        return '<ap_rule>: %s' % self.rule
 
 
 class ap_filter(object):
@@ -69,6 +69,7 @@ class ap_filter(object):
         self.domain_endswith = tuple()
         self.exclude_domains = set()
         self.exclude_domain_endswith = tuple()
+        self.url_startswith = tuple()
         self.fast = defaultdict(list)
         if lst:
             for rule in lst:
@@ -83,11 +84,18 @@ class ap_filter(object):
                 return self._add_domain(rule)
             if rule.startswith('@@||'):
                 return self._add_exclude_domain(rule)
-        if rule.startswith(('|', '@', '/')):
+        if rule.startswith(('|https://', '@', '/')):
             return self._add_slow(rule)
+        if rule.startswith('|http://') and '*' not in rule:
+            return self._add_urlstartswith(rule)
         if any(len(s) > (self.KEYLEN) for s in rule.split('*')):
             return self._add_fast(rule)
         self._add_slow(rule)
+
+    def _add_urlstartswith(self, rule):
+        temp = set(self.url_startswith)
+        temp.add(rule[1:])
+        self.url_startswith = tuple(temp)
 
     def _add_fast(self, rule):
         lst = [s for s in rule.split('*') if len(s) > self.KEYLEN]
@@ -127,6 +135,8 @@ class ap_filter(object):
             return False
         if self._domainmatch(host) is not None:
             return self._domainmatch(host)
+        if url.startswith(self.url_startswith):
+            return True
         if self._fastmatch(url):
             return True
         if self._listmatch(self.matches, url):
@@ -180,6 +190,7 @@ if __name__ == "__main__":
     print('result for alipay: %r' % gfwlist.match('www.alipay.com:443', 'www.alipay.com'))
     print('result for qq: %r' % gfwlist.match('http://www.qq.com', 'www.qq.com'))
     print('result for keyword: %r' % gfwlist.match('http://www.test.com/iredmail.org', 'www.test.com'))
+    print('result for url_startswith: %r' % gfwlist.match('http://itweet.net/whatever', 'itweet.net'))
     url = sys.argv[1] if len(sys.argv) > 1 else 'http://www.163.com'
     host = urlparse.urlparse(url).hostname
     print('%s, %s' % (url, host))
@@ -188,7 +199,7 @@ if __name__ == "__main__":
     for _ in range(10000):
         gfwlist.match(url, host)
     print('KEYLEN = %d' % gfwlist.KEYLEN)
-    print('1000 query for %s, %fs' % (url, time.time() - t))
+    print('10000 query for %s, %fs' % (url, time.time() - t))
     print('O(1): %d' % (len(gfwlist.domains) + len(gfwlist.exclude_domains)))
     print('O(n): %d' % (len(gfwlist.excludes) + len(gfwlist.matches)))
     l = gfwlist.fast.keys()
