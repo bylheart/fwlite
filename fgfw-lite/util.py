@@ -27,6 +27,7 @@ import select
 import struct
 import dnslib
 import urlparse
+import logging
 from repoze.lru import lru_cache
 try:
     import configparser
@@ -35,6 +36,8 @@ except ImportError:
     import ConfigParser as configparser
     from ipaddr import IPAddress as ip_address
 configparser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
+
+logger = logging.getLogger('FW_Lite')
 
 
 class SConfigParser(configparser.ConfigParser):
@@ -113,7 +116,11 @@ def resolver(host, backupserver='8.8.8.8'):
        >>>
        [(2, '82.94.164.162'),
         (10, '2001:888:2000:d::a2')]"""
-    return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
+    try:
+        return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
+    except Exception as e:
+        logger.error(repr(e))
+        return [(2, '0.0.0.0'), ]
 
 
 @lru_cache(1024, timeout=90)
