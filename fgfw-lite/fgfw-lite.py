@@ -362,9 +362,10 @@ class ProxyHandler(HTTPRequestHandler):
         self.wbuffer_size = 0
         self.shortpath = None
         self.failed_parents = []
+        self.count = 0
         try:
             HTTPRequestHandler.handle_one_request(self)
-        except socket.error as e:
+        except NetWorkIOError as e:
             if e.errno in (errno.ECONNABORTED, errno.ECONNRESET, errno.EPIPE):
                 self.close_connection = 1
             else:
@@ -436,9 +437,16 @@ class ProxyHandler(HTTPRequestHandler):
         try:
             if retry:
                 if self.remotesoc:
-                    self.remotesoc.close()
+                    try:
+                        self.remotesoc.close()
+                    except:
+                        pass
                     self.remotesoc = None
                 self.failed_parents.append(self.ppname)
+                self.count += 1
+                if self.count > 10:
+                    self.logger.error('for some strange reason retry time exceeded 10, pls check!')
+                    return
             if not self.retryable:
                 self.close_connection = 1
                 self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
