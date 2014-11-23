@@ -22,6 +22,8 @@
 
 import base64
 import re
+import errno
+import thread
 import socket
 import select
 import struct
@@ -129,6 +131,34 @@ def get_ip_address(host):
         return ip_address(host)
     except Exception:
         return ip_address(resolver(host)[0][1])
+
+
+def forward_socket(local, remote, timeout, bufsize):
+    """forward socket"""
+    def __io_copy(dest, source, timeout):
+        try:
+            dest.settimeout(timeout)
+            source.settimeout(timeout)
+            while 1:
+                data = source.recv(bufsize)
+                if not data:
+                    break
+                dest.sendall(data)
+        except socket.timeout:
+            pass
+        except (OSError, IOError) as e:
+            if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
+                raise
+            if e.args[0] in (errno.EBADF,):
+                return
+        finally:
+            for sock in (dest, source):
+                try:
+                    sock.close()
+                except StandardError:
+                    pass
+    thread.start_new_thread(__io_copy, (remote.dup(), local.dup(), timeout))
+    __io_copy(local, remote, timeout)
 
 
 def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd=None):

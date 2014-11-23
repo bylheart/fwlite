@@ -84,7 +84,7 @@ logging.basicConfig(level=logging.INFO,
                     datefmt='%H:%M:%S', filemode='a+')
 logger = logging.getLogger('FW_Lite')
 
-from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt, ParentProxy
+from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt, ParentProxy, forward_socket
 from apfilter import ap_rule, ap_filter, ExpiredError
 try:
     import urllib.request as urllib2
@@ -732,9 +732,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
             return self._do_CONNECT(True)
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
-        self._read_write(self.remotesoc, 300)
-        self.remotesoc.close()
-        self.connection.close()
+        forward_socket(self.connection, self.remotesoc, 300, self.bufsize)
 
     def wfile_write(self, data=None):
         if data is None:
@@ -808,27 +806,6 @@ class ProxyHandler(HTTPRequestHandler):
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)
             return s
         raise IOError(0, '_connect_via_proxy failed!')
-
-    def _read_write(self, soc, max_idling=20):
-        iw = [self.connection, soc]
-        count = 0
-        while True:
-            try:
-                (ins, _, _) = select.select(iw, [], [], 1)
-                for i in ins:
-                    data = i.recv(self.bufsize)
-                    if data:
-                        method = self._wfile_write if i is soc else soc.sendall
-                        method(data)
-                        count = 0
-                    elif count < max_idling:
-                        count = max_idling  # make sure all data are read before we close the sockets
-                if count > max_idling:
-                    break
-                count += 1
-            except socket.error as e:
-                self.logger.debug('socket error: %s' % e)
-                break
 
     def do_FTP(self):
         self.logger.info('{} {}'.format(self.command, self.path))
@@ -1001,16 +978,15 @@ class ProxyHandler(HTTPRequestHandler):
 class sssocket(object):
     bufsize = 8192
 
-    def __init__(self, ssServer, timeout=10, parentproxy=''):
+    def __init__(self, ssServer=None, timeout=10, parentproxy=''):
         self.ssServer = ssServer
         self.timeout = timeout
         self.parentproxy = parentproxy
         self.pproxyparse = urlparse.urlparse(parentproxy)
         self._sock = None
         self.crypto = None
-        self.__remote = None
         self.connected = False
-        self.__rbuffer = StringIO()
+        self._rbuffer = StringIO()
 
     def connect(self, address):
         self.__address = address
@@ -1042,10 +1018,10 @@ class sssocket(object):
     def recv(self, size):
         if not self.connected:
             self.sendall(b'')
-        buf = self.__rbuffer
+        buf = self._rbuffer
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
-        self.__rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
+        self._rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
         if buf_len < size:
             # Not enough data in buffer?  Try to read.
             data = self.crypto.decrypt(self._sock.recv(max(size - buf_len, self.bufsize)))
@@ -1056,7 +1032,7 @@ class sssocket(object):
             del data  # explicit free
         buf.seek(0)
         rv = buf.read(size)
-        self.__rbuffer.write(buf.read())
+        self._rbuffer.write(buf.read())
         return rv
 
     def sendall(self, data):
@@ -1072,21 +1048,21 @@ class sssocket(object):
             self.connected = True
 
     def readline(self, size=-1):
-        buf = self.__rbuffer
+        buf = self._rbuffer
         buf.seek(0, 2)  # seek end
         if buf.tell() > 0:
             # check if we already have it in our buffer
             buf.seek(0)
             bline = buf.readline(size)
             if bline.endswith('\n') or len(bline) == size:
-                self.__rbuffer = StringIO()
-                self.__rbuffer.write(buf.read())
+                self._rbuffer = StringIO()
+                self._rbuffer.write(buf.read())
                 return bline
             del bline
         if size < 0:
             # Read until \n or EOF, whichever comes first
             buf.seek(0, 2)  # seek end
-            self.__rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
+            self._rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
             while True:
                 try:
                     data = self.recv(self.bufsize)
@@ -1100,7 +1076,7 @@ class sssocket(object):
                 if nl >= 0:
                     nl += 1
                     buf.write(data[:nl])
-                    self.__rbuffer.write(data[nl:])
+                    self._rbuffer.write(data[nl:])
                     break
                 buf.write(data)
             del data
@@ -1112,10 +1088,10 @@ class sssocket(object):
             if buf_len >= size:
                 buf.seek(0)
                 rv = buf.read(size)
-                self.__rbuffer = StringIO()
-                self.__rbuffer.write(buf.read())
+                self._rbuffer = StringIO()
+                self._rbuffer.write(buf.read())
                 return rv
-            self.__rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
+            self._rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
             while True:
                 try:
                     data = self.recv(self.bufsize)
@@ -1131,7 +1107,7 @@ class sssocket(object):
                 if nl >= 0:
                     nl += 1
                     # save the excess data to _rbuf
-                    self.__rbuffer.write(data[nl:])
+                    self._rbuffer.write(data[nl:])
                     if buf_len:
                         buf.write(data[:nl])
                         break
@@ -1146,7 +1122,7 @@ class sssocket(object):
                     return data
                 if n >= left:
                     buf.write(data[:left])
-                    self.__rbuffer.write(data[left:])
+                    self._rbuffer.write(data[left:])
                     break
                 buf.write(data)
                 buf_len += n
@@ -1159,6 +1135,21 @@ class sssocket(object):
 
     def __del__(self):
         self.close()
+
+    def dup(self):
+        new = sssocket()
+        new.ssServer = self.ssServer
+        new.timeout = self.timeout
+        new.parentproxy = self.parentproxy
+        new.pproxyparse = self.pproxyparse
+        new._sock = self._sock.dup()
+        new.crypto = self.crypto
+        new.connected = self.connected
+        new._rbuffer = self._rbuffer
+        return new
+
+    def settimeout(self, timeout):
+        self._sock.settimeout(timeout)
 
 
 class parent_proxy(object):
