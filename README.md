@@ -14,7 +14,6 @@ Inspired by [COW]
 - Sets IE proxy configuration automatically on windows
 - Supports Network which require a HTTP Proxy
 - URL Search
-- Automatic Update
 - Multiple Method to detect blocked sites
   - autoproxy-gfwlist
   - user-defined rules
@@ -30,7 +29,8 @@ Inspired by [COW]
   - SNI Proxy
   - [GoAgent]
   - [Shadowsocks]
-  - [snova] \(PAAS only)
+- Automatic Update
+
 
 ##Quick Start
 
@@ -49,7 +49,7 @@ requirements under openSUSE:
     zypper install python-M2Crypto  # or python-cryptography, take your pick. for shadowsocks
     zypper install python-pyside  # for GUI
 
-##Self Defined Rules(./fgfw-lite/local.txt)
+##User Defined Rules(./fgfw-lite/local.txt)
 
 FW-Lite uses [autoproxy rules](http://mydf.github.io/blog/autoproxy/), the differences are:
 
@@ -89,5 +89,4 @@ GPLv2
 [COW]:https://github.com/cyfdecyf/cow
 [GoAgent]:https://code.google.com/p/goagent/
 [Shadowsocks]:https://github.com/clowwindy/shadowsocks
-[snova]:https://code.google.com/p/snova/
 [pybuild]:https://github.com/goagent/pybuild
