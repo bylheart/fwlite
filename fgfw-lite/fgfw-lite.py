@@ -125,7 +125,7 @@ def prestart():
 
     if not os.path.isfile('./fgfw-lite/local.txt'):
         with open('./fgfw-lite/local.txt', 'w') as f:
-            f.write('''
+            f.write('''\
 ! local gfwlist config
 ! rules: https://autoproxy.org/zh-CN/Rules
 ! /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1/
