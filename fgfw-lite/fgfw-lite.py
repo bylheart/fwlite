@@ -1205,7 +1205,7 @@ class parent_proxy(object):
                 self.ignore.append(ap_rule(rule))
                 return
             self.redirlst.append((ap_rule(rule), dest))
-        except TypeError as e:
+        except ValueError as e:
             self.logger.debug('create autoproxy rule failed: %s' % e)
 
     def add_rule(self, line, force=False):
@@ -1216,7 +1216,7 @@ class parent_proxy(object):
                 self.force.add(line)
             else:
                 self.gfwlist.add(line)
-        except TypeError as e:
+        except ValueError as e:
             self.logger.debug('create autoproxy rule failed: %s' % e)
 
     def redirect(self, uri, host=None):
@@ -1240,14 +1240,11 @@ class parent_proxy(object):
 
     @lru_cache(256, timeout=120)
     def ifhost_in_region(self, host, ip):
-        try:
-            code = self.geoip.country_code_by_addr(ip)
-            if code in self.conf.region:
-                self.logger.info('%s in %s' % (host, code))
-                return True
-            return False
-        except socket.error:
-            return None
+        code = self.geoip.country_code_by_addr(ip)
+        if code in self.conf.region:
+            self.logger.info('%s in %s' % (host, code))
+            return True
+        return False
 
     def if_temp(self, uri, level):
         for rule in self.temp:
@@ -1310,11 +1307,7 @@ class parent_proxy(object):
         '''
         host, port = host
 
-        try:
-            ip = get_ip_address(host)
-        except Exception as e:
-            self.logger.warning('resolve %s failed! %s' % (host, repr(e)))
-            ip = None
+        ip = get_ip_address(host)
 
         ifgfwed = self.ifgfwed(uri, host, port, ip, level)
 
