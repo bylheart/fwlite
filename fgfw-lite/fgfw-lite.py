@@ -1240,7 +1240,7 @@ class parent_proxy(object):
                 if result == 'forcehttps':
                     return uri.replace('http://', 'https://', 1)
                 if result.startswith('/') and result.endswith('/'):
-                    return rule._ptrn.sub(result[1:-1], uri)
+                    return rule._regex.sub(result[1:-1], uri)
                 return result
 
     @lru_cache(256, timeout=120)
