@@ -45,7 +45,6 @@ except TypeError:
     gevent.monkey.patch_all()
     sys.stderr.write('Warning: Please update gevent to the latest 1.0 version!\n')
 from collections import defaultdict, deque
-import copy
 import subprocess
 import shlex
 import time
@@ -156,7 +155,7 @@ class stats(object):
     con.execute("create table log (timestamp real, date text, command text, hostname text, url text, ppname text, success integer)")
 
     def __init__(self):
-        Timer(3600, self.purge, ()).start()
+        Timer(3600, self._purge, ()).start()
 
     def log(self, command, hostname, url, ppname, success):
         with self.con:
@@ -189,59 +188,64 @@ class stats(object):
             return(0, 0)
         return (r[1] / r[0], r[0])
 
-    def purge(self, befortime=None):
+    def _purge(self, befortime=None):
         if not befortime:
             befortime = time.time() - 24 * 60 * 60
         with self.con:
             self.con.execute('delete from log where timestamp < ?', (befortime, ))
-        Timer(3600, self.purge, ()).start()
+        Timer(3600, self._purge, ()).start()
 
 
 class httpconn_pool(object):
-    POOL = defaultdict(deque)
-    timerwheel = defaultdict(list)
-    timerwheel_index_iter = itertools.cycle(range(10))
-    timerwheel_index = next(timerwheel_index_iter)
-    lock = RLock()
-
     def __init__(self):
+        self.POOL = defaultdict(deque)  # {upstream_name: [(soc, ppname), ...]}
+        self.socs = {}  # keep track of sock info
+        self.timerwheel = defaultdict(set)  # a list of socket object
+        self.timerwheel_iter = itertools.cycle(range(10))
+        self.timerwheel_index = next(self.timerwheel_iter)
+        self.lock = RLock()
         self.logger = logging.getLogger('FW_Lite')
-        Timer(30, self.purge, ()).start()
+        Timer(30, self._purge, ()).start()
 
     def put(self, upstream_name, soc, ppname):
         with self.lock:
             self.POOL[upstream_name].append((soc, ppname))
-            self.timerwheel[self.timerwheel_index].append((upstream_name, (soc, ppname)))
+            self.socs[soc] = (self.timerwheel_index, ppname, upstream_name)
+            self.timerwheel[self.timerwheel_index].add(soc)
 
     def get(self, upstream_name):
         lst = self.POOL.get(upstream_name)
         with self.lock:
             while lst:
                 sock, pproxy = lst.popleft()
-                if not is_connection_dropped(sock):
-                    return (sock, pproxy)
-                sock.close()
+                if is_connection_dropped([sock]):
+                    sock.close()
+                    self._remove(sock)
+                    continue
+                self._remove(sock)
+                return (sock, pproxy)
 
-    def purge(self):
-        pcount = count = 0
+    def _remove(self, soc):
+        twindex, ppn, upsname = self.socs.pop(soc)
+        self.timerwheel[twindex].discard(soc)
+        if (soc, ppn) in self.POOL[upsname]:
+            self.POOL[upsname].remove((soc, ppn))
+
+    def _purge(self):
+        pcount = 0
         with self.lock:
-            for k, v in self.POOL.items():
-                count += len(v)
-                for i in [pair for pair in v if pair[0] in select.select([item[0] for item in v], [], [], 0.0)[0]]:
-                    i[0].close()
-                    v.remove(i)
-                    pcount += 1
-            self.timerwheel_index = next(self.timerwheel_index_iter)
-            for upsname, soc in self.timerwheel[self.timerwheel_index]:
-                if soc in self.POOL[upsname]:
-                    soc[0].close()
-                    self.POOL[upsname].remove(soc)
-                    pcount += 1
-            self.timerwheel[self.timerwheel_index] = []
-        count -= pcount
+            for soc in is_connection_dropped(self.socs.keys()):
+                soc.close()
+                self._remove(soc)
+                pcount += 1
+            self.timerwheel_index = next(self.timerwheel_iter)
+            for soc in list(self.timerwheel[self.timerwheel_index]):
+                soc.close()
+                self._remove(soc)
+                pcount += 1
         if pcount:
-            self.logger.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, count, ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
-        Timer(30, self.purge, ()).start()
+            self.logger.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, len(self.socs), ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
+        Timer(30, self._purge, ()).start()
 
 
 class ClientError(OSError):
@@ -633,7 +637,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.wfile_write()
             self.logger.debug('request finish')
             self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
-            if self.close_connection or is_connection_dropped(self.remotesoc):
+            if self.close_connection or is_connection_dropped([self.remotesoc]):
                 self.remotesoc.close()
             else:
                 self.conf.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
@@ -1319,7 +1323,7 @@ class parent_proxy(object):
                 return [self.conf.parentlist.dict.get('local') or self.conf.parentlist.dict.get('direct')]
             return [self.conf.parentlist.dict.get('direct')]
 
-        parentlist = copy.copy(self.conf.parentlist.httpsparents if command == 'CONNECT' else self.conf.parentlist.httpparents)
+        parentlist = list(self.conf.parentlist.httpsparents if command == 'CONNECT' else self.conf.parentlist.httpparents)
         random.shuffle(parentlist)
         parentlist = sorted(parentlist, key=lambda item: item.httpspriority if command == 'CONNECT' else item.httppriority)
 

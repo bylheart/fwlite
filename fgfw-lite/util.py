@@ -241,23 +241,15 @@ def parse_hostport(host, default_port=80):
         return host.strip('[]'), default_port
 
 
-def is_connection_dropped(sock):  # modified from urllib3
+def is_connection_dropped(lst):  # modified from urllib3
     """
-    Returns True if the connection is dropped and should be closed.
+    Returns sockets if the connection is dropped and should be closed.
 
     """
-    if not hasattr(select, 'poll'):
-        try:
-            return select.select([sock], [], [], 0.0)[0]
-        except socket.error:
-            return True
-    # This version is better on platforms that support it.
-    p = select.poll()
-    p.register(sock, select.POLLIN)
-    for (fno, ev) in p.poll(0.0):
-        if fno == sock.fileno():
-            # Either data is buffered (bad), or the connection is dropped.
-            return True
+    try:
+        return select.select(lst, [], [], 0.0)[0]
+    except socket.error:
+        return lst
 
 
 def sizeof_fmt(num):
