@@ -100,7 +100,7 @@ class ap_filter(object):
     def _add_fast(self, rule):
         lst = [s for s in rule.split('*') if len(s) > self.KEYLEN]
         o = ap_rule(rule)
-        key = lst[0][:self.KEYLEN]
+        key = lst[-1][self.KEYLEN * -1:]
         self.fast[key].append(o)
 
     def _add_slow(self, rule):
