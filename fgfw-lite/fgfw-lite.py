@@ -258,6 +258,11 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
+    ssrealip = None
+    ssclient = ''
+    shortpath = ''
+    ppname = ''
+
     def __init__(self, request, client_address, server):
         self.conf = server.conf
         self.logger = server.logger
@@ -346,6 +351,12 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         except NetWorkIOError as e:
             raise ClientError(e[0], e[1])
 
+    def on_conn_log(self):
+        if self.conf.rproxy:
+            self.logger.info('{} {} via {} client: {}'.format(self.command, self.shortpath, self.ppname, self.ssclient))
+        else:
+            self.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
+
 
 class ProxyHandler(HTTPRequestHandler):
     server_version = "FGFW-Lite/" + __version__
@@ -395,6 +406,7 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(403)
             self.path = 'http://%s%s' % (self.headers['Host'], self.path)
         # redirector
+        noxff = False
         new_url = self.conf.PARENT_PROXY.redirect(self.path)
         if new_url:
             self.logger.debug('redirecting to %s' % new_url)
@@ -402,6 +414,8 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(int(new_url))
             elif new_url in self.conf.parentlist.dict.keys():
                 self._proxylist = [self.conf.parentlist.dict.get(new_url)]
+            elif new_url.lower() == 'noxff':
+                noxff = True
             else:
                 return self.redirect(new_url)
 
@@ -426,10 +440,26 @@ class ProxyHandler(HTTPRequestHandler):
 
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
-        if self.conf.xheaders:
+        if self.conf.rproxy:
+            if 'ss-realip' in self.headers:  # should exist in first request only
+                self.ssrealip = self.headers['ss-realip']
+            del self.headers['ss-realip']
+
+            if 'ss-client' in self.headers:  # should exist in first request only
+                self.ssclient = self.headers['ss-client']
+            del self.headers['ss-client']
+            if self.conf.xheaders and self.ssrealip:
+                ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
+                ipl.append(self.ssrealip)
+                self.headers['X-Forwarded-For'] = ', '.join(ipl)
+
+        elif self.conf.xheaders:
             ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
             ipl.append(self.client_address[0])
             self.headers['X-Forwarded-For'] = ', '.join(ipl)
+
+        if noxff:
+            del self.headers['X-Forwarded-For']
 
         self._do_GET()
 
@@ -727,13 +757,13 @@ class ProxyHandler(HTTPRequestHandler):
             if res:
                 self._proxylist.insert(0, self.conf.parentlist.dict.get(self.ppname))
                 sock, self.ppname = res
-                self.logger.info('{} {} via {}'.format(self.command, self.shortpath, self.ppname))
+                self.on_conn_log()
                 return sock
         return self._connect_via_proxy(netloc)
 
     def _connect_via_proxy(self, netloc):
         timeout = None if self._proxylist else 20
-        self.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
+        self.on_conn_log()
         if not self.pproxy.proxy:
             return create_connection(netloc, timeout or 5)
         elif self.pproxyparse.scheme == 'http':
@@ -1589,6 +1619,7 @@ class Config(object):
         self.parentlist = ParentProxyList()
         self.HOSTS = defaultdict(list)
         self.GUI = '-GUI' in sys.argv
+        self.rproxy = self.userconf.dgetbool('fgfwproxy', 'rproxy', False)
         listen = self.userconf.dget('fgfwproxy', 'listen', '8118')
         if listen.isdigit():
             self.listen = ('127.0.0.1', int(listen))
