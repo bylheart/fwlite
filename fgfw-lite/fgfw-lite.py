@@ -92,7 +92,7 @@ try:
     urlquote = urlparse.unquote
     from socketserver import ThreadingMixIn
     from http.server import BaseHTTPRequestHandler, HTTPServer
-    from ipaddress import ip_address
+    from ipaddress import ip_address, IPv4Address
 except ImportError:
     import urllib2
     import urlparse
@@ -101,6 +101,7 @@ except ImportError:
     from SocketServer import ThreadingMixIn
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
     from ipaddr import IPAddress as ip_address
+    from ipaddr import IPv4Address
 
 if sys.platform.startswith('win'):
     PYTHON2 = '"%s/Python27/python27.exe"' % WORKINGDIR
@@ -490,13 +491,22 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(504)
 
             self.upstream_name = self.ppname if self.pproxy.proxy.startswith('http') else self.requesthost
-            self.remotesoc = self._http_connect_via_proxy(self.requesthost)
+            iplist = None
+            if self.pproxy.name == 'direct' and self.requesthost[0] in self.conf.HOSTS and not self.failed_parents:
+                iplist = self.conf.HOSTS.get(self.requesthost[0])
+                self._proxylist.insert(0, self.pproxy)
+            self.remotesoc = self._http_connect_via_proxy(self.requesthost, iplist)
             self.wbuffer = deque()
             self.wbuffer_size = 0
             # send request header
             self.logger.debug('sending request header')
             s = []
             if self.pproxy.proxy.startswith('http'):
+                path = self.path
+                if iplist:
+                    path = self.path.split('/')
+                    path[2] = '%s%s' % (iplist[0][1], ((':%d' % self.requesthost[1]) if self.requesthost[1] != 80 else ''))
+                    path = ''.join(path)
                 s.append('%s %s %s\r\n' % (self.command, self.path, self.request_version))
                 if self.pproxyparse.username:
                     a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
@@ -676,15 +686,23 @@ class ProxyHandler(HTTPRequestHandler):
         if not self.retryable or self.getparent():
             self.conf.PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
             return
+        iplist = None
+        if self.pproxy.name == 'direct' and self.requesthost[0] in self.conf.HOSTS and not self.failed_parents:
+            iplist = self.conf.HOSTS.get(self.requesthost[0])
+            self._proxylist.insert(0, self.pproxy)
         try:
-            self.remotesoc = self._connect_via_proxy(self.requesthost)
+            self.remotesoc = self._connect_via_proxy(self.requesthost, iplist)
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
             self.logger.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT(True)
-
         if self.pproxy.proxy.startswith('http'):
-            s = ['%s %s %s\r\n' % (self.command, self.path, self.request_version), ]
+            path = self.path
+            if iplist:
+                path = path.rsplit(':', 1)
+                path[0] = iplist[0][1]
+                path = ':'.join(path)
+            s = ['%s %s %s\r\n' % (self.command, path, self.request_version), ]
             if self.pproxyparse.username:
                 a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
                 self.headers['Proxy-Authorization'] = 'Basic %s' % base64.b64encode(a.encode())
@@ -753,7 +771,7 @@ class ProxyHandler(HTTPRequestHandler):
             if data:
                 self._wfile_write(data)
 
-    def _http_connect_via_proxy(self, netloc):
+    def _http_connect_via_proxy(self, netloc, iplist):
         if not self.failed_parents:
             res = self.conf.HTTPCONN_POOL.get(self.upstream_name)
             if res:
@@ -761,13 +779,13 @@ class ProxyHandler(HTTPRequestHandler):
                 sock, self.ppname = res
                 self.on_conn_log()
                 return sock
-        return self._connect_via_proxy(netloc)
+        return self._connect_via_proxy(netloc, iplist)
 
-    def _connect_via_proxy(self, netloc):
+    def _connect_via_proxy(self, netloc, iplist=None):
         timeout = None if self._proxylist else 20
         self.on_conn_log()
         if not self.pproxy.proxy:
-            return create_connection(netloc, timeout or 5)
+            return create_connection(netloc, timeout or 5, iplist=iplist)
         elif self.pproxyparse.scheme == 'http':
             return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), timeout or 10)
         elif self.pproxyparse.scheme == 'https':
@@ -776,7 +794,7 @@ class ProxyHandler(HTTPRequestHandler):
             s.do_handshake()
             return s
         elif self.pproxyparse.scheme == 'ss':
-            s = sssocket(self.pproxy.proxy, timeout, self.conf.parentlist.dict.get('direct').proxy)
+            s = sssocket(self.pproxy.proxy, timeout, self.conf.parentlist.dict.get('direct').proxy, iplist=iplist)
             s.connect(netloc)
             return s
         elif self.pproxyparse.scheme == 'sni':
@@ -982,7 +1000,7 @@ class ProxyHandler(HTTPRequestHandler):
 class sssocket(object):
     bufsize = 8192
 
-    def __init__(self, ssServer=None, timeout=10, parentproxy=''):
+    def __init__(self, ssServer=None, timeout=10, parentproxy='', iplist=None):
         self.ssServer = ssServer
         self.timeout = timeout
         self.parentproxy = parentproxy
@@ -1657,9 +1675,18 @@ class Config(object):
 
         self.goagent = goagentHandler(self)
 
+        def addhost(host, ip):
+            try:
+                ipo = get_ip_address(ip)
+                if isinstance(ipo, IPv4Address):
+                    self.HOSTS[host].append((2, ip))
+                else:
+                    self.HOSTS[host].append((10, ip))
+            except Exception:
+                self.logging.warning('unsupported host: %s' % ip)
+
         for host, ip in self.userconf.items('hosts'):
-            if ip not in self.HOSTS.get(host, []):
-                self.HOSTS[host].append(ip)
+            addhost(host, ip)
 
         if os.path.isfile('./fgfw-lite/hosts'):
             for line in open('./fgfw-lite/hosts'):
@@ -1667,8 +1694,7 @@ class Config(object):
                 if line and not line.startswith('#'):
                     try:
                         ip, host = line.split()
-                        if ip not in self.HOSTS.get(host, []):
-                            self.HOSTS[host].append(ip)
+                        addhost(host, ip)
                     except Exception as e:
                         self.logger.warning('%s %s' % (e, line))
 

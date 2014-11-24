@@ -167,7 +167,7 @@ def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd
     return iplist
 
 
-def create_connection(address, timeout=object(), source_address=None):
+def create_connection(address, timeout=object(), source_address=None, iplist=None):
     """Connect to *address* and return the socket object.
 
     Convenience function.  Connect to *address* (a 2-tuple ``(host,
@@ -182,7 +182,9 @@ def create_connection(address, timeout=object(), source_address=None):
 
     host, port = address
     err = None
-    for res in resolver(host):
+    if not iplist:
+        iplist = resolver(host)
+    for res in iplist:
         af, addr = res
         sock = None
         try:
