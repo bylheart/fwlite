@@ -1,3 +1,11 @@
+2014.11.25 v4.6
+new O(1) autoproxy filter, 100 times faster
+rewrite connection pool
+support HOSTS
+refine GUI
+some security enhancement
+other updates and bug fixes
+
 2014.11.7 v4.5
 add settings in GUI
 

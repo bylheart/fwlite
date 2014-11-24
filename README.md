@@ -1,6 +1,6 @@
 A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
 
-Current Version: 4.5
+Current Version: 4.6
 
 Works on Windows, Linux and Mac(untested).
 
@@ -20,8 +20,8 @@ Inspired by [COW]
   - connect timeout
   - read timeout
   - connect reset
-- Avoid use of fake SSL certs automatically
-- Supports FTP LIST/RETR
+- Avoid use of GoAgent for SSL automatically
+- Support HOSTS
 - Supported parent proxy
   - HTTP Proxy
   - HTTPS Proxy
@@ -29,6 +29,8 @@ Inspired by [COW]
   - SNI Proxy
   - [GoAgent]
   - [Shadowsocks]
+- Supports FTP LIST/RETR
+- Redirector
 - Automatic Update
 
 
