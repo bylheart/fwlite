@@ -1046,7 +1046,7 @@ class sssocket(object):
         self._rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
         if buf_len < size:
             # Not enough data in buffer?  Try to read.
-            data = self.crypto.decrypt(self._sock.recv(max(size - buf_len, self.bufsize)))
+            data = self.crypto.decrypt(self._sock.recv(size - buf_len))
             if len(data) == size and not buf_len:
                 # Shortcut.  Avoid buffer data copies
                 return data
