@@ -56,7 +56,7 @@ class ap_rule(object):
         return self._regex.search(uri)
 
     def __repr__(self):
-        return '<ap_rule>: %s' % self.rule
+        return '<ap_rule: %s>' % self.rule
 
 
 class ap_filter(object):
