@@ -28,7 +28,6 @@ import socket
 import select
 import struct
 import dnslib
-import urlparse
 import logging
 from repoze.lru import lru_cache
 try:
@@ -83,33 +82,6 @@ class SConfigParser(configparser.ConfigParser):
         if not self.has_section(section):
             self.add_section(section)
         configparser.ConfigParser.set(self, section, option, value)
-
-
-class ParentProxy(object):
-    def __init__(self, name, proxy):
-        '''
-        name: str, name of parent proxy
-        proxy: "http://127.0.0.1:8087 <optional int: httppriority> <optional int: httpspriority>"
-        '''
-        proxy, _, priority = proxy.partition(' ')
-        httppriority, _, httpspriority = priority.partition(' ')
-        httppriority = httppriority or 99
-        httpspriority = httpspriority or httppriority
-        if proxy == 'direct':
-            proxy = ''
-        self.name = name
-        self.proxy = proxy
-        self.parse = urlparse.urlparse(self.proxy)
-        self.httppriority = int(httppriority)
-        self.httpspriority = int(httpspriority)
-        if self.parse.scheme.lower() == 'sni':
-            self.httppriority = -1
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return '<ParentProxy: %s %s %s>' % (self.name or 'direct', self.httppriority, self.httpspriority)
 
 
 @lru_cache(4096, timeout=90)
