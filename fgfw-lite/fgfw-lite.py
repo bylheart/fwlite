@@ -244,7 +244,7 @@ class httpconn_pool(object):
                 self._remove(soc)
                 pcount += 1
         if pcount:
-            self.logger.info('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, len(self.socs), ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
+            self.logger.debug('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, len(self.socs), ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
         Timer(30, self._purge, ()).start()
 
 
@@ -357,7 +357,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 
     def on_conn_log(self):
         if self.conf.rproxy:
-            self.logger.info('{} {} via {} client: {}'.format(self.command, self.shortpath, self.ppname, self.ssclient))
+            self.logger.info('{} {} via {} client: {} {}'.format(self.command, self.shortpath, self.ppname, self.ssclient, self.ssrealip))
         else:
             self.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
 
@@ -377,6 +377,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.wbuffer_size = 0
         self.shortpath = None
         self.failed_parents = []
+        self.phase = ''
         self.count = 0
         try:
             HTTPRequestHandler.handle_one_request(self)
@@ -498,7 +499,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.wbuffer = deque()
             self.wbuffer_size = 0
             # send request header
-            self.logger.debug('sending request header')
+            self.phase = 'sending request header'
             s = []
             if self.pproxy.proxy.startswith('http'):
                 path = self.path
@@ -519,7 +520,7 @@ class ProxyHandler(HTTPRequestHandler):
                 s.append("%s: %s\r\n" % ("-".join([w.capitalize() for w in k.split("-")]), v))
             s.append("\r\n")
             self.remotesoc.sendall(''.join(s).encode('latin1'))
-            self.logger.debug('sending request body')
+            self.phase = 'sending request body'
             # send request body
             content_length = int(self.headers.get('Content-Length', 0))
             if self.headers.get("Transfer-Encoding") and self.headers.get("Transfer-Encoding") != "identity":
@@ -559,7 +560,7 @@ class ProxyHandler(HTTPRequestHandler):
                         self.rbuffer.append(data)
                     self.remotesoc.sendall(data)
             # read response line
-            self.logger.debug('reading response_line')
+            self.phase = 'reading response_line'
             remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
             s = response_line = remoterfile.readline()
             if not s.startswith(b'HTTP'):
@@ -568,7 +569,7 @@ class ProxyHandler(HTTPRequestHandler):
             response_status, _, response_reason = response_status.partition(b' ')
             response_status = int(response_status)
             # read response headers
-            self.logger.debug('reading response header')
+            self.phase = 'reading response header'
             header_data = []
             while True:
                 line = remoterfile.readline()
@@ -584,7 +585,6 @@ class ProxyHandler(HTTPRequestHandler):
                 self.close_connection = conntype.lower() == 'close'
             else:
                 self.close_connection = conntype.lower() != 'keep_alive'
-            self.logger.debug('reading response body')
             if "Content-Length" in response_header:
                 if "," in response_header["Content-Length"]:
                     # Proxies sometimes cause Content-Length headers to get
@@ -612,6 +612,7 @@ class ProxyHandler(HTTPRequestHandler):
                 os.rename('./fgfw-lite/userfilter.py', './fgfw-lite/userfilter.py.bak')
                 prestart()
             # read response body
+            self.phase = 'reading response body'
             if self.command == 'HEAD' or 100 <= response_status < 200 or response_status in (204, 205, 304):
                 pass
             elif response_header.get("Transfer-Encoding") and response_header.get("Transfer-Encoding") != "identity":
@@ -644,7 +645,7 @@ class ProxyHandler(HTTPRequestHandler):
                     except Exception:
                         break
             self.wfile_write()
-            self.logger.debug('request finish')
+            self.phase = 'reading response body''request finish'
             self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
             if self.close_connection or is_connection_dropped([self.remotesoc]):
                 self.remotesoc.close()
@@ -657,7 +658,7 @@ class ProxyHandler(HTTPRequestHandler):
             return self.on_GET_Error(e)
 
     def on_GET_Error(self, e):
-        self.logger.warning('{} {} via {} failed! {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
+        self.logger.warning('{} {} via {} failed: {}! {}'.format(self.command, self.shortpath, self.ppname, self.phase, repr(e)))
         return self._do_GET(True)
 
     do_OPTIONS = do_PATCH = do_POST = do_DELETE = do_TRACE = do_HEAD = do_PUT = do_GET
