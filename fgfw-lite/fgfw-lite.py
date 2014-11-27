@@ -357,7 +357,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 
     def on_conn_log(self):
         if self.conf.rproxy:
-            self.logger.info('{} {} via {} client: {} {}'.format(self.command, self.shortpath, self.ppname, self.ssclient, self.ssrealip))
+            self.logger.info('{} {} via {} client: {} {}'.format(self.command, self.shortpath or self.path, self.ppname, self.ssclient, self.ssrealip))
         else:
             self.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
 
@@ -675,6 +675,18 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(403)
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
+        if self.conf.rproxy:
+            if 'ss-realip' in self.headers:  # should exist in first request only
+                self.ssrealip = self.headers['ss-realip']
+            del self.headers['ss-realip']
+
+            if 'ss-client' in self.headers:  # should exist in first request only
+                self.ssclient = self.headers['ss-client']
+            del self.headers['ss-client']
+            if self.conf.xheaders and self.ssrealip:
+                ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
+                ipl.append(self.ssrealip)
+                self.headers['X-Forwarded-For'] = ', '.join(ipl)
         self._wfile_write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
         self._do_CONNECT()
 
