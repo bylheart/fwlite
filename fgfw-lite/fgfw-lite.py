@@ -1209,20 +1209,21 @@ class parent_proxy(object):
             else:
                 self.add_temp(line, quiet=True)
 
-        for line in open('./fgfw-lite/cloud.txt'):
-            self.add_rule(line, force=True)
+        if not self.conf.rproxy:
+            for line in open('./fgfw-lite/cloud.txt'):
+                self.add_rule(line, force=True)
 
-        self.logger.info('loading  gfwlist...')
-        try:
-            with open('./fgfw-lite/gfwlist.txt') as f:
-                data = f.read()
-                if '!' not in data:
-                    data = ''.join(data.split())
-                    data = base64.b64decode(data).decode()
-                for line in data.splitlines():
-                    self.add_rule(line)
-        except TypeError:
-            self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
+            self.logger.info('loading  gfwlist...')
+            try:
+                with open('./fgfw-lite/gfwlist.txt') as f:
+                    data = f.read()
+                    if '!' not in data:
+                        data = ''.join(data.split())
+                        data = base64.b64decode(data).decode()
+                    for line in data.splitlines():
+                        self.add_rule(line)
+            except TypeError:
+                self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
 
         self.geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
 
