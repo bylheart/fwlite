@@ -77,12 +77,11 @@ from threading import Thread, RLock, Timer
 from repoze.lru import lru_cache
 import encrypt
 import logging
+import logging.handlers
 
 logging.basicConfig(level=logging.INFO,
                     format='FW-Lite %(asctime)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S', filemode='a+')
-logger = logging.getLogger('FW_Lite')
-
 from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt, forward_socket
 from apfilter import ap_rule, ap_filter, ExpiredError
 try:
@@ -1653,6 +1652,16 @@ class Config(object):
         self.HOSTS = defaultdict(list)
         self.GUI = '-GUI' in sys.argv
         self.rproxy = self.userconf.dgetbool('fgfwproxy', 'rproxy', False)
+
+        if self.userconf.dget('FGFW_Lite', 'logfile', ''):
+            path = self.userconf.dget('FGFW_Lite', 'logfile', '')
+            dirname = os.path.dirname(path)
+            if dirname and not os.path.exists(dirname):
+                os.makedirs(dirname)
+            formatter = logging.Formatter('FW-Lite %(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+            hdlr = logging.handlers.RotatingFileHandler(path, maxBytes=1048576, backupCount=5)
+            hdlr.setFormatter(formatter)
+            self.logger.addHandler(hdlr)
         listen = self.userconf.dget('fgfwproxy', 'listen', '8118')
         if listen.isdigit():
             self.listen = ('127.0.0.1', int(listen))
