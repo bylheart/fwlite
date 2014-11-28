@@ -1470,16 +1470,14 @@ def update(conf, auto=False):
                 conf.logger.error('update failed! %r\n%s' % (e, traceback.format_exc()))
         conf.version.set('Update', 'LastUpdate', str(time.time()))
     conf.confsave()
-    restart(conf)
+    if not conf.GUI:
+        for item in FGFWProxyHandler.ITEMS:
+            item.restart()
+        if conf.dget('FGFW_Lite', 'updatecmd', ''):
+            subprocess.Popen(shlex.split(conf.dget('FGFW_Lite', 'updatecmd', '')))
+    conf.PARENT_PROXY.config()
     if count:
         conf.logger.info('Update Completed, %d file Updated.' % count)
-
-
-def restart(conf):
-    conf.confsave()
-    for item in FGFWProxyHandler.ITEMS:
-        item.restart()
-    conf.PARENT_PROXY.config()
 
 
 class FGFWProxyHandler(object):
