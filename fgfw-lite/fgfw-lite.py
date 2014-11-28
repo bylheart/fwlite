@@ -1271,11 +1271,14 @@ class parent_proxy(object):
 
     @lru_cache(256, timeout=120)
     def ifhost_in_region(self, host, ip):
-        code = self.geoip.country_code_by_addr(ip)
-        if code in self.conf.region:
-            self.logger.info('%s in %s' % (host, code))
-            return True
-        return False
+        try:
+            code = self.geoip.country_code_by_addr(ip)
+            if code in self.conf.region:
+                self.logger.info('%s in %s' % (host, code))
+                return True
+            return False
+        except:
+            pass
 
     def if_temp(self, uri, level):
         for rule in self.temp:
