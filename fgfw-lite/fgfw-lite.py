@@ -1478,8 +1478,8 @@ def update(conf, auto=False):
     if not conf.GUI:
         for item in FGFWProxyHandler.ITEMS:
             item.restart()
-        if conf.dget('FGFW_Lite', 'updatecmd', ''):
-            subprocess.Popen(shlex.split(conf.dget('FGFW_Lite', 'updatecmd', '')))
+        if conf.userconf.dget('FGFW_Lite', 'updatecmd', ''):
+            subprocess.Popen(shlex.split(conf.userconf.dget('FGFW_Lite', 'updatecmd', '')))
     conf.PARENT_PROXY.config()
     if count:
         conf.logger.info('Update Completed, %d file Updated.' % count)
