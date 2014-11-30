@@ -1211,7 +1211,12 @@ class parent_proxy(object):
 
         if not self.conf.rproxy:
             for line in open('./fgfw-lite/cloud.txt'):
-                self.add_rule(line, force=True)
+                rule = line.strip().split()
+                if len(rule) == 2:  # |http://www.google.com/url forcehttps
+                    rule, dest = rule
+                    self.add_redirect(rule, dest)
+                else:
+                    self.add_rule(line, force=True)
 
             self.logger.info('loading  gfwlist...')
             try:
