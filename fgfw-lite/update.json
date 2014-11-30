@@ -6,7 +6,7 @@
     "./fgfw-lite/apfilter.py": "44a880af8a41640db20820268c4564c16815530496e155cb1704519c706c3bda",
     "./fgfw-lite/cloud.txt": "f64ec6b58b10b024c6dcf8315732ff9cba8b2dbba35cf7604463daffc82e1db4",
     "./fgfw-lite/encrypt.py": "019fc6611bb16feb06bec6927525b0275936601aa714ab48b9a03ac1a3b5e779",
-    "./fgfw-lite/fgfw-lite.py": "39667e38fbf0f7098a667e2e5b993bf02ca5dc4d73608c286def90ebfaba9342",
+    "./fgfw-lite/fgfw-lite.py": "020070eaa4b87762302dd7f9371310a844b43022ef03f63014f9c172e62e42f9",
     "./fgfw-lite/singleton.py": "2fc7ed8cfc47b001053a257f9e8ad521edcef446776adaee022122eb6dbda152",
     "./fgfw-lite/streamcipher.py": "be132fb47b5a3980d08af42e2b7dc51ccc69e93be8baed0b26f6c88cb3bdc9aa",
     "./fgfw-lite/ui_localrule.py": "afae6f35909e97ab4fe676d3f63916bda7674d344670c10bba67d5a1e54220b3",
@@ -22,5 +22,5 @@
     "./goagent/proxy.sample.ini": "dee18a176370d993371fe9f27a8f22d89e4292ec02e8041d27c69c182b9cc97f",
     "./goagent/proxylib.py": "6eaac79525a3d6031dc8c67621f710b6c4f8bddbd492bf339e8438d798725106",
     "./release_note.txt": "1ab815f89a3e6f2f6306a39800a74aaca91a4ec55ab2da1b9b3648cb24d8193c",
-    "./userconf.sample.ini": "b3aeafc5171ccdadc5c8146ffab321519af1ffa0f28df0eff519be17f38c836a"
+    "./userconf.sample.ini": "70a5e8c56e18833af3dd857f7c7002f7eefdf6a0c2ac5d8275dd39c82b5c8006"
 }
