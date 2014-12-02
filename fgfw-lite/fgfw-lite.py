@@ -606,7 +606,7 @@ class ProxyHandler(HTTPRequestHandler):
             try:
                 userfilter(self, response_status, response_reason, response_header)
             except NetWorkIOError as e:
-                pass
+                raise e
             except Exception as e:
                 self.logger.error('unknown userfilter Exception!')
                 os.rename('./fgfw-lite/userfilter.py', './fgfw-lite/userfilter.py.bak')
@@ -766,7 +766,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
             return self._do_CONNECT(True)
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
-        forward_socket(self.connection, self.remotesoc, 300, self.bufsize)
+        forward_socket(self.connection, self.remotesoc, 30, self.bufsize)
 
     def wfile_write(self, data=None):
         if data is None:

@@ -6,7 +6,7 @@
     "./fgfw-lite/apfilter.py": "44a880af8a41640db20820268c4564c16815530496e155cb1704519c706c3bda",
     "./fgfw-lite/cloud.txt": "f64ec6b58b10b024c6dcf8315732ff9cba8b2dbba35cf7604463daffc82e1db4",
     "./fgfw-lite/encrypt.py": "019fc6611bb16feb06bec6927525b0275936601aa714ab48b9a03ac1a3b5e779",
-    "./fgfw-lite/fgfw-lite.py": "cfce0c9bdadb6d18aaf271592bb4eebccd79ae8f21ed039037712c992b157f1a",
+    "./fgfw-lite/fgfw-lite.py": "a32a66fedf1cac15d28528c2d1796b86060ec87c879a23f9b705b8dbe1049f5b",
     "./fgfw-lite/singleton.py": "2fc7ed8cfc47b001053a257f9e8ad521edcef446776adaee022122eb6dbda152",
     "./fgfw-lite/streamcipher.py": "be132fb47b5a3980d08af42e2b7dc51ccc69e93be8baed0b26f6c88cb3bdc9aa",
     "./fgfw-lite/ui_localrule.py": "afae6f35909e97ab4fe676d3f63916bda7674d344670c10bba67d5a1e54220b3",
