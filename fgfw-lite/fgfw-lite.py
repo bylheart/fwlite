@@ -111,6 +111,7 @@ else:
             break
 
 NetWorkIOError = (IOError, OSError)
+DEFAULT_TIMEOUT = 5
 
 
 def prestart():
@@ -797,11 +798,11 @@ class ProxyHandler(HTTPRequestHandler):
         timeout = None if self._proxylist else 20
         self.on_conn_log()
         if not self.pproxy.proxy:
-            return create_connection(netloc, timeout or 5, iplist=iplist)
+            return create_connection(netloc, timeout or self.pproxy.timeout, iplist=iplist)
         elif self.pproxyparse.scheme == 'http':
-            return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), timeout or 10)
+            return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), timeout or self.pproxy.timeout)
         elif self.pproxyparse.scheme == 'https':
-            s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or 10)
+            s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or self.pproxy.timeout)
             s = ssl.wrap_socket(s)
             s.do_handshake()
             return s
@@ -810,9 +811,9 @@ class ProxyHandler(HTTPRequestHandler):
             s.connect(netloc)
             return s
         elif self.pproxyparse.scheme == 'sni':
-            return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or 10)
+            return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or self.pproxy.timeout)
         elif self.pproxyparse.scheme == 'socks5':
-            s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or 10)
+            s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or self.pproxy.timeout)
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s.sendall(b"\x05\x02\x00\x02" if self.pproxyparse.username else b"\x05\x01\x00")
             data = s.recv(2)
@@ -1561,7 +1562,7 @@ class goagentHandler(FGFWProxyHandler):
         if self.conf.userconf.dget('goagent', 'google_hk', ''):
             goagent.set('iplist', 'google_hk', self.conf.userconf.dget('goagent', 'google_hk', ''))
         if self.enable:
-            self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20 200')
+            self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20 200 8')
 
         if self.conf.userconf.dget('goagent', 'phpfetchserver'):
             goagent.set('php', 'enable', '1')
@@ -1603,15 +1604,18 @@ class goagentHandler(FGFWProxyHandler):
 
 
 class ParentProxy(object):
-    def __init__(self, name, proxy):
+    def __init__(self, name, proxy, default_timeout):
         '''
         name: str, name of parent proxy
         proxy: "http://127.0.0.1:8087 <optional int: httppriority> <optional int: httpspriority>"
         '''
         proxy, _, priority = proxy.partition(' ')
         httppriority, _, httpspriority = priority.partition(' ')
+        httpspriority, _, timeout = httpspriority.partition(' ')
         httppriority = httppriority or 99
         httpspriority = httpspriority or httppriority
+        timeout = timeout or default_timeout
+
         if proxy == 'direct':
             proxy = ''
         self.name = name
@@ -1619,6 +1623,7 @@ class ParentProxy(object):
         self.parse = urlparse.urlparse(self.proxy)
         self.httppriority = int(httppriority)
         self.httpspriority = int(httpspriority)
+        self.timeout = int(timeout)
         if self.parse.scheme.lower() == 'sni':
             self.httppriority = -1
 
@@ -1656,7 +1661,7 @@ class ParentProxyList(object):
                 pass
 
     def addstr(self, name, proxy):
-        self.add(ParentProxy(name, proxy))
+        self.add(ParentProxy(name, proxy, DEFAULT_TIMEOUT))
 
 
 class Config(object):
@@ -1672,6 +1677,8 @@ class Config(object):
         self.HOSTS = defaultdict(list)
         self.GUI = '-GUI' in sys.argv
         self.rproxy = self.userconf.dgetbool('fgfwproxy', 'rproxy', False)
+        global DEFAULT_TIMEOUT
+        DEFAULT_TIMEOUT = self.userconf.dgetint('fgfwproxy', 'timeout', 4)
 
         if self.userconf.dget('FGFW_Lite', 'logfile', ''):
             path = self.userconf.dget('FGFW_Lite', 'logfile', '')
