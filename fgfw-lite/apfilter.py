@@ -90,6 +90,7 @@ class ap_filter(object):
         self.exclude_domain_endswith = tuple()
         self.url_startswith = tuple()
         self.fast = defaultdict(list)
+        self.rules = set()
         if lst:
             for rule in lst:
                 self.add(rule)
@@ -98,18 +99,19 @@ class ap_filter(object):
         rule = rule.strip()
         if len(rule) < 3 or rule.startswith(('!', '[')) or '#' in rule:
             return
-        if '*' not in rule:
-            if rule.startswith('||'):
-                return self._add_domain(rule)
-            if rule.startswith('@@||'):
-                return self._add_exclude_domain(rule)
-        if rule.startswith(('|https://', '@', '/')):
-            return self._add_slow(rule)
-        if rule.startswith('|http://') and '*' not in rule:
-            return self._add_urlstartswith(rule)
-        if any(len(s) > (self.KEYLEN) for s in rule.split('*')):
-            return self._add_fast(rule)
-        self._add_slow(rule)
+        if rule.startswith('||') and '*' not in rule:
+            self._add_domain(rule)
+        elif rule.startswith('@@||') and '*' not in rule:
+            self._add_exclude_domain(rule)
+        elif rule.startswith(('|https://', '@', '/')):
+            self._add_slow(rule)
+        elif rule.startswith('|http://') and '*' not in rule:
+            self._add_urlstartswith(rule)
+        elif any(len(s) > (self.KEYLEN) for s in rule.split('*')):
+            self._add_fast(rule)
+        else:
+            self._add_slow(rule)
+        self.rules.add(rule)
 
     def _add_urlstartswith(self, rule):
         temp = set(self.url_startswith)
@@ -186,16 +188,78 @@ class ap_filter(object):
         return any(r.match(url) for r in lst)
 
     def remove(self, rule):
-        pass
+        if rule in self.rules:
+            if rule.startswith('||') and '*' not in rule:
+                rule = rule.rstrip('/')
+                self.domains.discard(rule[2:])
+                temp = set(self.domain_endswith)
+                temp.discard('.' + rule[2:])
+                self.domain_endswith = tuple(temp)
+            elif rule.startswith('@@||') and '*' not in rule:
+                rule = rule.rstrip('/')
+                self.exclude_domains.discard(rule[4:])
+                temp = set(self.exclude_domain_endswith)
+                temp.discard('.' + rule[4:])
+                self.exclude_domain_endswith = tuple(temp)
+            elif rule.startswith(('|https://', '@', '/')):
+                lst = self.excludes if rule.startswith('@') else self.matches
+                for o in lst[:]:
+                    if o.rule == rule:
+                        lst.remove(o)
+                        break
+            elif rule.startswith('|http://') and '*' not in rule:
+                temp = set(self.url_startswith)
+                temp.discard(rule[1:])
+                self.url_startswith = tuple(temp)
+            elif any(len(s) > (self.KEYLEN) for s in rule.split('*')):
+                lst = [s for s in rule.split('*') if len(s) > self.KEYLEN]
+                key = lst[-1][self.KEYLEN * -1:]
+                for o in self.fast[key][:]:
+                    if o.rule == rule:
+                        self.fast[key].remove(o)
+                        if not self.fast[key]:
+                            del self.fast[key]
+                        break
+            else:
+                lst = self.excludes if rule.startswith('@') else self.matches
+                for o in lst[:]:
+                    if o.rule == rule:
+                        lst.remove(o)
+                        break
+            self.rules.discard(rule)
 
 if __name__ == "__main__":
-    import sys
-    import base64
-    t = time.time()
     gfwlist = ap_filter()
+    lst = ['inxian.com',
+           '||twitter.com',
+           '@@||qq.com',
+           '|https://doc*.google.com',
+           '@@|http://www.163.com',
+           '|http://zh.wikipedia.com']
+    for rule in lst:
+        gfwlist.add(rule)
+
+    def show():
+        print(gfwlist.excludes)
+        print(gfwlist.matches)
+        print(gfwlist.domains)
+        print(gfwlist.domain_endswith)
+        print(gfwlist.exclude_domains)
+        print(gfwlist.exclude_domain_endswith)
+        print(gfwlist.url_startswith)
+        print(gfwlist.fast)
+    show()
+    for r in list(gfwlist.rules):
+        print('remove %s' % r)
+        gfwlist.remove(r)
+        show()
+
+    gfwlist = ap_filter()
+    t = time.time()
     with open('gfwlist.txt') as f:
         data = f.read()
         if '!' not in data:
+            import base64
             data = ''.join(data.split())
             data = base64.b64decode(data).decode()
             for line in data.splitlines():
@@ -210,6 +274,7 @@ if __name__ == "__main__":
     print('result for qq: %r' % gfwlist.match('http://www.qq.com', 'www.qq.com'))
     print('result for keyword: %r' % gfwlist.match('http://www.test.com/iredmail.org', 'www.test.com'))
     print('result for url_startswith: %r' % gfwlist.match('http://itweet.net/whatever', 'itweet.net'))
+    import sys
     url = sys.argv[1] if len(sys.argv) > 1 else 'http://www.163.com'
     host = urlparse.urlparse(url).hostname
     print('%s, %s' % (url, host))
