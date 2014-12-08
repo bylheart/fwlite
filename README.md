@@ -9,16 +9,21 @@ Works on Windows, Linux and Mac(untested).
 ##Features
 
 - A HTTP Proxy Server fits HTTP1.1 standard
-- Sets IE proxy configuration automatically on windows
-- Supports Network which require a HTTP Proxy
+- Configure IE proxy automatically on windows
 - URL Search
-- Multiple Method to detect blocked sites
+- Detect blocked sites
   - autoproxy-gfwlist
   - user-defined rules
   - connect timeout
   - read timeout
   - connect reset
+- Multiple work mode
+  - gfwlist + auto
+  - encrypt-all
+  - chnroute
+  - global mode
 - Avoid use of GoAgent for SSL automatically
+- Supports Network which require a HTTP Proxy
 - Support HOSTS
 - Supported parent proxy
   - HTTP Proxy
