@@ -180,7 +180,7 @@ class ap_filter(object):
     def _fastmatch(self, url):
         if url.startswith('http://'):
             i, j = 0, self.KEYLEN
-            while j < len(url):
+            while j <= len(url):
                 s = url[i:j]
                 if s in self.fast:
                     if self._listmatch(self.fast[s], url):
