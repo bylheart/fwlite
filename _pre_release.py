@@ -35,8 +35,13 @@ if raw_input('update? y/n: ').lower().startswith('y'):
                 with open(path, 'wb') as localfile:
                     localfile.write(data)
 
+if raw_input('update ui? y/n: ').lower().startswith('y'):
+    for f in glob.glob('./fgfw-lite/ui/*.ui'):
+        fname = f.replace('\\', '/').split('/')[-1].split('.')[0]
+        os.system('pyside-uic %s -o ./fgfw-lite/ui_%s.py' % (f, fname))
+
+
 BLOCKSIZE = 8192
-v = {}
 flist = ['./fgfw-lite/fgfw-lite.py',
          './fgfw-lite/apfilter.py',
          './fgfw-lite/encrypt.py',
@@ -57,17 +62,13 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          './release_note.txt',
          ]
 
+for p in glob.glob('./fgfw-lite/ui_*.py'):
+    flist.append(p.replace('\\', '/'))
+
 version = configparser.ConfigParser()
 version.optionxform = str
 version.read('version.ini')
-
-if raw_input('update ui? y/n: ').lower().startswith('y'):
-    for f in glob.glob('./fgfw-lite/ui/*.ui'):
-        fname = f.replace('\\', '/').split('/')[-1].split('.')[0]
-        os.system('pyside-uic %s -o ./fgfw-lite/ui_%s.py' % (f, fname))
-
-for p in glob.glob('./fgfw-lite/ui_*.py'):
-    flist.append(p.replace('\\', '/'))
+v = {}
 
 for f in flist:
     print 'hashing %s' % f
