@@ -24,6 +24,7 @@ import re
 import time
 import urlparse
 import logging
+from threading import Timer
 from collections import defaultdict
 from repoze.lru import lru_cache
 from util import parse_hostport
@@ -95,7 +96,7 @@ class ap_filter(object):
             for rule in lst:
                 self.add(rule)
 
-    def add(self, rule):
+    def add(self, rule, expire=None):
         rule = rule.strip()
         if len(rule) < 3 or rule.startswith(('!', '[')) or '#' in rule:
             return
@@ -112,6 +113,8 @@ class ap_filter(object):
         else:
             self._add_slow(rule)
         self.rules.add(rule)
+        if expire:
+            Timer(expire, self.remove, (rule, )).start()
 
     def _add_urlstartswith(self, rule):
         temp = set(self.url_startswith)
