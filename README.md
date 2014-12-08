@@ -1,12 +1,10 @@
-A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
+GoAgent / Shadowsocks client. A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
 
 Current Version: 4.6
 
 Works on Windows, Linux and Mac(untested).
 
 [Download](http://fwlite.tk/fwlite.zip)
-
-Inspired by [COW]
 
 ##Features
 
@@ -48,25 +46,17 @@ requirements under openSUSE:
 
     zypper install python-repoze.lru python-ipaddr python-gevent
     zypper install python-pyOpenSSL python-pycrypto  # for goagent
-    zypper install python-M2Crypto  # or python-cryptography, take your pick. for shadowsocks
+    zypper install python-M2Crypto  # or python-cryptography, for shadowsocks
     zypper install python-pyside  # for GUI
 
 ##User Defined Rules(./fgfw-lite/local.txt)
 
 FW-Lite uses [autoproxy rules](http://mydf.github.io/blog/autoproxy/), the differences are:
 
-URL end with keyword, used to counteract ISP conducted MITM hijack(GWBN):
+URL end with keyword:
 
     .exe|
     .apk|
-
-Not applying rules for certain sites. For false positeves in gfwlist.
-
-    ||twimg.com auto
-
-forcehttps
-
-    |http://zh.wikipedia.com/search forcehttps
 
 Redirect
 
@@ -76,9 +66,21 @@ Redirect with Regular Expression
 
     /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1&ie=gb2312/
 
+Not applying rules for certain sites. For false positeves in gfwlist.
+
+    ||twimg.com auto
+
+forcehttps
+
+    |http://zh.wikipedia.com/search forcehttps
+
 Block certain sites
 
     ||dongtaiwang.com 403
+
+Bad 302 Redirect, counteract ISP conducted MITM hijack(GWBN):
+
+    |http://180.89.255.52/ bad302
 
 Assign a parent proxy for certain sites
 
@@ -87,6 +89,15 @@ Assign a parent proxy for certain sites
 ##License
 
 GPLv2
+
+##Others
+[COW]
+
+[GoAgent]
+
+[Shadowsocks]
+
+[pybuild]
 
 [COW]:https://github.com/cyfdecyf/cow
 [GoAgent]:https://code.google.com/p/goagent/
