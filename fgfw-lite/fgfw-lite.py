@@ -945,7 +945,7 @@ class ProxyHandler(HTTPRequestHandler):
         elif parse.path == '/api/redirector' and self.command == 'POST':
             'accept a json encoded tuple: (str rule, str dest)'
             rule, dest = json.loads(body)
-            self.conf.PARENT_PROXY.add_rule('%s %s' % (rule, dest))
+            self.conf.PARENT_PROXY.add_redirect(rule, dest)
             self.write(200, data, 'application/json')
             return self.conf.stdout()
         elif parse.path.startswith('/api/redirector/') and self.command == 'DELETE':
