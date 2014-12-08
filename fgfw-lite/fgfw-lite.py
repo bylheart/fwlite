@@ -604,6 +604,8 @@ class ProxyHandler(HTTPRequestHandler):
             # verify
             if response_status > 500 and self.ppname.startswith('goagent'):
                 raise IOError(0, 'bad response status code from goagent: %d' % response_status)
+            if response_status in (301, 302) and self.conf.PARENT_PROXY.bad302(response_header.get('Location')):
+                raise IOError(0, 'Bad 302!')
             try:
                 userfilter(self, response_status, response_reason, response_header)
             except NetWorkIOError as e:
@@ -1197,6 +1199,7 @@ class parent_proxy(object):
     def config(self):
         self.gfwlist = ap_filter()
         self.force = ap_filter()
+        self._bad302 = ap_filter()
         self.temp = []
         self.temp_rules = set()
         self.redirlst = []
@@ -1241,6 +1244,9 @@ class parent_proxy(object):
             if dest.lower() == 'auto':
                 self.ignore.append(ap_rule(rule))
                 return
+            if dest.lower() == 'bad302':
+                self._bad302.add(rule)
+                return
             self.redirlst.append((ap_rule(rule), dest))
         except ValueError as e:
             self.logger.debug('create autoproxy rule failed: %s' % e)
@@ -1274,6 +1280,9 @@ class parent_proxy(object):
                 if result.startswith('/') and result.endswith('/'):
                     return rule._regex.sub(result[1:-1], uri)
                 return result
+
+    def bad302(self, uri):
+        return self._bad302.match(uri)
 
     @lru_cache(256, timeout=120)
     def ifhost_in_region(self, host, ip):
