@@ -1704,7 +1704,7 @@ class Config(object):
         else:
             self.listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
 
-        self.region = set(x.upper() for x in self.userconf.dget('fgfwproxy', 'region', 'cn').split('|') if x.strip())
+        self.region = set(x.upper() for x in self.userconf.dget('fgfwproxy', 'region', '').split('|') if x.strip())
 
         self.xheaders = self.userconf.dgetbool('fgfwproxy', 'xheaders', False)
 
