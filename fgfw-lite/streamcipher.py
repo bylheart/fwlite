@@ -35,16 +35,24 @@ class StreamCipher(object):
         self.update = self.cipher.update
 
     def get_cipher(self):
-        if self.method.startswith('aes'):
-            return Cipher(algorithms.AES(self.key), modes.CFB(self.iv), default_backend())
-        if self.method.startswith('camellia'):
-            return Cipher(algorithms.Camellia(self.key), modes.CFB(self.iv), default_backend())
-        if self.method.startswith('cast5'):
-            return Cipher(algorithms.CAST5(self.key), modes.CFB(self.iv), default_backend())
-        if self.method.startswith('seed'):
-            return Cipher(algorithms.SEED(self.key), modes.CFB(self.iv), default_backend())
         if self.method.startswith('rc4'):
             return Cipher(algorithms.ARC4(self.key), None, default_backend())
+        if self.method.endswith('ctr'):
+            mode = modes.CTR(self.iv)
+        elif self.method.endswith('ofb'):
+            mode = modes.OFB(self.iv)
+        elif self.method.endswith('cfb8'):
+            mode = modes.CFB8(self.iv)
+        else:
+            mode = modes.CFB(self.iv)
+        if self.method.startswith('aes'):
+            return Cipher(algorithms.AES(self.key), mode, default_backend())
+        if self.method.startswith('camellia'):
+            return Cipher(algorithms.Camellia(self.key), mode, default_backend())
+        if self.method.startswith('cast5'):
+            return Cipher(algorithms.CAST5(self.key), mode, default_backend())
+        if self.method.startswith('seed'):
+            return Cipher(algorithms.SEED(self.key), mode, default_backend())
         raise ValueError('crypto method %s not supported!' % self.method)
 
 
