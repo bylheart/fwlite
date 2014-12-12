@@ -1254,7 +1254,7 @@ class parent_proxy(object):
     def add_rule(self, line, force=False):
         try:
             if line.startswith('@@'):
-                self.force.add(line)
+                self.gfwlist.add(line)
             elif force:
                 self.force.add(line)
             else:
