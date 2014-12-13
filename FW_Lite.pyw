@@ -145,9 +145,9 @@ class MainWindow(QtGui.QMainWindow):
                 freload = True
             elif 'dnslib_resolve_over_' in line:
                 lines.remove(line)
-            elif 'extend_iplist' in line:
+            elif 'extend_iplist start' in line:
                 lines.remove(line)
-            elif 'DNS Question' in line:
+            elif 'host to iplist' in line:
                 lines.remove(line)
         self.consoleText.extend(lines)
         self.ui.console.setPlainText(u'\n'.join(self.consoleText))
