@@ -6,5 +6,4 @@
 ||google-analytics.com
 ||googleusercontent.com
 |https://www.mozilla.org
-||8.8.8.8
 @@||cn.bing.com
