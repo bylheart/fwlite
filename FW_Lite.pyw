@@ -27,7 +27,7 @@ from ui_localrules import Ui_LocalRules
 from ui_localrule import Ui_LocalRule
 from ui_redirectorrules import Ui_RedirectorRules
 from ui_settings import Ui_Settings
-from util import SConfigParser
+from util import SConfigParser, dns_via_tcp
 try:
     import httplib
     import urllib2
@@ -44,7 +44,6 @@ try:
     pynotify.init('FW-Lite Notify')
 except ImportError:
     pynotify = None
-from util import dns_via_tcp
 
 TRAY_ICON = '%s/fgfw-lite/ui/icon.png' % WORKINGDIR
 
