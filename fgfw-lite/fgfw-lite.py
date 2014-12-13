@@ -392,7 +392,8 @@ class ProxyHandler(HTTPRequestHandler):
 
     def getparent(self):
         if self._proxylist is None:
-            self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level)
+            nogoagent = True if self.headers.get("Transfer-Encoding") or int(self.headers.get('Content-Length', 0)) > 1024 * 1024 else False
+            self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level, nogoagent)
             self.logger.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
@@ -1342,7 +1343,7 @@ class parent_proxy(object):
         if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True) and self.gfwlist.match(uri):
             return True
 
-    def parentproxy(self, uri, host, command, level=1):
+    def parentproxy(self, uri, host, command, level=1, nogoagent=False):
         '''
             decide which parentproxy to use.
             url:  'www.google.com:443'
@@ -1371,6 +1372,9 @@ class parent_proxy(object):
 
         if self.conf.parentlist.dict.get('local') in parentlist:
             parentlist.remove(self.conf.parentlist.dict.get('local'))
+
+        if nogoagent and self.conf.parentlist.dict.get('goagent') in parentlist:
+            parentlist.remove(self.conf.parentlist.dict.get('goagent'))
 
         if ifgfwed:
             parentlist.remove(self.conf.parentlist.dict.get('direct'))
