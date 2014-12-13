@@ -152,8 +152,7 @@ def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd
                 break
     else:
         sock = create_connection(parse_hostport(dnsserver), timeout=3)
-    qtype = dnslib.QTYPE.A
-    query = dnslib.DNSRecord(q=dnslib.DNSQuestion(query, qtype=qtype))
+    query = dnslib.DNSRecord.question(query, qtype='ANY')
     query_data = query.pack()
     sock.send(struct.pack('>h', len(query_data)) + query_data)
     rfile = sock.makefile('r', 1024)
