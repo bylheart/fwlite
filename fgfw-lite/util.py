@@ -27,13 +27,11 @@ import select
 import struct
 import dnslib
 import logging
-from repoze.lru import lru_cache
+
 try:
     import configparser
-    from ipaddress import ip_address
 except ImportError:
     import ConfigParser as configparser
-    from ipaddr import IPAddress as ip_address
 configparser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 
 logger = logging.getLogger('FW_Lite')
@@ -82,27 +80,6 @@ class SConfigParser(configparser.ConfigParser):
         configparser.ConfigParser.set(self, section, option, value)
 
 
-@lru_cache(4096, timeout=90)
-def resolver(host, backupserver='8.8.8.8'):
-    """return (family, ipaddr)
-       >>>
-       [(2, '82.94.164.162'),
-        (10, '2001:888:2000:d::a2')]"""
-    try:
-        return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
-    except Exception as e:
-        logger.error(repr(e))
-        return [(2, '0.0.0.0'), ]
-
-
-@lru_cache(1024, timeout=90)
-def get_ip_address(host):
-    try:
-        return ip_address(host)
-    except Exception:
-        return ip_address(resolver(host)[0][1])
-
-
 def forward_socket(local, remote, timeout, bufsize):
     """forward socket"""
     def __io_copy(dest, source, timeout):
@@ -132,6 +109,7 @@ def forward_socket(local, remote, timeout, bufsize):
 
 
 def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd=None):
+    from connection import create_connection
     server, port = parse_hostport(dnsserver, default_port=53)
     if ':' in server:
         server = '[%s]' % server
@@ -164,46 +142,6 @@ def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd
     return iplist
 
 
-def create_connection(address, timeout=object(), source_address=None, iplist=None):
-    """Connect to *address* and return the socket object.
-
-    Convenience function.  Connect to *address* (a 2-tuple ``(host,
-    port)``) and return the socket object.  Passing the optional
-    *timeout* parameter will set the timeout on the socket instance
-    before attempting to connect.  If no *timeout* is supplied, the
-    global default timeout setting returned by :func:`getdefaulttimeout`
-    is used.  If *source_address* is set it must be a tuple of (host, port)
-    for the socket to bind as a source address before making the connection.
-    An host of '' or port 0 tells the OS to use the default.
-    """
-
-    host, port = address
-    err = None
-    if not iplist:
-        iplist = resolver(host)
-    for res in iplist:
-        af, addr = res
-        sock = None
-        try:
-            sock = socket.socket(af)
-            if timeout is not object():
-                sock.settimeout(timeout)
-            if source_address:
-                sock.bind(source_address)
-            sock.connect((addr, port))
-            return sock
-
-        except socket.error as _:
-            err = _
-            if sock is not None:
-                sock.close()
-
-    if err is not None:
-        raise err
-    else:
-        raise socket.error("getaddrinfo returns an empty list")
-
-
 def parse_hostport(host, default_port=80):
     m = re.match(r'(.+):(\d+)$', host)
     if m:
@@ -234,8 +172,4 @@ def sizeof_fmt(num):
 
 
 if __name__ == "__main__":
-    t = socket.getaddrinfo('twitter.com', 80)
-    r = resolver('www.google.com')
-    print(t)
-    print(r)
-    # print(r[0][4][0])
+    pass

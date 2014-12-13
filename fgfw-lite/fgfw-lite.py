@@ -61,8 +61,6 @@ import random
 import select
 import shutil
 import socket
-import struct
-import ssl
 import sqlite3
 import traceback
 import pygeoip
@@ -81,10 +79,11 @@ import logging.handlers
 logging.basicConfig(level=logging.INFO,
                     format='FW-Lite %(asctime)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S', filemode='a+')
-from util import create_connection, parse_hostport, is_connection_dropped, get_ip_address, SConfigParser, sizeof_fmt, forward_socket
+from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt, forward_socket
 from apfilter import ap_rule, ap_filter, ExpiredError
-from shadowsocks import sssocket
 from parent_proxy import ParentProxyList
+from connection import create_connection
+from resolver import get_ip_address
 try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
@@ -801,50 +800,7 @@ class ProxyHandler(HTTPRequestHandler):
     def _connect_via_proxy(self, netloc, iplist=None):
         timeout = None if self._proxylist else 20
         self.on_conn_log()
-        if not self.pproxy.proxy:
-            return create_connection(netloc, timeout or self.pproxy.timeout, iplist=iplist)
-        elif self.pproxyparse.scheme == 'http':
-            return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), timeout or self.pproxy.timeout)
-        elif self.pproxyparse.scheme == 'https':
-            s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or self.pproxy.timeout)
-            s = ssl.wrap_socket(s)
-            s.do_handshake()
-            return s
-        elif self.pproxyparse.scheme == 'ss':
-            s = sssocket(self.pproxy.proxy, timeout, self.conf.parentlist.dict.get('direct').proxy, iplist=iplist)
-            s.connect(netloc)
-            return s
-        elif self.pproxyparse.scheme == 'sni':
-            return create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 443), timeout or self.pproxy.timeout)
-        elif self.pproxyparse.scheme == 'socks5':
-            s = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 1080), timeout or self.pproxy.timeout)
-            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            s.sendall(b"\x05\x02\x00\x02" if self.pproxyparse.username else b"\x05\x01\x00")
-            data = s.recv(2)
-            if data == b'\x05\x02':  # basic auth
-                s.sendall(b''.join([b"\x01",
-                                    chr(len(self.pproxyparse.username)).encode(),
-                                    self.pproxyparse.username.encode(),
-                                    chr(len(self.pproxyparse.password)).encode(),
-                                    self.pproxyparse.password.encode()]))
-                data = s.recv(2)
-            assert data[1] == b'\x00'  # no auth needed or auth passed
-            s.sendall(b''.join([b"\x05\x01\x00\x03",
-                                chr(len(netloc[0])).encode(),
-                                netloc[0].encode(),
-                                struct.pack(b">H", netloc[1])]))
-            data = s.recv(4)
-            assert data[1] == b'\x00'
-            if data[3] == b'\x01':  # read ipv4 addr
-                s.recv(4)
-            elif data[3] == b'\x03':  # read host addr
-                s.recv(ord(s.recv(1)))
-            elif data[3] == b'\x04':  # read ipv6 addr
-                s.recv(16)
-            s.recv(2)  # read port
-            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)
-            return s
-        raise IOError(0, '_connect_via_proxy failed!')
+        return create_connection(netloc, timeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.dict.get('direct'))
 
     def do_FTP(self):
         self.logger.info('{} {}'.format(self.command, self.path))

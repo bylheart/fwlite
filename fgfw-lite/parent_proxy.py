@@ -7,7 +7,7 @@ except ImportError:
 
 
 class ParentProxy(object):
-    def __init__(self, name, proxy, default_timeout):
+    def __init__(self, name, proxy, default_timeout=4):
         '''
         name: str, name of parent proxy
         proxy: "http://127.0.0.1:8087 <optional int: httppriority> <optional int: httpspriority>"

@@ -22,7 +22,6 @@ except ImportError:
         from StringIO import StringIO
     except ImportError:
         from io import BytesIO as StringIO
-from util import create_connection
 
 
 class sssocket(object):
@@ -44,9 +43,9 @@ class sssocket(object):
         sshost, ssport, ssmethod, sspassword = (p.hostname, p.port, p.username, p.password)
         self.crypto = encrypt.Encryptor(sspassword, ssmethod)
         if not self.parentproxy:
-            self._sock = create_connection((sshost, ssport), self.timeout)
+            self._sock = socket.create_connection((sshost, ssport), self.timeout)
         elif self.parentproxy.startswith('http://'):
-            self._sock = create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), self.timeout)
+            self._sock = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), self.timeout)
             s = 'CONNECT %s:%s HTTP/1.1\r\nHost: %s\r\n' % (sshost, ssport, sshost)
             if self.pproxyparse.username:
                 a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
