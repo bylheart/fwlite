@@ -51,7 +51,6 @@ import time
 import re
 import datetime
 import errno
-import email
 import atexit
 import base64
 import itertools
@@ -79,7 +78,7 @@ import logging.handlers
 logging.basicConfig(level=logging.INFO,
                     format='FW-Lite %(asctime)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S', filemode='a+')
-from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt, forward_socket
+from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt, forward_socket, parse_headers
 from apfilter import ap_rule, ap_filter, ExpiredError
 from parent_proxy import ParentProxyList
 from connection import create_connection
@@ -581,7 +580,7 @@ class ProxyHandler(HTTPRequestHandler):
                 if not line:
                     raise IOError(0, 'remote socket closed')
             header_data = b''.join(header_data)
-            response_header = email.message_from_string(str(header_data))
+            response_header = parse_headers(str(header_data))
             conntype = response_header.get('Connection', "")
             if protocol_version >= b"HTTP/1.1":
                 self.close_connection = conntype.lower() == 'close'

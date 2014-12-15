@@ -20,6 +20,7 @@
 
 import base64
 import re
+import sys
 import errno
 import thread
 import socket
@@ -27,14 +28,25 @@ import select
 import struct
 import dnslib
 import logging
-
+import io
 try:
+    from http.client import HTTPMessage
+    import email
     import configparser
 except ImportError:
+    from httplib import HTTPMessage
     import ConfigParser as configparser
 configparser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 
 logger = logging.getLogger('FW_Lite')
+
+
+def parse_headers(data):
+    if sys.version_info > (3, 0):
+        return email.parser.Parser(_class=HTTPMessage).parsestr(data.decode('iso-8859-1'))
+    else:
+        fp = io.StringIO(data.decode('iso-8859-1'))
+        return HTTPMessage(fp, 0)
 
 
 class SConfigParser(configparser.ConfigParser):
