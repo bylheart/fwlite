@@ -662,8 +662,11 @@ class ProxyHandler(HTTPRequestHandler):
             return self.on_GET_Error(e)
 
     def on_GET_Error(self, e):
-        self.logger.warning('{} {} via {} failed: {}! {}'.format(self.command, self.shortpath, self.ppname, self.phase, repr(e)))
-        return self._do_GET(True)
+        if self.ppname:
+            self.logger.warning('{} {} via {} failed: {}! {}'.format(self.command, self.shortpath, self.ppname, self.phase, repr(e)))
+            return self._do_GET(True)
+        self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
+        return self.send_error(504)
 
     do_OPTIONS = do_PATCH = do_POST = do_DELETE = do_TRACE = do_HEAD = do_PUT = do_GET
 
