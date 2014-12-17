@@ -78,11 +78,12 @@ import logging.handlers
 logging.basicConfig(level=logging.INFO,
                     format='FW-Lite %(asctime)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S', filemode='a+')
-from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt, forward_socket, parse_headers
+from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt, forward_socket
 from apfilter import ap_rule, ap_filter, ExpiredError
 from parent_proxy import ParentProxyList
 from connection import create_connection
 from resolver import get_ip_address
+from httputil import read_reaponse_line, read_headers
 try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
@@ -522,6 +523,7 @@ class ProxyHandler(HTTPRequestHandler):
             s.append("\r\n")
             self.remotesoc.sendall(''.join(s).encode('latin1'))
             self.phase = 'sending request body'
+            remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
             # send request body
             content_length = int(self.headers.get('Content-Length', 0))
             if self.headers.get("Transfer-Encoding") and self.headers.get("Transfer-Encoding") != "identity":
@@ -562,25 +564,10 @@ class ProxyHandler(HTTPRequestHandler):
                     self.remotesoc.sendall(data)
             # read response line
             self.phase = 'reading response_line'
-            remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
-            s = response_line = remoterfile.readline()
-            if not s.startswith(b'HTTP'):
-                raise IOError(0, 'bad response line: %r' % response_line)
-            protocol_version, _, response_status = response_line.rstrip(b'\r\n').partition(b' ')
-            response_status, _, response_reason = response_status.partition(b' ')
-            response_status = int(response_status)
+            response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
             # read response headers
             self.phase = 'reading response header'
-            header_data = []
-            while True:
-                line = remoterfile.readline()
-                header_data.append(line)
-                if line in (b'\r\n', b'\n', b'\r'):  # header ends with a empty line
-                    break
-                if not line:
-                    raise IOError(0, 'remote socket closed')
-            header_data = b''.join(header_data)
-            response_header = parse_headers(str(header_data))
+            header_data, response_header = read_headers(remoterfile)
             conntype = response_header.get('Connection', "")
             if protocol_version >= b"HTTP/1.1":
                 self.close_connection = conntype.lower() == 'close'
@@ -599,7 +586,7 @@ class ProxyHandler(HTTPRequestHandler):
                 content_length = int(response_header["Content-Length"])
             else:
                 content_length = None
-            self.wfile_write(s)
+            self.wfile_write(response_line)
             self.wfile_write(header_data)
             # verify
             if response_status > 500 and self.ppname.startswith('goagent'):
@@ -648,7 +635,7 @@ class ProxyHandler(HTTPRequestHandler):
                     except Exception:
                         break
             self.wfile_write()
-            self.phase = 'reading response body''request finish'
+            self.phase = 'request finish'
             self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
             if self.close_connection or is_connection_dropped([self.remotesoc]):
                 self.remotesoc.close()
@@ -728,15 +715,15 @@ class ProxyHandler(HTTPRequestHandler):
             s.append('\r\n\r\n')
             self.remotesoc.sendall(''.join(s).encode())
             remoterfile = self.remotesoc.makefile('rb', 0)
-            data = remoterfile.readline()
-            if b'200' not in data:
+            line, version, status, reason = read_reaponse_line(remoterfile)
+            if status != 200:
                 self.logger.warning('{} {} via {} failed! 200 not in response'.format(self.command, self.path, self.ppname))
                 return self._do_CONNECT(True)
-            while not data in (b'\r\n', b'\n', b'\r'):
-                if not data:
-                    self.logger.warning('{} {} via {} failed! remote peer closed'.format(self.command, self.path, self.ppname))
-                    return self._do_CONNECT(True)
-                data = remoterfile.readline()
+            try:
+                _, _ = read_headers(remoterfile)
+            except NetWorkIOError:
+                self.logger.warning('{} {} via {} failed! remote closed.'.format(self.command, self.path, self.ppname))
+                return self._do_CONNECT(True)
         if self.rbuffer:
             self.logger.debug('remote write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))

@@ -43,6 +43,7 @@ if raw_input('update ui? y/n: ').lower().startswith('y'):
 
 BLOCKSIZE = 8192
 flist = ['./fgfw-lite/fgfw-lite.py',
+         './fgfw-lite/httputil.py',
          './fgfw-lite/apfilter.py',
          './fgfw-lite/encrypt.py',
          './fgfw-lite/shadowsocks.py',
