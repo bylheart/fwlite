@@ -48,12 +48,13 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
         raise socket.error("getaddrinfo returns an empty list")
 
 
-def do_tunnel(soc, netloc, user=None, passwd=None):
+def do_tunnel(soc, netloc, pp, timeout):
         s = ['CONNECT %s:%s HTTP/1.1\r\n' % (netloc[0], netloc[1]), ]
-        if user:
-            a = '%s:%s' % (user, passwd)
+        if pp.parse.username:
+            a = '%s:%s' % (pp.parse.username, pp.parse.password)
             s.append('Proxy-Authorization: Basic %s' % base64.b64encode(a.encode()))
         s.append('\r\n\r\n')
+        soc.settimeout(timeout)
         soc.sendall(''.join(s).encode())
         remoterfile = soc.makefile('rb', 0)
         line, version, status, reason = read_reaponse_line(remoterfile)
@@ -67,27 +68,24 @@ def create_connection(netloc, timeout=None, source_address=None, iplist=None, pa
     if not isinstance(parentproxy, ParentProxy):
         parentproxy = ParentProxy(parentproxy, parentproxy)
     if not parentproxy.proxy:
-        return _create_connection(netloc, timeout or parentproxy.timeout, iplist=iplist)
+        s = _create_connection(netloc, timeout=1, iplist=iplist)
     elif parentproxy.parse.scheme == 'http':
-        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 80), timeout or parentproxy.timeout)
+        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 80), timeout=1)
         if tunnel:
-            do_tunnel(s, netloc, parentproxy.parse.username, parentproxy.parse.password)
-        return s
+            do_tunnel(s, netloc, parentproxy, timeout or parentproxy.timeout)
     elif parentproxy.parse.scheme == 'https':
-        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 443), timeout or parentproxy.timeout)
+        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 443), timeout=1)
         s = ssl.wrap_socket(s)
         s.do_handshake()
         if tunnel:
-            do_tunnel(s, netloc, parentproxy.parse.username, parentproxy.parse.password)
-        return s
+            do_tunnel(s, netloc, parentproxy, timeout or parentproxy.timeout)
     elif parentproxy.parse.scheme == 'ss':
-        s = sssocket(parentproxy.proxy, timeout, via.proxy, iplist=iplist)
+        s = sssocket(parentproxy.proxy, timeout or parentproxy.timeout, via.proxy, iplist=iplist)
         s.connect(netloc)
-        return s
     elif parentproxy.parse.scheme == 'sni':
-        return _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 443), timeout or parentproxy.timeout)
+        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 443), timeout=1)
     elif parentproxy.parse.scheme == 'socks5':
-        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 1080), timeout or parentproxy.timeout)
+        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 1080), timeout=1)
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         s.sendall(b"\x05\x02\x00\x02" if parentproxy.parse.username else b"\x05\x01\x00")
         data = s.recv(2)
@@ -113,5 +111,7 @@ def create_connection(netloc, timeout=None, source_address=None, iplist=None, pa
             s.recv(16)
         s.recv(2)  # read port
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)
+    if s:
+        s.settimeout(timeout or parentproxy.timeout)
         return s
     raise IOError(0, '_connect_via_proxy failed!')
