@@ -696,7 +696,7 @@ class ProxyHandler(HTTPRequestHandler):
                 ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
                 ipl.append(self.ssrealip)
                 self.headers['X-Forwarded-For'] = ', '.join(ipl)
-        self._wfile_write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
+        self.wfile.write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
         self._do_CONNECT()
 
     def _do_CONNECT(self, retry=False):
@@ -742,8 +742,6 @@ class ProxyHandler(HTTPRequestHandler):
                         self.logger.debug('not data')
                         break
                     self._wfile_write(data)
-                    self.logger.debug('self.retryable = False')
-                    self.retryable = False
                     break
             except socket.error as e:
                 self.logger.warning('socket error: %r' % e)

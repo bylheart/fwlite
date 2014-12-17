@@ -2,6 +2,7 @@ import socket
 import ssl
 import base64
 import struct
+import logging
 from shadowsocks import sssocket
 from parent_proxy import ParentProxy
 from httputil import read_reaponse_line, read_header_data
@@ -62,6 +63,7 @@ def do_tunnel(soc, netloc, user=None, passwd=None):
 
 
 def create_connection(netloc, timeout=None, source_address=None, iplist=None, parentproxy='', via=None, tunnel=False):
+    logging.debug('connection.create_connection: %r %r %r %r' % (netloc, parentproxy, via, tunnel))
     if not isinstance(parentproxy, ParentProxy):
         parentproxy = ParentProxy(parentproxy, parentproxy)
     if not parentproxy.proxy:
