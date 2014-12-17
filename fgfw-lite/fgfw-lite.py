@@ -83,7 +83,7 @@ from apfilter import ap_rule, ap_filter, ExpiredError
 from parent_proxy import ParentProxyList
 from connection import create_connection
 from resolver import get_ip_address
-from httputil import read_reaponse_line, read_headers
+from httputil import read_reaponse_line, read_headers, read_header_data
 try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
@@ -267,6 +267,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     ssclient = ''
     shortpath = ''
     ppname = ''
+    retryable = True
 
     def __init__(self, request, client_address, server):
         self.conf = server.conf
@@ -351,6 +352,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             raise ClientError(e[0], e[1])
 
     def _wfile_write(self, data):
+        self.retryable = False
         try:
             return self.wfile.write(data)
         except NetWorkIOError as e:
@@ -522,50 +524,64 @@ class ProxyHandler(HTTPRequestHandler):
                 s.append("%s: %s\r\n" % ("-".join([w.capitalize() for w in k.split("-")]), v))
             s.append("\r\n")
             self.remotesoc.sendall(''.join(s).encode('latin1'))
-            self.phase = 'sending request body'
             remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
-            # send request body
-            content_length = int(self.headers.get('Content-Length', 0))
-            if self.headers.get("Transfer-Encoding") and self.headers.get("Transfer-Encoding") != "identity":
-                if self.rbuffer:
-                    self.remotesoc.sendall(b''.join(self.rbuffer))
-                flag = 1
-                req_body_len = 0
-                while flag:
-                    trunk_lenth = self.rfile_readline()
-                    if self.retryable:
-                        self.rbuffer.append(trunk_lenth)
-                        req_body_len += len(trunk_lenth)
-                    self.remotesoc.sendall(trunk_lenth)
-                    trunk_lenth = int(trunk_lenth.strip(), 16) + 2
-                    flag = trunk_lenth != 2
-                    data = self.rfile_read(trunk_lenth)
-                    if self.retryable:
-                        self.rbuffer.append(data)
-                        req_body_len += len(data)
-                    self.remotesoc.sendall(data)
-                    if req_body_len > 102400:
+            # Expect
+            skip = False
+            if 'Expect' in self.headers:
+                response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
+                if response_status == 100:
+                    hdata = read_header_data(remoterfile)
+                    self._wfile_write(response_line + hdata)
+                else:
+                    skip = True
+            if not skip:
+                # send request body
+                self.phase = 'sending request body'
+                content_length = int(self.headers.get('Content-Length', 0))
+                if self.headers.get("Transfer-Encoding") and self.headers.get("Transfer-Encoding") != "identity":
+                    if self.rbuffer:
+                        self.remotesoc.sendall(b''.join(self.rbuffer))
+                    flag = 1
+                    req_body_len = 0
+                    while flag:
+                        trunk_lenth = self.rfile_readline()
+                        if self.retryable:
+                            self.rbuffer.append(trunk_lenth)
+                            req_body_len += len(trunk_lenth)
+                        self.remotesoc.sendall(trunk_lenth)
+                        trunk_lenth = int(trunk_lenth.strip(), 16) + 2
+                        flag = trunk_lenth != 2
+                        data = self.rfile_read(trunk_lenth)
+                        if self.retryable:
+                            self.rbuffer.append(data)
+                            req_body_len += len(data)
+                        self.remotesoc.sendall(data)
+                        if req_body_len > 102400:
+                            self.retryable = False
+                            self.rbuffer = deque()
+                elif content_length > 0:
+                    if content_length > 102400:
                         self.retryable = False
-                        self.rbuffer = deque()
-            elif content_length > 0:
-                if content_length > 102400:
-                    self.retryable = False
-                if self.rbuffer:
-                    s = b''.join(self.rbuffer)
-                    content_length -= len(s)
-                    self.remotesoc.sendall(s)
-                while content_length:
-                    data = self.rfile_read(min(self.bufsize, content_length))
-                    if not data:
-                        break
-                    content_length -= len(data)
-                    if self.retryable:
-                        self.rbuffer.append(data)
-                    self.remotesoc.sendall(data)
-            # read response line
-            self.phase = 'reading response_line'
-            response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
+                    if self.rbuffer:
+                        s = b''.join(self.rbuffer)
+                        content_length -= len(s)
+                        self.remotesoc.sendall(s)
+                    while content_length:
+                        data = self.rfile_read(min(self.bufsize, content_length))
+                        if not data:
+                            break
+                        content_length -= len(data)
+                        if self.retryable:
+                            self.rbuffer.append(data)
+                        self.remotesoc.sendall(data)
+                # read response line
+                self.phase = 'reading response_line'
+                response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
             # read response headers
+            while response_status == 100:
+                hdata = read_header_data(remoterfile)
+                self._wfile_write(response_line + hdata)
+                response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
             self.phase = 'reading response header'
             header_data, response_header = read_headers(remoterfile)
             conntype = response_header.get('Connection', "")
