@@ -20,7 +20,7 @@ def read_reaponse_line(fp):
     return line, version, status, reason
 
 
-def read_headers(fp):
+def read_header_data(fp):
     header_data = []
     while True:
         line = fp.readline()
@@ -29,7 +29,11 @@ def read_headers(fp):
             break
         if not line:
             raise IOError(0, 'remote socket closed')
-    header_data = b''.join(header_data)
+    return b''.join(header_data)
+
+
+def read_headers(fp):
+    header_data = read_header_data(fp)
     headers = parse_headers(header_data)
     return header_data, headers
 

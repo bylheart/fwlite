@@ -1,8 +1,10 @@
 import socket
 import ssl
+import base64
 import struct
 from shadowsocks import sssocket
 from parent_proxy import ParentProxy
+from httputil import read_reaponse_line, read_header_data
 
 
 def _create_connection(address, timeout=object(), source_address=None, iplist=None):
@@ -45,17 +47,36 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
         raise socket.error("getaddrinfo returns an empty list")
 
 
-def create_connection(netloc, timeout=None, source_address=None, iplist=None, parentproxy='', via=None):
+def do_tunnel(soc, netloc, user=None, passwd=None):
+        s = ['CONNECT %s:%s HTTP/1.1\r\n' % (netloc[0], netloc[1]), ]
+        if user:
+            a = '%s:%s' % (user, passwd)
+            s.append('Proxy-Authorization: Basic %s' % base64.b64encode(a.encode()))
+        s.append('\r\n\r\n')
+        soc.sendall(''.join(s).encode())
+        remoterfile = soc.makefile('rb', 0)
+        line, version, status, reason = read_reaponse_line(remoterfile)
+        if status != 200:
+            raise IOError(0, 'remote closed')
+        read_header_data(remoterfile)
+
+
+def create_connection(netloc, timeout=None, source_address=None, iplist=None, parentproxy='', via=None, tunnel=False):
     if not isinstance(parentproxy, ParentProxy):
         parentproxy = ParentProxy(parentproxy, parentproxy)
     if not parentproxy.proxy:
         return _create_connection(netloc, timeout or parentproxy.timeout, iplist=iplist)
     elif parentproxy.parse.scheme == 'http':
-        return _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 80), timeout or parentproxy.timeout)
+        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 80), timeout or parentproxy.timeout)
+        if tunnel:
+            do_tunnel(s, netloc, parentproxy.parse.username, parentproxy.parse.password)
+        return s
     elif parentproxy.parse.scheme == 'https':
         s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 443), timeout or parentproxy.timeout)
         s = ssl.wrap_socket(s)
         s.do_handshake()
+        if tunnel:
+            do_tunnel(s, netloc, parentproxy.parse.username, parentproxy.parse.password)
         return s
     elif parentproxy.parse.scheme == 'ss':
         s = sssocket(parentproxy.proxy, timeout, via.proxy, iplist=iplist)

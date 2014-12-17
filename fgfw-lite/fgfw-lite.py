@@ -696,34 +696,11 @@ class ProxyHandler(HTTPRequestHandler):
             iplist = self.conf.HOSTS.get(self.requesthost[0])
             self._proxylist.insert(0, self.pproxy)
         try:
-            self.remotesoc = self._connect_via_proxy(self.requesthost, iplist)
+            self.remotesoc = self._connect_via_proxy(self.requesthost, iplist, tunnel=True)
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
             self.logger.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT(True)
-        if self.pproxy.proxy.startswith('http'):
-            path = self.path
-            if iplist:
-                path = path.rsplit(':', 1)
-                path[0] = iplist[0][1]
-                path = ':'.join(path)
-            s = ['%s %s %s\r\n' % (self.command, path, self.request_version), ]
-            if self.pproxyparse.username:
-                a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
-                self.headers['Proxy-Authorization'] = 'Basic %s' % base64.b64encode(a.encode())
-            s.append('\r\n'.join(['%s: %s' % (key, value) for key, value in self.headers.items()]))
-            s.append('\r\n\r\n')
-            self.remotesoc.sendall(''.join(s).encode())
-            remoterfile = self.remotesoc.makefile('rb', 0)
-            line, version, status, reason = read_reaponse_line(remoterfile)
-            if status != 200:
-                self.logger.warning('{} {} via {} failed! 200 not in response'.format(self.command, self.path, self.ppname))
-                return self._do_CONNECT(True)
-            try:
-                _, _ = read_headers(remoterfile)
-            except NetWorkIOError:
-                self.logger.warning('{} {} via {} failed! remote closed.'.format(self.command, self.path, self.ppname))
-                return self._do_CONNECT(True)
         if self.rbuffer:
             self.logger.debug('remote write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))
@@ -786,10 +763,10 @@ class ProxyHandler(HTTPRequestHandler):
                 return sock
         return self._connect_via_proxy(netloc, iplist)
 
-    def _connect_via_proxy(self, netloc, iplist=None):
+    def _connect_via_proxy(self, netloc, iplist=None, tunnel=False):
         timeout = None if self._proxylist else 20
         self.on_conn_log()
-        return create_connection(netloc, timeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.dict.get('direct'))
+        return create_connection(netloc, timeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.dict.get('direct'), tunnel=tunnel)
 
     def do_FTP(self):
         self.logger.info('{} {}'.format(self.command, self.path))
