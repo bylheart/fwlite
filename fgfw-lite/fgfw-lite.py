@@ -1409,10 +1409,11 @@ class Config(object):
 
         self.xheaders = self.userconf.dgetbool('fgfwproxy', 'xheaders', False)
 
-        self.addparentproxy('direct', 'direct 0')
         if self.userconf.dget('fgfwproxy', 'parentproxy', ''):
             self.addparentproxy('direct', '%s 0' % self.userconf.dget('fgfwproxy', 'parentproxy', ''))
             self.addparentproxy('local', 'direct 100')
+        else:
+            self.addparentproxy('direct', 'direct 0')
 
         for k, v in self.userconf.items('parents'):
             self.addparentproxy(k, v)
