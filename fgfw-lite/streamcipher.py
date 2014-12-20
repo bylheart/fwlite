@@ -71,11 +71,11 @@ def main():
     print(repr(b))
     print(repr(c))
     print(repr(d))
-    print('encrypt and decrypt 2MB data')
+    print('encrypt and decrypt 20MB data with %s' % method)
     s = os.urandom(1000)
     import time
     t = time.time()
-    for _ in range(1049):
+    for _ in range(10490):
         a = cipher.update(s)
         b = cipher.update(s)
         c = decipher.update(a)
