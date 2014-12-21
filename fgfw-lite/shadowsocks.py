@@ -27,9 +27,9 @@ except ImportError:
 class sssocket(object):
     bufsize = 8192
 
-    def __init__(self, ssServer=None, timeout=10, parentproxy='', iplist=None):
+    def __init__(self, ssServer=None, ctimeout=1, parentproxy='', iplist=None):
         self.ssServer = ssServer
-        self.timeout = timeout
+        self.timeout = ctimeout
         self.parentproxy = parentproxy
         self.pproxyparse = urlparse.urlparse(parentproxy)
         self._sock = None
@@ -43,9 +43,9 @@ class sssocket(object):
         sshost, ssport, ssmethod, sspassword = (p.hostname, p.port, p.username, p.password)
         self.crypto = encrypt.Encryptor(sspassword, ssmethod)
         if not self.parentproxy:
-            self._sock = socket.create_connection((sshost, ssport), 1)
+            self._sock = socket.create_connection((sshost, ssport), self.timeout)
         elif self.parentproxy.startswith('http://'):
-            self._sock = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), 1)
+            self._sock = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), self.timeout)
             s = 'CONNECT %s:%s HTTP/1.1\r\nHost: %s\r\n' % (sshost, ssport, sshost)
             if self.pproxyparse.username:
                 a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
