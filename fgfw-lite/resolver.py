@@ -40,7 +40,7 @@ def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd
         server = '[%s]' % server
     dnsserver = '%s:%d' % (server, port)
     if httpproxy:
-        sock = create_connection(parse_hostport(httpproxy), timeout=3)
+        sock = create_connection(parse_hostport(httpproxy), ctimeout=3, rtimeout=3)
         s = [b'CONNECT %s HTTP/1.1\r\n' % dnsserver]
         if user:
             a = '%s:%s' % (user, passwd)
@@ -54,7 +54,7 @@ def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd
             if not data:
                 break
     else:
-        sock = create_connection(parse_hostport(dnsserver), timeout=3)
+        sock = create_connection(parse_hostport(dnsserver), ctimeout=3, rtimeout=3)
     query = dnslib.DNSRecord.question(query, qtype='ANY')
     query_data = query.pack()
     sock.send(struct.pack('>h', len(query_data)) + query_data)
