@@ -518,6 +518,12 @@ class ProxyHandler(HTTPRequestHandler):
             else:
                 s.append('%s /%s %s\r\n' % (self.command, '/'.join(self.path.split('/')[3:]), self.request_version))
             del self.headers['Proxy-Connection']
+            conntype = self.headers.get('Connection', "")
+            if self.request_version >= b"HTTP/1.1":
+                client_close = conntype.lower() == 'close'
+            else:
+                client_close = conntype.lower() != 'keep_alive'
+            self.headers['Connection'] = 'keep_alive'
             for k, v in self.headers.items():
                 if isinstance(v, bytes):
                     v = v.decode('latin1')
@@ -586,9 +592,9 @@ class ProxyHandler(HTTPRequestHandler):
             header_data, response_header = read_headers(remoterfile)
             conntype = response_header.get('Connection', "")
             if protocol_version >= b"HTTP/1.1":
-                self.close_connection = conntype.lower() == 'close'
+                remote_close = conntype.lower() == 'close'
             else:
-                self.close_connection = conntype.lower() != 'keep_alive'
+                remote_close = conntype.lower() != 'keep_alive'
             if "Content-Length" in response_header:
                 if "," in response_header["Content-Length"]:
                     # Proxies sometimes cause Content-Length headers to get
@@ -602,6 +608,15 @@ class ProxyHandler(HTTPRequestHandler):
                 content_length = int(response_header["Content-Length"])
             else:
                 content_length = None
+            if client_close:
+                response_header['Connection'] = 'close'
+            header_data = []
+            for k, v in response_header.items():
+                if isinstance(v, bytes):
+                    v = v.decode('latin1')
+                header_data.append("%s: %s\r\n" % ("-".join([w.capitalize() for w in k.split("-")]), v))
+            header_data.append("\r\n")
+            header_data = ''.join(header_data).encode('latin1')
             self.wfile_write(response_line)
             self.wfile_write(header_data)
             # verify
@@ -653,7 +668,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.wfile_write()
             self.phase = 'request finish'
             self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
-            if self.close_connection or is_connection_dropped([self.remotesoc]):
+            if remote_close or is_connection_dropped([self.remotesoc]):
                 self.remotesoc.close()
             else:
                 self.conf.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
