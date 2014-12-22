@@ -49,6 +49,7 @@ import subprocess
 import shlex
 import time
 import re
+import io
 import datetime
 import errno
 import atexit
@@ -608,15 +609,13 @@ class ProxyHandler(HTTPRequestHandler):
                 content_length = int(response_header["Content-Length"])
             else:
                 content_length = None
-            if client_close:
-                response_header['Connection'] = 'close'
-            header_data = []
-            for k, v in response_header.items():
-                if isinstance(v, bytes):
-                    v = v.decode('latin1')
-                header_data.append("%s: %s\r\n" % ("-".join([w.capitalize() for w in k.split("-")]), v))
-            header_data.append("\r\n")
-            header_data = ''.join(header_data).encode('latin1')
+            buf = io.BytesIO(header_data)
+            header_data = b''
+            for line in buf:
+                if line.startswith('Connection'):
+                    header_data += b'Connection: close\r\n' if client_close else b'Connection: keep_alive\r\n'
+                else:
+                    header_data += line
             self.wfile_write(response_line)
             self.wfile_write(header_data)
             # verify
