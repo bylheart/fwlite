@@ -792,9 +792,17 @@ class ProxyHandler(HTTPRequestHandler):
         return self._connect_via_proxy(netloc, iplist)
 
     def _connect_via_proxy(self, netloc, iplist=None, tunnel=False):
-        rtimeout = None if self._proxylist else 10
+        if self._proxylist:
+            if self.ppname == 'direct':
+                rtimeout = 5
+                ctimeout = 5
+            else:
+                rtimeout = min(2 ** len(self.failed_parents) + 2, 20)
+                ctimeout = len(self.failed_parents) + 2
+        else:
+            ctimeout = rtimeout = 10
         self.on_conn_log()
-        return create_connection(netloc, ctimeout=(len(self.failed_parents) + 2) if self._proxylist else 10, rtimeout=rtimeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.dict.get('direct'), tunnel=tunnel)
+        return create_connection(netloc, ctimeout=ctimeout, rtimeout=rtimeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.dict.get('direct'), tunnel=tunnel)
 
     def do_FTP(self):
         self.logger.info('{} {}'.format(self.command, self.path))
