@@ -7,7 +7,7 @@
     "./fgfw-lite/cloud.txt": "a7e695ba483793bd616fb5fbc12feacf3fa39e514721524a64306cc0f07213ba",
     "./fgfw-lite/connection.py": "49880e525191140839efd775be9408e5c99be5fa0bf02dd546ab99dfe5988ae6",
     "./fgfw-lite/encrypt.py": "7de34d32fef5cb76baf2dc12efcbbea74e425fdf8476dc7acdda00c3d7a37724",
-    "./fgfw-lite/fgfw-lite.py": "327ac0a6b230dcd6c83de8fb0ff56a23795a6c22f8279ffff17c88ca6811d45b",
+    "./fgfw-lite/fgfw-lite.py": "2ed37952001cdf4da72cc35ff34766ddbcaf6a5828c1f23c7a2e734ff8fc1841",
     "./fgfw-lite/httputil.py": "b7916d4f5cff65d0f2fc2995e54550b8e71a7c3c27ab4ac3148747b88881ebf0",
     "./fgfw-lite/parent_proxy.py": "7f22328b83b55690bb2bd6c4c0b0cbc03307791ff43ff971339cba1f365c8057",
     "./fgfw-lite/resolver.py": "a8eb8b10f752c8088c68da4ad5bcba7266fd03e9e1ca2ac87435351220155223",

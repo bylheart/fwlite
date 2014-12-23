@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding:utf-8
 
+import sys
 import os
 import hashlib
 import json
@@ -10,6 +11,9 @@ try:
 except ImportError:
     import ConfigParser as configparser
 os.chdir(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')))
+
+if sys.version_info > (3, 0):
+    raw_input = input
 
 if raw_input('update? y/n: ').lower().startswith('y'):
     updatelst = [('https://github.com/goagent/goagent/raw/3.0/local/proxy.py', './goagent/proxy.py'),
@@ -25,10 +29,10 @@ if raw_input('update? y/n: ').lower().startswith('y'):
         import urllib.request as urllib2
     for url, path in updatelst:
         try:
-            print 'downloading %s' % url
+            print('downloading %s' % url)
             r = urllib2.urlopen(url)
         except Exception as e:
-            print repr(e)
+            print(repr(e))
         else:
             data = r.read()
             if r.getcode() == 200 and data:
@@ -76,7 +80,7 @@ version.read('version.ini')
 v = {}
 
 for f in flist:
-    print 'hashing %s' % f
+    print('hashing %s' % f)
     hasher = hashlib.sha256()
     with open(f, 'rb') as afile:
         buf = afile.read(BLOCKSIZE)
@@ -87,7 +91,7 @@ for f in flist:
     version.set('Update', f.replace('./', '').replace('/', '-'), v[f])
 
 with open('./fgfw-lite/update.json', 'wb') as f:
-    f.write(json.dumps(v, sort_keys=True, indent=4, separators=(',', ': ')))
+    f.write(json.dumps(v, sort_keys=True, indent=4, separators=(',', ': ')).encode())
 with open('version.ini', 'w') as f:
     version.write(f)
 raw_input('press Enter to exit...')

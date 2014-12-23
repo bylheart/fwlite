@@ -698,6 +698,15 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(403)
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
+        # redirector
+        new_url = self.conf.PARENT_PROXY.redirect(self.path)
+        if new_url:
+            self.logger.debug('redirecting to %s' % new_url)
+            if new_url.isdigit() and 400 <= int(new_url) < 600:
+                return self.send_error(int(new_url))
+            elif new_url in self.conf.parentlist.dict.keys():
+                self._proxylist = [self.conf.parentlist.dict.get(new_url)]
+
         if self.conf.rproxy:
             if 'ss-realip' in self.headers:  # should exist in first request only
                 self.ssrealip = self.headers['ss-realip']
