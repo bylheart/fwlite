@@ -90,6 +90,7 @@ Bad 302 Redirect, counteract ISP conducted MITM hijack(GWBN):
 Assign a parent proxy for certain sites
 
     ||bbc.co.uk shadowsocks-uk
+    ||googlevideo.com goagent
 
 ##License
 
