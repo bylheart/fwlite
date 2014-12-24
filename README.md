@@ -4,7 +4,7 @@ Current Version: 4.6
 
 Works on Windows, Linux and Mac(untested).
 
-[Download](https://github.com/v3aqb/fwlite/archive/master.zip)
+[Download](http://fwlite.tk/fwlite.zip)
 
 ##Features
 
