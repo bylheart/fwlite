@@ -166,28 +166,37 @@ class stats(object):
     def srbh(self, hostname, sincetime=None):
         '''success rate by hostname'''
         if sincetime is None:
-            sincetime = time.time() - 24 * 60 * 60
+            sincetime = time.time() - 10 * 60
         r = next(self.con.execute('select count(*), sum(success) from log where hostname = (?) and timestamp >= (?)', (hostname, sincetime)))
         if r[0] == 0:
-            return(0, 0)
+            return(1, 0)
         return (r[1] / r[0], r[0])
 
     def srbp(self, ppname, sincetime=None):
         '''success rate by ppname'''
         if sincetime is None:
-            sincetime = time.time() - 24 * 60 * 60
+            sincetime = time.time() - 10 * 60
         r = next(self.con.execute('select count(*), sum(success) from log where ppname = (?) and timestamp >= (?)', (ppname, sincetime)))
         if r[0] == 0:
-            return(0, 0)
+            return(1, 0)
         return (r[1] / r[0], r[0])
 
     def srbhp(self, hostname, ppname, sincetime=None):
         '''success rate by hostname and ppname'''
         if sincetime is None:
-            sincetime = time.time() - 24 * 60 * 60
+            sincetime = time.time() - 30 * 60
         r = next(self.con.execute('select count(*), sum(success) from log where hostname = (?) and ppname = (?) and timestamp >= (?)', (hostname, ppname, sincetime)))
         if r[0] == 0:
-            return(0, 0)
+            return(1, 0)
+        return (r[1] / r[0], r[0])
+
+    def srbhwp(self, hostname, sincetime=None):
+        '''success rate by hostname with a parentproxy'''
+        if sincetime is None:
+            sincetime = time.time() - 30 * 60
+        r = next(self.con.execute("select count(*), sum(success) from log where hostname = (?) and ppname <> 'direct' and timestamp >= (?)", (hostname, sincetime)))
+        if r[0] == 0:
+            return(1, 0)
         return (r[1] / r[0], r[0])
 
     def _purge(self, befortime=None):
@@ -1160,6 +1169,16 @@ class parent_proxy(object):
         parentlist = list(self.conf.parentlist.httpsparents if command == 'CONNECT' else self.conf.parentlist.httpparents)
         random.shuffle(parentlist)
         parentlist = sorted(parentlist, key=lambda item: item.httpspriority if command == 'CONNECT' else item.httppriority)
+
+        r, c = self.conf.STATS.srbp('direct')
+        if c > 5 and r > 0.2:  # if internet connection is good
+            for p in list(parentlist):
+                if p.name == 'direct':
+                    continue
+                r, c = self.conf.STATS.srbp(p.name)
+                if c > 5 and r < 0.2:
+                    self.logger.info('Probable bad parent: %s, remove.' % p.name)
+                    parentlist.remove(self.conf.parentlist.dict.get(p.name))
 
         if self.conf.parentlist.dict.get('local') in parentlist:
             parentlist.remove(self.conf.parentlist.dict.get('local'))
