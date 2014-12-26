@@ -1201,27 +1201,28 @@ class parent_proxy(object):
     def notify(self, command, url, requesthost, success, failed_parents, current_parent):
         self.logger.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (command, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
-        for fpp in failed_parents:
-            self.conf.STATS.log(command, requesthost[0], url, fpp, 0)
-        if current_parent:
-            self.conf.STATS.log(command, requesthost[0], url, current_parent, success)
-        if 'direct' in failed_parents and success:
-            if command == 'CONNECT':
-                rule = '|https://%s' % requesthost[0]
-            else:
-                rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
-            if rule not in self.temp_rules:
-                direct_sr = self.conf.STATS.srbhp(requesthost[0], 'direct')
-                if direct_sr[1] < 2:
-                    exp = 1
-                elif direct_sr[0] < 0.1:
-                    exp = min(pow(direct_sr[1], 1.5), 60)
-                elif direct_sr[0] < 0.5:
-                    exp = min(direct_sr[1], 10)
+        if success:
+            for fpp in failed_parents:
+                self.conf.STATS.log(command, requesthost[0], url, fpp, 0)
+            if current_parent:
+                self.conf.STATS.log(command, requesthost[0], url, current_parent, success)
+            if 'direct' in failed_parents:
+                if command == 'CONNECT':
+                    rule = '|https://%s' % requesthost[0]
                 else:
-                    exp = 1
-                self.add_temp(rule, exp)
-                self.conf.stdout()
+                    rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
+                if rule not in self.temp_rules:
+                    direct_sr = self.conf.STATS.srbhp(requesthost[0], 'direct')
+                    if direct_sr[1] < 2:
+                        exp = 1
+                    elif direct_sr[0] < 0.1:
+                        exp = min(pow(direct_sr[1], 1.5), 60)
+                    elif direct_sr[0] < 0.5:
+                        exp = min(direct_sr[1], 10)
+                    else:
+                        exp = 1
+                    self.add_temp(rule, exp)
+                    self.conf.stdout()
 
     def add_temp(self, rule, exp=None, quiet=False):
         rule = rule.strip()
