@@ -157,12 +157,19 @@ class stats(object):
     con.execute("create table log (ts real, date text, command text, hostname text, url text, ppname text, success integer)")
     logger = logging.getLogger('FW_Lite')
 
-    def __init__(self):
+    def __init__(self, conf):
+        self.conf = conf
         Timer(3600, self._purge, ()).start()
 
     def log(self, command, hostname, url, ppname, success):
         with self.con:
             self.con.execute('INSERT into log values (?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success))
+        if not success:
+            if self.is_bad_pp('direct') is False:  # if internet connection is good
+                if self.is_bad_pp(ppname):
+                    self.logger.info('Probable bad parent: %s, remove.' % ppname)
+                    self.conf.parentlist.report_bad(ppname)
+
 
     def srbh(self, hostname, sincetime=None):
         '''success rate by hostname'''
@@ -1186,13 +1193,6 @@ class parent_proxy(object):
         random.shuffle(parentlist)
         parentlist = sorted(parentlist, key=lambda item: item.httpspriority if command == 'CONNECT' else item.httppriority)
 
-        if self.conf.STATS.is_bad_pp('direct') is False:  # if internet connection is good
-            for p in list(parentlist):
-                if self.conf.STATS.is_bad_pp(p.name):
-                    self.logger.info('Probable bad parent: %s, remove.' % p.name)
-                    parentlist.remove(self.conf.parentlist.dict.get(p.name))
-                    self.conf.parentlist.report_bad(p.name)
-
         if self.conf.parentlist.dict.get('local') in parentlist:
             parentlist.remove(self.conf.parentlist.dict.get('local'))
 
@@ -1443,7 +1443,7 @@ class goagentHandler(FGFWProxyHandler):
 class Config(object):
     def __init__(self):
         self.logger = logging.getLogger('FW_Lite')
-        self.STATS = stats()
+        self.STATS = stats(self)
         self.HTTPCONN_POOL = httpconn_pool()
         self.version = SConfigParser()
         self.userconf = SConfigParser()
