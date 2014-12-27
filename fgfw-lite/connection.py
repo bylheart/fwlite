@@ -6,6 +6,7 @@ import logging
 from shadowsocks import sssocket
 from parent_proxy import ParentProxy
 from httputil import read_reaponse_line, read_header_data
+logger = logging.getLogger('FW_Lite')
 
 
 def _create_connection(address, timeout=object(), source_address=None, iplist=None):
@@ -64,7 +65,7 @@ def do_tunnel(soc, netloc, pp, timeout):
 
 
 def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None, iplist=None, parentproxy='', via=None, tunnel=False):
-    logging.debug('connection.create_connection: %r %r %r %r' % (netloc, parentproxy, via, tunnel))
+    logger.debug('connection.create_connection: %r %r %r %r' % (netloc, parentproxy, via, tunnel))
     if not isinstance(parentproxy, ParentProxy):
         parentproxy = ParentProxy(parentproxy, parentproxy)
     ctimeout = ctimeout or 1

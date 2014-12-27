@@ -67,4 +67,4 @@ def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd
     return iplist
 
 if __name__ == '__main__':
-    print dns_via_tcp('twitter.com')
+    print(dns_via_tcp('twitter.com'))

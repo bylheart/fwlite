@@ -39,6 +39,7 @@ except ImportError:
         from streamcipher import StreamCipher as Cipher
     except ImportError:
         Cipher = None
+logger = logging.getLogger('FW_Lite')
 
 
 @lru_cache(128)
@@ -172,8 +173,7 @@ class Encryptor(object):
             else:
                 return Cipher(method.replace('-', '_'), key, iv, op)
 
-        logging.error('method %s not supported' % method)
-        sys.exit(1)
+        logger.error('method %s not supported' % method)
 
     def encrypt(self, buf):
         if len(buf) == 0:

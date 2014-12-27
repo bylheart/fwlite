@@ -23,7 +23,6 @@ from __future__ import print_function, division
 import re
 import time
 import urlparse
-import logging
 from threading import Timer
 from collections import defaultdict
 from repoze.lru import lru_cache
@@ -36,6 +35,7 @@ class ExpiredError(Exception):
 
 
 class ap_rule(object):
+
     def __init__(self, rule, msg=None, expire=None):
         super(ap_rule, self).__init__()
         self.rule = rule.strip()
@@ -44,8 +44,6 @@ class ap_rule(object):
         self.msg = msg
         self.expire = expire
         self.override = self.rule.startswith('@@')
-        self.logger = logging.getLogger('FW_Lite')
-        self.logger.debug('parsing autoproxy rule: %r' % self.rule)
         self._regex = self._parse()
 
     def _parse(self):
