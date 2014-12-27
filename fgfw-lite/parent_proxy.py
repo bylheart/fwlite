@@ -78,4 +78,4 @@ class ParentProxyList(object):
     def report_bad(self, ppname):
         if ppname in self.dict:
             self.badproxys.add(self.dict[ppname])
-            Timer(600, self.badproxys.discard, (self.dict[ppname])).start()
+            Timer(600, self.badproxys.discard, (self.dict[ppname], )).start()
