@@ -154,20 +154,21 @@ from userfilter import userfilter
 
 class stats(object):
     con = sqlite3.connect(":memory:", check_same_thread=False)
-    con.execute("create table log (timestamp real, date text, command text, hostname text, url text, ppname text, success integer)")
+    con.execute("create table log (ts real, date text, command text, hostname text, url text, ppname text, success integer)")
+    logger = logging.getLogger('FW_Lite')
 
     def __init__(self):
         Timer(3600, self._purge, ()).start()
 
     def log(self, command, hostname, url, ppname, success):
         with self.con:
-            self.con.execute('insert into log values (?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success))
+            self.con.execute('INSERT into log values (?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success))
 
     def srbh(self, hostname, sincetime=None):
         '''success rate by hostname'''
         if sincetime is None:
             sincetime = time.time() - 10 * 60
-        r = next(self.con.execute('select count(*), sum(success) from log where hostname = (?) and timestamp >= (?)', (hostname, sincetime)))
+        r = next(self.con.execute('SELECT count(*), sum(success) from log where hostname = (?) and ts >= (?)', (hostname, sincetime)))
         if r[0] == 0:
             return(1, 0)
         return (r[1] / r[0], r[0])
@@ -176,7 +177,7 @@ class stats(object):
         '''success rate by ppname'''
         if sincetime is None:
             sincetime = time.time() - 10 * 60
-        r = next(self.con.execute('select count(*), sum(success) from log where ppname = (?) and timestamp >= (?)', (ppname, sincetime)))
+        r = next(self.con.execute('SELECT count(*), sum(success) from log where ppname = (?) and ts >= (?)', (ppname, sincetime)))
         if r[0] == 0:
             return(1, 0)
         return (r[1] / r[0], r[0])
@@ -185,7 +186,7 @@ class stats(object):
         '''success rate by hostname and ppname'''
         if sincetime is None:
             sincetime = time.time() - 30 * 60
-        r = next(self.con.execute('select count(*), sum(success) from log where hostname = (?) and ppname = (?) and timestamp >= (?)', (hostname, ppname, sincetime)))
+        r = next(self.con.execute('SELECT count(*), sum(success) from log where hostname = (?) and ppname = (?) and ts >= (?)', (hostname, ppname, sincetime)))
         if r[0] == 0:
             return(1, 0)
         return (r[1] / r[0], r[0])
@@ -194,16 +195,29 @@ class stats(object):
         '''success rate by hostname with a parentproxy'''
         if sincetime is None:
             sincetime = time.time() - 30 * 60
-        r = next(self.con.execute("select count(*), sum(success) from log where hostname = (?) and ppname <> 'direct' and timestamp >= (?)", (hostname, sincetime)))
+        r = next(self.con.execute("SELECT count(*), sum(success) from log where hostname = (?) and ppname <> 'direct' and ts >= (?)", (hostname, sincetime)))
         if r[0] == 0:
             return(1, 0)
         return (r[1] / r[0], r[0])
+
+    def is_bad_pp(self, ppname):
+        '''if a given ppname is unavailable'''
+        sincetime = time.time() - 10 * 60
+        result = self.con.execute('SELECT success from log where ppname = (?) and ts >= (?) order by ts desc LIMIT 5', (ppname, sincetime))
+        rsum = count = 0
+        for s in result:
+            rsum += s[0]
+            count += 1
+        self.logger.debug('%s %s %s %r' % (ppname, count, rsum, not rsum if count >= 5 else None))
+        if count >= 5:
+            return not rsum
+        return None
 
     def _purge(self, befortime=None):
         if not befortime:
             befortime = time.time() - 24 * 60 * 60
         with self.con:
-            self.con.execute('delete from log where timestamp < ?', (befortime, ))
+            self.con.execute('DELETE from log where ts < (?)', (befortime, ))
         Timer(3600, self._purge, ()).start()
 
 
@@ -948,7 +962,9 @@ class ProxyHandler(HTTPRequestHandler):
             self.conf.goagent.setting(json.loads(body))
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/parent' and self.command == 'GET':
-            data = json.dumps([(p.name, ('%s://%s:%s' % (p.parse.scheme, p.parse.hostname, p.parse.port)) if p.proxy else '', p.httppriority) for p in self.conf.parentlist.httpparents])
+            data = [(p.name, ('%s://%s:%s' % (p.parse.scheme, p.parse.hostname, p.parse.port)) if p.proxy else '', p.httppriority) for k, p in self.conf.parentlist.dict.items()]
+            data = sorted(data, key=lambda item: item[0])
+            data = json.dumps(sorted(data, key=lambda item: item[2]))
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/parent' and self.command == 'POST':
             'accept a json encoded tuple: (str rule, str dest)'
@@ -1166,19 +1182,16 @@ class parent_proxy(object):
                 return [self.conf.parentlist.dict.get('local') or self.conf.parentlist.dict.get('direct')]
             return [self.conf.parentlist.dict.get('direct')]
 
-        parentlist = list(self.conf.parentlist.httpsparents if command == 'CONNECT' else self.conf.parentlist.httpparents)
+        parentlist = list(self.conf.parentlist.httpsparents() if command == 'CONNECT' else self.conf.parentlist.httpparents())
         random.shuffle(parentlist)
         parentlist = sorted(parentlist, key=lambda item: item.httpspriority if command == 'CONNECT' else item.httppriority)
 
-        r, c = self.conf.STATS.srbp('direct')
-        if c > 5 and r > 0.2:  # if internet connection is good
+        if self.conf.STATS.is_bad_pp('direct') is False:  # if internet connection is good
             for p in list(parentlist):
-                if p.name == 'direct':
-                    continue
-                r, c = self.conf.STATS.srbp(p.name)
-                if c > 5 and r < 0.2:
+                if self.conf.STATS.is_bad_pp(p.name):
                     self.logger.info('Probable bad parent: %s, remove.' % p.name)
                     parentlist.remove(self.conf.parentlist.dict.get(p.name))
+                    self.conf.parentlist.report_bad(p.name)
 
         if self.conf.parentlist.dict.get('local') in parentlist:
             parentlist.remove(self.conf.parentlist.dict.get('local'))

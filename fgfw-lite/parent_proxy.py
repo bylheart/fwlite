@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding:utf-8
+from threading import Timer
 try:
     import urllib.parse as urlparse
 except ImportError:
@@ -40,16 +41,20 @@ class ParentProxy(object):
 class ParentProxyList(object):
     def __init__(self, default_timeout):
         self.default_timeout = default_timeout
-        self.httpparents = []
-        self.httpsparents = []
+        self._httpparents = set()
+        self._httpsparents = set()
+        self.badproxys = set()
         self.dict = {}
+
+    def addstr(self, name, proxy):
+        self.add(ParentProxy(name, proxy, self.default_timeout))
 
     def add(self, parentproxy):
         assert isinstance(parentproxy, ParentProxy)
         if parentproxy.httppriority >= 0:
-            self.httpparents.append(parentproxy)
+            self._httpparents.add(parentproxy)
         if parentproxy.httpspriority >= 0:
-            self.httpsparents.append(parentproxy)
+            self._httpsparents.add(parentproxy)
         self.dict[parentproxy.name] = parentproxy
 
     def remove(self, name):
@@ -64,5 +69,13 @@ class ParentProxyList(object):
             except:
                 pass
 
-    def addstr(self, name, proxy):
-        self.add(ParentProxy(name, proxy, self.default_timeout))
+    def httpparents(self):
+        return list(self._httpparents - self.badproxys)
+
+    def httpsparents(self):
+        return list(self._httpsparents - self.badproxys)
+
+    def report_bad(self, ppname):
+        if ppname in self.dict:
+            self.badproxys.add(self.dict[ppname])
+            Timer(600, self.badproxys.discard, (self.dict[ppname])).start()
