@@ -61,13 +61,10 @@ class ParentProxyList(object):
         a = self.dict.get(name)
         if not a or name == 'direct':
             return 1
-        try:
-            self.httpparents.remove(a)
-        finally:
-            try:
-                self.httpsparents.remove(a)
-            except:
-                pass
+        if name in self.dict:
+            del self.dict[name]
+        self.httpparents.discard(a)
+        self.httpsparents.discard(a)
 
     def httpparents(self):
         return list(self._httpparents - self.badproxys)
