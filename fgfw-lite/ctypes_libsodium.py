@@ -43,7 +43,7 @@ def load_libsodium():
     global loaded, libsodium, buf
 
     from ctypes.util import find_library
-    for p in ('sodium',):
+    for p in ('sodium', 'libsodium', ):
         libsodium_path = find_library(p)
         if libsodium_path:
             break
@@ -51,7 +51,7 @@ def load_libsodium():
         if os.name == "nt" and os.path.isfile('./Python27/libsodium.dll'):
             libsodium_path = './Python27/libsodium.dll'
     if not libsodium_path:
-        raise Exception('libsodium not found')
+        raise IOError(0, 'libsodium not found')
     logging.info('loading libsodium from %s', libsodium_path)
     libsodium = CDLL(libsodium_path)
     libsodium.sodium_init.restype = c_int
