@@ -397,9 +397,9 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 
 
 class ProxyHandler(HTTPRequestHandler):
-    server_version = "FGFW-Lite/" + __version__
+    server_version = "FW-Lite/" + __version__
     protocol_version = "HTTP/1.1"
-    bufsize = 8192
+    bufsize = 256 * 1024
     timeout = 10
 
     def handle_one_request(self):
