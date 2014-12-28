@@ -63,8 +63,8 @@ class ParentProxyList(object):
             return 1
         if name in self.dict:
             del self.dict[name]
-        self.httpparents.discard(a)
-        self.httpsparents.discard(a)
+        self._httpparents.discard(a)
+        self._httpsparents.discard(a)
 
     def httpparents(self):
         return list(self._httpparents - self.badproxys)
