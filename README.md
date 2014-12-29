@@ -1,4 +1,4 @@
-GoAgent / Shadowsocks client. A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
+A GoAgent / Shadowsocks client. A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
 
 Current Version: 4.6
 
@@ -9,6 +9,7 @@ Works on Windows, Linux and Mac(untested).
 ##Features
 
 - A HTTP Proxy Server fits HTTP1.1 standard
+- Fast and Reliable
 - Configure IE proxy automatically on windows
 - URL Search
 - Detect blocked sites
@@ -81,11 +82,11 @@ forcehttps
 
 Block certain sites
 
-    ||dongtaiwang.com 403
+    ||360.cn 403
 
 Bad 302 Redirect, counteract ISP conducted MITM hijack(GWBN):
 
-    |http://180.89.255.52/ bad302
+    |http://some.isp.server/ bad302
 
 Assign a parent proxy for certain sites
 
@@ -106,6 +107,6 @@ GPLv2
 [pybuild]
 
 [COW]:https://github.com/cyfdecyf/cow
-[GoAgent]:https://code.google.com/p/goagent/
+[GoAgent]:https://github.com/goagent/goagent
 [Shadowsocks]:https://github.com/clowwindy/shadowsocks
 [pybuild]:https://github.com/goagent/pybuild
