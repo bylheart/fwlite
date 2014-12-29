@@ -565,12 +565,17 @@ class ProxyHandler(HTTPRequestHandler):
             # Expect
             skip = False
             if 'Expect' in self.headers:
-                response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
-                if response_status == 100:
-                    hdata = read_header_data(remoterfile)
-                    self._wfile_write(response_line + hdata)
+                try:
+                    response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
+                except Exception as e:
+                    # TODO: probably the server don't handle Expect well.
+                    self.logger.warning('read response line error: %r' % e)
                 else:
-                    skip = True
+                    if response_status == 100:
+                        hdata = read_header_data(remoterfile)
+                        self._wfile_write(response_line + hdata)
+                    else:
+                        skip = True
             if not skip:
                 # send request body
                 self.phase = 'sending request body'
@@ -1538,9 +1543,6 @@ def atexit_do():
 
 
 def main():
-    if sys.platform.startswith('win'):
-        import ctypes
-        ctypes.windll.kernel32.SetConsoleTitleW(u'FGFW-Lite v%s' % __version__)
     conf = Config()
     Timer(10, updater, (conf, )).start()
     d = {'http': '127.0.0.1:%d' % conf.listen[1], 'https': '127.0.0.1:%d' % conf.listen[1]}
