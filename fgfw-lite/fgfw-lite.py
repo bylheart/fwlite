@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: UTF-8 -*-
+# coding: UTF-8
 #
 # FGFW_Lite.py A Proxy Server help go around the Great Firewall
 #
@@ -169,7 +169,6 @@ class stats(object):
                 if self.is_bad_pp(ppname):
                     self.logger.info('Probable bad parent: %s, remove.' % ppname)
                     self.conf.parentlist.report_bad(ppname)
-
 
     def srbh(self, hostname, sincetime=None):
         '''success rate by hostname'''
