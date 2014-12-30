@@ -64,10 +64,12 @@ def do_tunnel(soc, netloc, pp, timeout):
         read_header_data(remoterfile)
 
 
-def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None, iplist=None, parentproxy='', via=None, tunnel=False):
+def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None, iplist=None, parentproxy=None, via=None, tunnel=False):
     logger.debug('connection.create_connection: %r %r %r %r' % (netloc, parentproxy, via, tunnel))
-    if not isinstance(parentproxy, ParentProxy):
+    if parentproxy and not isinstance(parentproxy, ParentProxy):
         parentproxy = ParentProxy(parentproxy, parentproxy)
+    if via and not isinstance(via, ParentProxy):
+        via = ParentProxy(via, via)
     ctimeout = ctimeout or 1
     rtimeout = rtimeout or parentproxy.timeout
     if not parentproxy.proxy:
@@ -83,7 +85,7 @@ def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None,
         if tunnel:
             do_tunnel(s, netloc, parentproxy, rtimeout)
     elif parentproxy.parse.scheme == 'ss':
-        s = sssocket(parentproxy.proxy, ctimeout, via.proxy, iplist=iplist)
+        s = sssocket(parentproxy.proxy, ctimeout, via, iplist=iplist)
         s.connect(netloc)
     elif parentproxy.parse.scheme == 'sni':
         s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 443), ctimeout)
