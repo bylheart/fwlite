@@ -5,16 +5,6 @@ import struct
 import encrypt
 import errno
 import io
-try:
-    import urllib.request as urllib2
-    import urllib.parse as urlparse
-    urlquote = urlparse.quote
-    urlquote = urlparse.unquote
-except ImportError:
-    import urllib2
-    import urlparse
-    urlquote = urllib2.quote
-    unquote = urllib2.unquote
 from parent_proxy import ParentProxy
 
 
@@ -22,6 +12,8 @@ class sssocket(object):
     bufsize = 8192
 
     def __init__(self, ssServer=None, ctimeout=1, parentproxy=None, iplist=None):
+        if ssServer and not isinstance(ssServer, ParentProxy):
+            ssServer = ParentProxy(ssServer, ssServer)
         self.ssServer = ssServer
         self.timeout = ctimeout
         if parentproxy and not isinstance(parentproxy, ParentProxy):
@@ -34,7 +26,7 @@ class sssocket(object):
 
     def connect(self, address):
         self.__address = address
-        p = urlparse.urlparse(self.ssServer)
+        p = self.ssServer.parse
         sshost, ssport, ssmethod, sspassword = (p.hostname, p.port, p.username, p.password)
         from connection import create_connection
         self._sock = create_connection((sshost, ssport), self.timeout, parentproxy=self.parentproxy, tunnel=True)

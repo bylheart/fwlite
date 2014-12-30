@@ -85,7 +85,7 @@ def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None,
         if tunnel:
             do_tunnel(s, netloc, parentproxy, rtimeout)
     elif parentproxy.parse.scheme == 'ss':
-        s = sssocket(parentproxy.proxy, ctimeout, via, iplist=iplist)
+        s = sssocket(parentproxy, ctimeout, via, iplist=iplist)
         s.connect(netloc)
     elif parentproxy.parse.scheme == 'sni':
         s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 443), ctimeout)
