@@ -38,7 +38,8 @@ class hxssocket(object):
         if parentproxy and not isinstance(parentproxy, ParentProxy):
             parentproxy = ParentProxy(parentproxy, parentproxy)
         self.parentproxy = parentproxy
-        self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
+        if self.hxsServer:
+            self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
         self._sock = None
         self.cipher = None
         self.connected = False
@@ -47,40 +48,39 @@ class hxssocket(object):
     def connect(self, address):
         self.getKey()
         cipher = encrypt.Encryptor(self.PSK, method)
-        self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], 'chacha20')
-        self._sock.sendall(cipher.encrypt(chr(1) + keys[self.hxsServer.proxy][0]))
+        self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], method)
         netloc = ('%s:%s' % address).encode()
-        self._sock.sendall(self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(netloc)) + netloc))
+        self._sock.sendall(cipher.encrypt(chr(1) + keys[self.hxsServer.proxy][0]) + self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(netloc)) + netloc))
         fp = self._sock.makefile('rb')
         self._sock.settimeout(5)
-        if ord(self.cipher.decrypt(fp.read(9))) != 0:
+        if ord(self.cipher.decrypt(fp.read(self.cipher.iv_len() + 1))) != 0:
             fp.read(ord(self.cipher.decrypt(fp.read(1))))
             self.getKey()
             cipher = encrypt.Encryptor(self.PSK, method)
-            self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], 'chacha20')
+            self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], method)
             self._sock.sendall(cipher.encrypt(chr(1) + keys[self.hxsServer.proxy][0]))
             netloc = ('%s:%s' % address).encode()
             self._sock.sendall(self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(netloc)) + netloc))
             fp = self._sock.makefile('rb')
-            if ord(self.cipher.decrypt(fp.read(9))) != 0:
+            if ord(self.cipher.decrypt(fp.read(cipher.iv_len() + 1))) != 0:
                 fp.read(ord(self.cipher.decrypt(fp.read(1))))
-                raise IOError(0, 'connect to hxsocket server failed! invalid auth.')
+                raise IOError(0, 'connect to hxsocket server failed! invalid shared key.')
         self.connected = True
         self.setsockopt = self._sock.setsockopt
         self.fileno = self._sock.fileno
 
     def getKey(self):
+        from connection import create_connection
+        p = self.hxsServer.parse
+        host, port, usn, psw = (p.hostname, p.port, p.username, p.password)
         if self.hxsServer.proxy not in keys:
-            p = self.hxsServer.parse
-            host, port, usn, psw = (p.hostname, p.port, p.username, p.password)
-            from connection import create_connection
             self._sock = create_connection((host, port), self.timeout, 5, parentproxy=self.parentproxy, tunnel=True)
             cipher = encrypt.Encryptor(self.PSK, method)
             dh = DH()
             data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(hex2bytes(dh.hexPub))) + hex2bytes(dh.hexPub) + hashlib.sha256(hex2bytes(dh.hexPub) + usn.encode() + psw.encode()).digest()
             self._sock.sendall(cipher.encrypt(data))
             fp = self._sock.makefile('rb')
-            resp = ord(cipher.decrypt(fp.read(9)))
+            resp = ord(cipher.decrypt(fp.read(cipher.iv_len() + 1)))
             if resp == 0:
                 pklen = struct.unpack('>H', cipher.decrypt(fp.read(2)))[0]
                 pkey = cipher.decrypt(fp.read(pklen))
@@ -89,7 +89,8 @@ class hxssocket(object):
                     shared_secret = dh.genKey(bytes2hex(pkey))
                     keys[self.hxsServer.proxy] = (hashlib.md5(hex2bytes(dh.hexPub)).digest(), shared_secret)
                     return
-            return 1
+                raise IOError(0, 'connect to hxsocket server failed! getKey: server auth failed')
+            raise IOError(0, 'connect to hxsocket server failed! getKey: bad user')
         else:
             self._sock = create_connection((host, port), self.timeout, 5, parentproxy=self.parentproxy, tunnel=True)
 
@@ -212,6 +213,7 @@ class hxssocket(object):
         new.parentproxy = self.parentproxy
         new._sock = self._sock.dup()
         new.cipher = self.cipher
+        new.PSK = self.PSK
         new.connected = self.connected
         new._rbuffer = self._rbuffer
         return new
