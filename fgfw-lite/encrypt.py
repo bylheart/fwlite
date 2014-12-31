@@ -22,13 +22,17 @@
 # SOFTWARE.
 
 import os
-import sys
 import hashlib
 import string
 import struct
 import logging
+logger = logging.getLogger('FW_Lite')
 from repoze.lru import lru_cache
-from ctypes_libsodium import Salsa20Crypto
+try:
+    from ctypes_libsodium import Salsa20Crypto
+except Exception as e:
+    Salsa20Crypto = None
+    logger.error(repr(e))
 try:
     from M2Crypto.EVP import Cipher
     import M2Crypto.Rand
@@ -39,7 +43,6 @@ except ImportError:
         from streamcipher import StreamCipher as Cipher
     except ImportError:
         Cipher = None
-logger = logging.getLogger('FW_Lite')
 
 
 @lru_cache(128)
@@ -49,7 +52,7 @@ def get_table(key):
     s = m.digest()
     (a, b) = struct.unpack('<QQ', s)
     table = [c for c in string.maketrans('', '')]
-    for i in xrange(1, 1024):
+    for i in range(1, 1024):
         table.sort(lambda x, y: int(a % (ord(x) + i) - a % (ord(y) + i)))
     return table
 
