@@ -526,6 +526,7 @@ class ProxyHandler(HTTPRequestHandler):
             if self.pproxy.name == 'direct' and self.requesthost[0] in self.conf.HOSTS and not self.failed_parents:
                 iplist = self.conf.HOSTS.get(self.requesthost[0])
                 self._proxylist.insert(0, self.pproxy)
+            self.phase = 'http_connect_via_proxy'
             self.remotesoc = self._http_connect_via_proxy(self.requesthost, iplist)
             self.wbuffer = deque()
             self.wbuffer_size = 0
