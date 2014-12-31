@@ -70,6 +70,7 @@ def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None,
         parentproxy = ParentProxy(parentproxy, parentproxy)
     ctimeout = ctimeout or 1
     rtimeout = rtimeout or parentproxy.timeout
+    s = None
     if not parentproxy.proxy:
         s = _create_connection(netloc, ctimeout, iplist=iplist)
     elif parentproxy.parse.scheme == 'http':
@@ -115,7 +116,9 @@ def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None,
             s.recv(16)
         s.recv(2)  # read port
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 0)
+    else:
+        raise IOError(0, 'parentproxy %s not supported!' % parentproxy.name)
     if s:
         s.settimeout(rtimeout)
         return s
-    raise IOError(0, '_connect_via_proxy failed!')
+    raise IOError(0, 'create_connection failed!')
