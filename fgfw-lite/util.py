@@ -101,7 +101,7 @@ def forward_socket(local, remote, timeout, bufsize):
             for sock in (dest, source):
                 try:
                     sock.close()
-                except StandardError:
+                except (IOError, OSError):
                     pass
     thread.start_new_thread(__io_copy, (remote.dup(), local.dup(), timeout))
     __io_copy(local, remote, timeout)
@@ -123,7 +123,7 @@ def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd
         sock.sendall(''.join(s).encode())
         remoterfile = sock.makefile('rb', 0)
         data = remoterfile.readline()
-        while not data in (b'\r\n', b'\n', b'\r'):
+        while data not in (b'\r\n', b'\n', b'\r'):
             data = remoterfile.readline()
             if not data:
                 break
