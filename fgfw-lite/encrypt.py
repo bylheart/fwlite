@@ -25,14 +25,8 @@ import os
 import hashlib
 import string
 import struct
-import logging
-logger = logging.getLogger('FW_Lite')
 from repoze.lru import lru_cache
-try:
-    from ctypes_libsodium import Salsa20Crypto
-except Exception as e:
-    Salsa20Crypto = None
-    logger.error(repr(e))
+from ctypes_libsodium import Salsa20Crypto
 try:
     from M2Crypto.EVP import Cipher
     import M2Crypto.Rand
@@ -163,8 +157,7 @@ class Encryptor(object):
                 return Salsa20Crypto(method, key, iv, op)
             else:
                 return Cipher(method.replace('-', '_'), key, iv, op)
-
-        logger.error('method %s not supported' % method)
+        raise IOError(0, 'method %s not supported' % method)
 
     def encrypt(self, buf):
         if len(buf) == 0:
