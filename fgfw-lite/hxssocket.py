@@ -14,6 +14,7 @@ except ImportError:
     import urlparse
 from parent_proxy import ParentProxy
 from dh import DH
+method = 'rc4-md5'
 keys = {}
 
 
@@ -29,15 +30,15 @@ def bytes2hex(data):
 class hxssocket(object):
     bufsize = 8192
 
-    def __init__(self, ssServer=None, ctimeout=1, parentproxy=None, iplist=None):
-        if ssServer and not isinstance(ssServer, ParentProxy):
-            ssServer = ParentProxy(ssServer, ssServer)
-        self.ssServer = ssServer
+    def __init__(self, hxsServer=None, ctimeout=1, parentproxy=None, iplist=None):
+        if hxsServer and not isinstance(hxsServer, ParentProxy):
+            hxsServer = ParentProxy(hxsServer, hxsServer)
+        self.hxsServer = hxsServer
         self.timeout = ctimeout
         if parentproxy and not isinstance(parentproxy, ParentProxy):
             parentproxy = ParentProxy(parentproxy, parentproxy)
         self.parentproxy = parentproxy
-        self.PSK = urlparse.parse_qs(self.ssServer.parse.query).get('PSK', [''])[0]
+        self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
         self._sock = None
         self.cipher = None
         self.connected = False
@@ -45,9 +46,9 @@ class hxssocket(object):
 
     def connect(self, address):
         self.getKey()
-        cipher = encrypt.Encryptor(self.PSK, 'chacha20')
-        self.cipher = encrypt.Encryptor(keys[self.ssServer.proxy][1], 'chacha20')
-        self._sock.sendall(cipher.encrypt(chr(1) + keys[self.ssServer.proxy][0]))
+        cipher = encrypt.Encryptor(self.PSK, method)
+        self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], 'chacha20')
+        self._sock.sendall(cipher.encrypt(chr(1) + keys[self.hxsServer.proxy][0]))
         netloc = ('%s:%s' % address).encode()
         self._sock.sendall(self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(netloc)) + netloc))
         fp = self._sock.makefile('rb')
@@ -55,9 +56,9 @@ class hxssocket(object):
         if ord(self.cipher.decrypt(fp.read(9))) != 0:
             fp.read(ord(self.cipher.decrypt(fp.read(1))))
             self.getKey()
-            cipher = encrypt.Encryptor(self.PSK, 'chacha20')
-            self.cipher = encrypt.Encryptor(keys[self.ssServer.proxy][1], 'chacha20')
-            self._sock.sendall(cipher.encrypt(chr(1) + keys[self.ssServer.proxy][0]))
+            cipher = encrypt.Encryptor(self.PSK, method)
+            self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], 'chacha20')
+            self._sock.sendall(cipher.encrypt(chr(1) + keys[self.hxsServer.proxy][0]))
             netloc = ('%s:%s' % address).encode()
             self._sock.sendall(self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(netloc)) + netloc))
             fp = self._sock.makefile('rb')
@@ -69,12 +70,12 @@ class hxssocket(object):
         self.fileno = self._sock.fileno
 
     def getKey(self):
-        if self.ssServer.proxy not in keys:
-            p = self.ssServer.parse
+        if self.hxsServer.proxy not in keys:
+            p = self.hxsServer.parse
             host, port, usn, psw = (p.hostname, p.port, p.username, p.password)
             from connection import create_connection
             self._sock = create_connection((host, port), self.timeout, 5, parentproxy=self.parentproxy, tunnel=True)
-            cipher = encrypt.Encryptor(self.PSK, 'chacha20')
+            cipher = encrypt.Encryptor(self.PSK, method)
             dh = DH()
             data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(hex2bytes(dh.hexPub))) + hex2bytes(dh.hexPub) + hashlib.sha256(hex2bytes(dh.hexPub) + usn.encode() + psw.encode()).digest()
             self._sock.sendall(cipher.encrypt(data))
@@ -86,7 +87,7 @@ class hxssocket(object):
                 auth = cipher.decrypt(fp.read(32))
                 if auth == hashlib.sha256(hex2bytes(dh.hexPub) + pkey + usn + psw).digest():
                     shared_secret = dh.genKey(bytes2hex(pkey))
-                    keys[self.ssServer.proxy] = (hashlib.md5(hex2bytes(dh.hexPub)).digest(), shared_secret)
+                    keys[self.hxsServer.proxy] = (hashlib.md5(hex2bytes(dh.hexPub)).digest(), shared_secret)
                     return
             return 1
         else:
@@ -206,7 +207,7 @@ class hxssocket(object):
 
     def dup(self):
         new = hxssocket()
-        new.ssServer = self.ssServer
+        new.hxsServer = self.hxsServer
         new.timeout = self.timeout
         new.parentproxy = self.parentproxy
         new._sock = self._sock.dup()
