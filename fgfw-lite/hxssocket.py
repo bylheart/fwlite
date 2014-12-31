@@ -55,6 +55,7 @@ class hxssocket(object):
         self._sock.settimeout(5)
         if ord(self.cipher.decrypt(fp.read(self.cipher.iv_len() + 1))) != 0:
             fp.read(ord(self.cipher.decrypt(fp.read(1))))
+            del keys[self.hxsServer.proxy]
             self.getKey()
             cipher = encrypt.Encryptor(self.PSK, method)
             self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], method)
@@ -64,6 +65,7 @@ class hxssocket(object):
             fp = self._sock.makefile('rb')
             if ord(self.cipher.decrypt(fp.read(cipher.iv_len() + 1))) != 0:
                 fp.read(ord(self.cipher.decrypt(fp.read(1))))
+                del keys[self.hxsServer.proxy]
                 raise IOError(0, 'connect to hxsocket server failed! invalid shared key.')
         self.connected = True
         self.setsockopt = self._sock.setsockopt
