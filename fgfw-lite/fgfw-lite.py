@@ -131,25 +131,21 @@ def prestart():
 ! rules: https://autoproxy.org/zh-CN/Rules
 ! /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1/
 ''')
-    if not os.path.isfile('./fgfw-lite/userfilter.py'):
-        with open('./fgfw-lite/userfilter.py', 'w') as f:
+    if not os.path.isfile('./fgfw-lite/redirector.py'):
+        with open('./fgfw-lite/redirector.py', 'w') as f:
             f.write('''\
 #!/usr/bin/env python
-#-*- coding: UTF-8 -*-
+# coding: UTF-8
 # This file is designed for expirenced user to edit
 
 
-def userfilter(handler, status_code, reason, headers):
-    # this function runs after response header is read
-    # if it is a bad response, raise an IOError or OSError like this:
-    #if status_code == 302 and headers.get('Location').startswith('http://some_evil_site_owned_by_isp/'):
-    #    return self.on_GET_Error(IOError(0, 'ISP MITM Attrack detected!'))
+def redirector(handler):
     pass
 ''')
 
 prestart()
 
-from userfilter import userfilter
+from redirector import redirector
 
 
 class stats(object):
@@ -389,7 +385,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             raise ClientError(e[0], e[1])
 
     def on_conn_log(self):
-        if self.conf.rproxy:
+        if self.ssclient:
             self.logger.info('{} {} via {} client: {} {}'.format(self.command, self.shortpath or self.path, self.ppname, self.ssclient, self.ssrealip))
         else:
             self.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
@@ -479,20 +475,21 @@ class ProxyHandler(HTTPRequestHandler):
 
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
-        if self.conf.rproxy:
-            if 'ss-realip' in self.headers:  # should exist in first request only
-                self.ssrealip = self.headers['ss-realip']
-            del self.headers['ss-realip']
+        # user defined redirector
+        noxff = False
+        new_url = redirector(self)
+        if new_url:
+            self.logger.debug('redirecting to %s' % new_url)
+            if new_url.isdigit() and 400 <= int(new_url) < 600:
+                return self.send_error(int(new_url))
+            elif new_url in self.conf.parentlist.dict.keys():
+                self._proxylist = [self.conf.parentlist.dict.get(new_url)]
+            elif new_url.lower() == 'noxff':
+                noxff = True
+            else:
+                return self.redirect(new_url)
 
-            if 'ss-client' in self.headers:  # should exist in first request only
-                self.ssclient = self.headers['ss-client']
-            del self.headers['ss-client']
-            if self.conf.xheaders and self.ssrealip:
-                ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
-                ipl.append(self.ssrealip)
-                self.headers['X-Forwarded-For'] = ', '.join(ipl)
-
-        elif self.conf.xheaders:
+        if self.conf.xheaders:
             ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
             ipl.append(self.client_address[0])
             self.headers['X-Forwarded-For'] = ', '.join(ipl)
@@ -657,14 +654,6 @@ class ProxyHandler(HTTPRequestHandler):
                 raise IOError(0, 'bad response status code from goagent: %d' % response_status)
             if response_status in (301, 302) and self.conf.PARENT_PROXY.bad302(response_header.get('Location')):
                 raise IOError(0, 'Bad 302!')
-            try:
-                userfilter(self, response_status, response_reason, response_header)
-            except NetWorkIOError as e:
-                raise e
-            except Exception as e:
-                self.logger.error('unknown userfilter Exception!')
-                os.rename('./fgfw-lite/userfilter.py', './fgfw-lite/userfilter.py.bak')
-                prestart()
             # read response body
             self.phase = 'reading response body'
             if self.command == 'HEAD' or 100 <= response_status < 200 or response_status in (204, 205, 304):
@@ -741,18 +730,14 @@ class ProxyHandler(HTTPRequestHandler):
             elif new_url in self.conf.parentlist.dict.keys():
                 self._proxylist = [self.conf.parentlist.dict.get(new_url)]
 
-        if self.conf.rproxy:
-            if 'ss-realip' in self.headers:  # should exist in first request only
-                self.ssrealip = self.headers['ss-realip']
-            del self.headers['ss-realip']
+        new_url = redirector(self)
+        if new_url:
+            self.logger.debug('redirecting to %s' % new_url)
+            if new_url.isdigit() and 400 <= int(new_url) < 600:
+                return self.send_error(int(new_url))
+            elif new_url in self.conf.parentlist.dict.keys():
+                self._proxylist = [self.conf.parentlist.dict.get(new_url)]
 
-            if 'ss-client' in self.headers:  # should exist in first request only
-                self.ssclient = self.headers['ss-client']
-            del self.headers['ss-client']
-            if self.conf.xheaders and self.ssrealip:
-                ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
-                ipl.append(self.ssrealip)
-                self.headers['X-Forwarded-For'] = ', '.join(ipl)
         self.wfile.write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
         self._do_CONNECT()
 
