@@ -25,6 +25,7 @@ import os
 import hashlib
 import string
 import struct
+import logging
 from repoze.lru import lru_cache
 from ctypes_libsodium import Salsa20Crypto
 try:
@@ -37,6 +38,7 @@ except ImportError:
         from streamcipher import StreamCipher as Cipher
     except ImportError:
         Cipher = None
+logger = logging.getLogger('FW_Lite')
 
 
 @lru_cache(128)
@@ -84,24 +86,8 @@ method_supported = {
     'aes-128-ofb': (16, 16),
     'aes-192-ofb': (24, 16),
     'aes-256-ofb': (32, 16),
-    'aes-128-ctr': (16, 16),
-    'aes-192-ctr': (24, 16),
-    'aes-256-ctr': (32, 16),
-    'camellia-128-cfb': (16, 16),
-    'camellia-192-cfb': (24, 16),
-    'camellia-256-cfb': (32, 16),
-    'camellia-128-ofb': (16, 16),
-    'camellia-192-ofb': (24, 16),
-    'camellia-256-ofb': (32, 16),
-    'camellia-128-ctr': (16, 16),
-    'camellia-192-ctr': (24, 16),
-    'camellia-256-ctr': (32, 16),
     'cast5-cfb': (16, 8),
     'cast5-ofb': (16, 8),
-    'cast5-ctr': (16, 8),
-    'seed-cfb': (16, 16),
-    'seed-ofb': (16, 16),
-    'seed-ctr': (16, 16),
     'rc4': (16, 0),
     'rc4-md5': (16, 16),
     'salsa20': (32, 8),
@@ -157,7 +143,7 @@ class Encryptor(object):
                 return Salsa20Crypto(method, key, iv, op)
             else:
                 return Cipher(method.replace('-', '_'), key, iv, op)
-        raise IOError(0, 'method %s not supported' % method)
+        logger.error('method %s not supported' % method)
 
     def encrypt(self, buf):
         if len(buf) == 0:
@@ -185,3 +171,22 @@ class Encryptor(object):
                 if len(buf) == 0:
                     return buf
             return self.decipher.update(buf)
+
+if __name__ == '__main__':
+    method = 'rc4-md5'
+    print('encrypt and decrypt 20MB data with %s' % method)
+    s = os.urandom(1000)
+    import time
+    lst = sorted(method_supported.keys())
+    for method in lst:
+        try:
+            cipher = Encryptor('123456', method)
+            t = time.time()
+            for _ in range(10490):
+                a = cipher.encrypt(s)
+                b = cipher.encrypt(s)
+                c = cipher.decrypt(a)
+                d = cipher.decrypt(b)
+            print('%s %ss' % (method, time.time() - t))
+        except Exception as e:
+            print(repr(e))
