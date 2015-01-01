@@ -1,66 +1,36 @@
 #!/usr/bin/env python
 # coding:utf-8
 import socket
-import base64
 import struct
 import encrypt
 import errno
-try:
-    import urllib.request as urllib2
-    import urllib.parse as urlparse
-    urlquote = urlparse.quote
-    urlquote = urlparse.unquote
-except ImportError:
-    import urllib2
-    import urlparse
-    urlquote = urllib2.quote
-    unquote = urllib2.unquote
-try:
-    from cStringIO import StringIO
-except ImportError:
-    try:
-        from StringIO import StringIO
-    except ImportError:
-        from io import BytesIO as StringIO
+import io
+from parent_proxy import ParentProxy
 
 
 class sssocket(object):
     bufsize = 8192
 
-    def __init__(self, ssServer=None, ctimeout=1, parentproxy='', iplist=None):
+    def __init__(self, ssServer=None, ctimeout=1, parentproxy=None, iplist=None):
+        if ssServer and not isinstance(ssServer, ParentProxy):
+            ssServer = ParentProxy(ssServer, ssServer)
         self.ssServer = ssServer
         self.timeout = ctimeout
+        if parentproxy and not isinstance(parentproxy, ParentProxy):
+            parentproxy = ParentProxy(parentproxy, parentproxy)
         self.parentproxy = parentproxy
-        self.pproxyparse = urlparse.urlparse(parentproxy)
         self._sock = None
         self.crypto = None
         self.connected = False
-        self._rbuffer = StringIO()
+        self._rbuffer = io.BytesIO()
 
     def connect(self, address):
         self.__address = address
-        p = urlparse.urlparse(self.ssServer)
+        p = self.ssServer.parse
         sshost, ssport, ssmethod, sspassword = (p.hostname, p.port, p.username, p.password)
+        from connection import create_connection
+        self._sock = create_connection((sshost, ssport), self.timeout, parentproxy=self.parentproxy, tunnel=True)
         self.crypto = encrypt.Encryptor(sspassword, ssmethod)
-        if not self.parentproxy:
-            self._sock = socket.create_connection((sshost, ssport), self.timeout)
-        elif self.parentproxy.startswith('http://'):
-            self._sock = socket.create_connection((self.pproxyparse.hostname, self.pproxyparse.port or 80), self.timeout)
-            s = 'CONNECT %s:%s HTTP/1.1\r\nHost: %s\r\n' % (sshost, ssport, sshost)
-            if self.pproxyparse.username:
-                a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
-                s += 'Proxy-Authorization: Basic %s\r\n' % base64.b64encode(a.encode())
-            s += '\r\n'
-            self._sock.sendall(s.encode())
-            remoterfile = self._sock.makefile('rb', 0)
-            data = remoterfile.readline()
-            if b'200' not in data:
-                raise IOError(0, 'bad response: %s' % data)
-            while not data in (b'\r\n', b'\n', b''):
-                data = remoterfile.readline()
-        else:
-            raise IOError(0, 'sssocket does not support parent proxy server: %s for now' % self.parentproxy)
-        self.settimeout(self.timeout)
         self.setsockopt = self._sock.setsockopt
         self.fileno = self._sock.fileno
 
@@ -70,7 +40,7 @@ class sssocket(object):
         buf = self._rbuffer
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
-        self._rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
+        self._rbuffer = io.BytesIO()  # reset _rbuf.  we consume it via buf.
         if buf_len < size:
             # Not enough data in buffer?  Try to read.
             data = self.crypto.decrypt(self._sock.recv(size - buf_len))
@@ -104,14 +74,14 @@ class sssocket(object):
             buf.seek(0)
             bline = buf.readline(size)
             if bline.endswith('\n') or len(bline) == size:
-                self._rbuffer = StringIO()
+                self._rbuffer = io.BytesIO()
                 self._rbuffer.write(buf.read())
                 return bline
             del bline
         if size < 0:
             # Read until \n or EOF, whichever comes first
             buf.seek(0, 2)  # seek end
-            self._rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
+            self._rbuffer = io.BytesIO()  # reset _rbuf.  we consume it via buf.
             while True:
                 try:
                     data = self.recv(self.bufsize)
@@ -137,10 +107,10 @@ class sssocket(object):
             if buf_len >= size:
                 buf.seek(0)
                 rv = buf.read(size)
-                self._rbuffer = StringIO()
+                self._rbuffer = io.BytesIO()
                 self._rbuffer.write(buf.read())
                 return rv
-            self._rbuffer = StringIO()  # reset _rbuf.  we consume it via buf.
+            self._rbuffer = io.BytesIO()  # reset _rbuf.  we consume it via buf.
             while True:
                 try:
                     data = self.recv(self.bufsize)
@@ -175,7 +145,7 @@ class sssocket(object):
                     break
                 buf.write(data)
                 buf_len += n
-                #assert buf_len == buf.tell()
+                # assert buf_len == buf.tell()
             return buf.getvalue()
 
     def close(self):
@@ -190,7 +160,6 @@ class sssocket(object):
         new.ssServer = self.ssServer
         new.timeout = self.timeout
         new.parentproxy = self.parentproxy
-        new.pproxyparse = self.pproxyparse
         new._sock = self._sock.dup()
         new.crypto = self.crypto
         new.connected = self.connected
