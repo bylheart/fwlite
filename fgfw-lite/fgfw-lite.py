@@ -573,8 +573,8 @@ class ProxyHandler(HTTPRequestHandler):
                         self._wfile_write(response_line + hdata)
                     else:
                         skip = True
+            # send request body
             if not skip:
-                # send request body
                 self.phase = 'sending request body'
                 content_length = int(self.headers.get('Content-Length', 0))
                 if self.headers.get("Transfer-Encoding") and self.headers.get("Transfer-Encoding") != "identity":
