@@ -353,7 +353,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
             self._wfile_write(msg)
 
-    def _request_is_localhost(self, req):
+    def _request_is_loopback(self, req):
         try:
             return get_ip_address(req[0]).is_loopback
         except Exception:
@@ -461,11 +461,12 @@ class ProxyHandler(HTTPRequestHandler):
 
         self.requesthost = parse_hostport(self.headers['Host'], 80)
 
-        if self._request_is_localhost(self.requesthost):
+        if self._request_is_loopback(self.requesthost):
             if ip_address(self.client_address[0]).is_loopback:
-                if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + len(self.conf.userconf.dget('fgfwproxy', 'profile', '134'))):
+                if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
                     return self.api(parse)
-            return self.send_error(403)
+            else:
+                return self.send_error(403, 'Go fuck yourself!')
 
         if str(get_ip_address(self.requesthost[0])) == self.connection.getsockname()[0]:
             if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + len(self.conf.userconf.dget('fgfwproxy', 'profile', '134'))):
@@ -716,10 +717,13 @@ class ProxyHandler(HTTPRequestHandler):
         self.requesthost = (host, int(port))
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
-        if self._request_is_localhost(self.requesthost):
-            if (ip_address(self.client_address[0]).is_loopback and self.requesthost[1] in (self.conf.listen[1], self.conf.listen[1] + 1)) or\
-                    not ip_address(self.client_address[0]).is_loopback:
-                return self.send_error(403)
+        if self._request_is_loopback(self.requesthost):
+            if ip_address(self.client_address[0]).is_loopback:
+                if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
+                    # prevent loop
+                    return self.send_error(403)
+            else:
+                return self.send_error(403, 'Go fuck yourself!')
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
         # redirector
@@ -1464,7 +1468,7 @@ class Config(object):
             self.listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
 
         self.region = set(x.upper() for x in self.userconf.dget('fgfwproxy', 'region', '').split('|') if x.strip())
-
+        self.profiles = len(self.userconf.dget('fgfwproxy', 'profile', '134'))
         self.xheaders = self.userconf.dgetbool('fgfwproxy', 'xheaders', False)
 
         if self.userconf.dget('fgfwproxy', 'parentproxy', ''):
