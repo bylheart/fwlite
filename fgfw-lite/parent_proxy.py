@@ -22,6 +22,8 @@ class ParentProxy(object):
 
         if proxy == 'direct':
             proxy = ''
+        elif proxy and '//' not in proxy:
+            proxy = 'http://' + proxy
         self.name = name
         self.proxy = proxy
         self.parse = urlparse.urlparse(self.proxy)

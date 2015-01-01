@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: UTF-8 -*-
+# coding: UTF-8
 #
 # FGFW_Lite.py A Proxy Server help go around the Great Firewall
 #
@@ -21,7 +21,6 @@
 import base64
 import re
 import errno
-import thread
 import socket
 import select
 import struct
@@ -29,7 +28,9 @@ import dnslib
 import logging
 try:
     import configparser
+    import _thread as thread
 except ImportError:
+    import thread
     import ConfigParser as configparser
 configparser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 
@@ -107,32 +108,18 @@ def forward_socket(local, remote, timeout, bufsize):
     __io_copy(local, remote, timeout)
 
 
-def dns_via_tcp(query, httpproxy=None, dnsserver='8.8.8.8:53', user=None, passwd=None):
+def dns_via_tcp(query, proxy=None, dnsserver='8.8.8.8:53', user=None, passwd=None):
+    # used by gui, a lot of problem, depreciated. check resolver.py
     from connection import create_connection
     server, port = parse_hostport(dnsserver, default_port=53)
     if ':' in server:
         server = '[%s]' % server
     dnsserver = '%s:%d' % (server, port)
-    if httpproxy:
-        sock = create_connection(parse_hostport(httpproxy), ctimeout=3, rtimeout=3)
-        s = [b'CONNECT %s HTTP/1.1\r\n' % dnsserver]
-        if user:
-            a = '%s:%s' % (user, passwd)
-            s.append(('Proxy-Authorization: Basic %s\r\n' % base64.b64encode(a.encode())).encode())
-        s.append(b'\r\n')
-        sock.sendall(''.join(s).encode())
-        remoterfile = sock.makefile('rb', 0)
-        data = remoterfile.readline()
-        while data not in (b'\r\n', b'\n', b'\r'):
-            data = remoterfile.readline()
-            if not data:
-                break
-    else:
-        sock = create_connection(parse_hostport(dnsserver), ctimeout=3, rtimeout=3)
+    sock = create_connection(parse_hostport(dnsserver), ctimeout=3, rtimeout=3, parentproxy=proxy, tunnel=True)
     query = dnslib.DNSRecord.question(query, qtype='ANY')
     query_data = query.pack()
     sock.send(struct.pack('>h', len(query_data)) + query_data)
-    rfile = sock.makefile('r', 1024)
+    rfile = sock.makefile('rb')
     reply_data_length = rfile.read(2)
     reply_data = rfile.read(struct.unpack('>h', reply_data_length)[0])
     record = dnslib.DNSRecord.parse(reply_data)
