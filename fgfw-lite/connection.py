@@ -4,7 +4,7 @@ import base64
 import struct
 import logging
 from shadowsocks import sssocket
-from hxssocket import hxssocket
+from hxsocks import hxssocket
 from parent_proxy import ParentProxy
 from httputil import read_reaponse_line, read_header_data
 logger = logging.getLogger('FW_Lite')
