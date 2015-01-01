@@ -887,7 +887,8 @@ class ProxyHandler(HTTPRequestHandler):
                 line_split = line.split(None, 8)
                 if line.startswith('d'):
                     line_split[8] += '/'
-                table += '<tr><td align="left"><a href="%s%s">%s</a></td><td align="right">%s</td><td align="right">%s %s %s</td></tr>\r\n' % (self.path, urlquote(line_split[8]), line_split[8], line_split[4] if line.startswith('d') else sizeof_fmt(int(line_split[4])), line_split[5], line_split[6], line_split[7])
+                table += '<tr><td align="left"><a href="%s%s">%s</a></td><td align="right">%s</td><td align="right">%s %s %s</td></tr>\r\n' % (
+                    self.path, urlquote(line_split[8]), line_split[8], line_split[4] if line.startswith('d') else sizeof_fmt(int(line_split[4])), line_split[5], line_split[6], line_split[7])
             table += '<tr><td align="left">================</td><td align="right">==========</td><td align="right">=============</td></tr></tbody></table>\r\n'
             table += '<p>%s</p>' % response
         except Exception as e:
