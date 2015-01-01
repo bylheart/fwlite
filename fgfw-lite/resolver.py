@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: UTF-8
 import socket
 import logging
 import dnslib
@@ -9,7 +11,6 @@ try:
     from ipaddress import ip_address as _ip_address
 except ImportError:
     from ipaddr import IPAddress as _ip_address
-
 
 badip = set()
 
@@ -45,11 +46,11 @@ def resolver(host):
     except Exception as e:
         logger.debug('resolving %s: %r' % (host, e))
         fake_iplist = iplist
-        print(fake_iplist)
-        record = get_dns_record(host)
+        logger.debug('fake ip list: %s' % (fake_iplist))
+        record = tcp_dns_record(host)
         while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
             logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
-            record = get_dns_record(str(record.rr[0].rdata))
+            record = tcp_dns_record(str(record.rr[0].rdata))
         iplist = [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
         return iplist
 
@@ -68,8 +69,31 @@ def report_bad_host(host):
     pass
 
 
+def udp_dns_records(host, dnsserver='8.8.8.8'):
+    query = dnslib.DNSRecord(q=dnslib.DNSQuestion(host))
+    query_data = query.pack()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(0.5)
+    sock.sendto(query_data, (dnsserver, 53))
+    tcp = 0
+    record_list = []
+    while 1:
+        try:
+            reply_data, reply_address = sock.recvfrom(8192)
+            record = dnslib.DNSRecord.parse(reply_data)
+            record_list.append(record)
+            if record.header.tc == 1:
+                tcp = 1
+                break
+        except:
+            break
+    if tcp:
+        return []
+    return record_list
+
+
 @lru_cache(4096, timeout=90)
-def get_dns_record(host):
+def tcp_dns_record(host):
     for _ in range(2):
         try:
             sock = create_connection(('8.8.8.8', 53), ctimeout=1, rtimeout=5, parentproxy='127.0.0.1:8118', tunnel=True)
@@ -99,4 +123,9 @@ def get_ip_address(host):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    print(resolver('twitter.com'))
+    host = 'twitter.com'
+    print(resolver(host))
+    record_list = udp_dns_records(host)
+    for line in record_list:
+        print(line)
+        print()
