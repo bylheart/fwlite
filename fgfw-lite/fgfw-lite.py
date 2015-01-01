@@ -490,7 +490,7 @@ class ProxyHandler(HTTPRequestHandler):
             else:
                 return self.redirect(new_url)
 
-        if self.conf.xheaders:
+        if not self.ssclient and self.conf.xheaders:
             ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
             ipl.append(self.client_address[0])
             self.headers['X-Forwarded-For'] = ', '.join(ipl)

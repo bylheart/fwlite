@@ -48,7 +48,6 @@ def resolver(host):
         print(fake_iplist)
         record = get_dns_record(host)
         while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
-            # CNAME
             logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
             record = get_dns_record(str(record.rr[0].rdata))
         iplist = [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
@@ -84,7 +83,7 @@ def get_dns_record(host):
             sock.close()
             return record
         except Exception as e:
-            logger.warning('resolve %s failed. %r' % (host, e))
+            logger.warning('get_dns_record %s failed. %r' % (host, e))
 
 
 @lru_cache(1024, timeout=90)
