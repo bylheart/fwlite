@@ -72,6 +72,8 @@ def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None,
         via = ParentProxy(via, via)
     ctimeout = ctimeout or 1
     rtimeout = rtimeout or parentproxy.timeout
+    if parentproxy.timeout > rtimeout:
+        rtimeout = parentproxy.timeout
     s = None
     if not parentproxy or not parentproxy.proxy:
         s = _create_connection(netloc, ctimeout, iplist=iplist)

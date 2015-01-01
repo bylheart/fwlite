@@ -835,8 +835,8 @@ class ProxyHandler(HTTPRequestHandler):
                 rtimeout = 5
                 ctimeout = 5
             else:
-                rtimeout = min(2 ** len(self.failed_parents) + 2, 20)
-                ctimeout = len(self.failed_parents) + 2
+                rtimeout = min(2 ** len(self.failed_parents) + 3, 20)
+                ctimeout = len(self.failed_parents) + 3
         else:
             ctimeout = rtimeout = 10
         self.on_conn_log()
