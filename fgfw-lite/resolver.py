@@ -6,18 +6,17 @@ from repoze.lru import lru_cache
 from connection import create_connection
 logger = logging.getLogger('FW_Lite')
 try:
-    from ipaddress import ip_address
+    from ipaddress import ip_address as _ip_address
 except ImportError:
-    from ipaddr import IPAddress as ip_address
+    from ipaddr import IPAddress as _ip_address
 
 
-badip_list = [
-    '59.24.3.173',
-    '213.207.85.148',
-    '118.219.253.245',
-    '37.61.54.158',
-    ]
-badip = set(badip_list)
+badip = set()
+
+
+@lru_cache(4096, timeout=3600)
+def ip_address(q):
+    return _ip_address(q)
 
 
 @lru_cache(4096, timeout=90)
@@ -34,6 +33,11 @@ def resolver(host):
        >>>
        [(2, '82.94.164.162'),
         (10, '2001:888:2000:d::a2')]"""
+    try:
+        ip = ip_address(host)
+        return [(2 if ip._version == 4 else 10, host), ]
+    except:
+        pass
     try:
         iplist = _resolver(host)
         verify_iplist(iplist)
@@ -57,6 +61,12 @@ def verify_iplist(iplist):
     if len(iplist) == 1:
         if iplist[0][1] in badip:
             raise ValueError('Bad ip')
+        # raise ValueError('only 1 answer, could be bad ip')
+
+
+def report_bad_host(host):
+    '''this host could be dns poisoned, please check.'''
+    pass
 
 
 @lru_cache(4096, timeout=90)
@@ -81,8 +91,11 @@ def get_dns_record(host):
 def get_ip_address(host):
     try:
         return ip_address(host)
-    except Exception:
-        return ip_address(resolver(host)[0][1])
+    except:
+        try:
+            return ip_address(resolver(host)[0][1])
+        except:
+            return None
 
 
 if __name__ == '__main__':
