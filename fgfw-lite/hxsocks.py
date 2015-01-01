@@ -90,6 +90,7 @@ class hxssocket(object):
                 fp.read(ord(self.cipher.decrypt(fp.read(1))))
                 del keys[self.hxsServer.proxy]
                 logger.error('connect to hxsocket server failed! invalid shared key.')
+                # TODO: it is possible to reconnect here.
                 return b''
             self.connected = 2
         buf = self._rbuffer
