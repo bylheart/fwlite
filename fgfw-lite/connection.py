@@ -66,15 +66,14 @@ def do_tunnel(soc, netloc, pp, timeout):
 
 def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None, iplist=None, parentproxy=None, via=None, tunnel=False):
     logger.debug('connection.create_connection: %r %r %r %r' % (netloc, parentproxy, via, tunnel))
-    if not isinstance(parentproxy, ParentProxy):
-        parentproxy = parentproxy or ''
+    if parentproxy and not isinstance(parentproxy, ParentProxy):
         parentproxy = ParentProxy(parentproxy, parentproxy)
     if via and not isinstance(via, ParentProxy):
         via = ParentProxy(via, via)
     ctimeout = ctimeout or 1
     rtimeout = rtimeout or parentproxy.timeout
     s = None
-    if not parentproxy.proxy:
+    if not parentproxy or not parentproxy.proxy:
         s = _create_connection(netloc, ctimeout, iplist=iplist)
     elif parentproxy.parse.scheme == 'http':
         s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 80), ctimeout)
