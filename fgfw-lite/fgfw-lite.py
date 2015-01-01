@@ -765,24 +765,24 @@ class ProxyHandler(HTTPRequestHandler):
             self.remotesoc.sendall(b''.join(self.rbuffer))
         while 1:
             try:
+                reason = ''
                 (ins, _, _) = select.select([self.connection, self.remotesoc], [], [], 5)
                 if not ins:
+                    reason = 'read timed out'
                     break
                 if self.connection in ins:
                     self.logger.debug('read from client')
-                    try:
-                        data = self.connection_recv(self.bufsize)
-                    except:
-                        return
+                    data = self.connection_recv(self.bufsize)
                     if not data:
-                        return
+                        reason = 'client closed'
+                        break
                     self.rbuffer.append(data)
                     self.remotesoc.sendall(data)
                 if self.remotesoc in ins:
                     self.logger.debug('read from remote')
                     data = self.remotesoc.recv(self.bufsize)
                     if not data:  # remote connection closed
-                        self.logger.debug('not data')
+                        reason = 'remote closed'
                         break
                     self._wfile_write(data)
                     break
@@ -790,8 +790,12 @@ class ProxyHandler(HTTPRequestHandler):
                 self.logger.warning('socket error: %r' % e)
                 break
         if self.retryable:
-            self.logger.warning('{} {} via {} failed! read timed out'.format(self.command, self.path, self.ppname))
+            reason = reason or "don't know why"
+            self.logger.warning('{} {} via {} failed! %s'.format(self.command, self.path, self.ppname, reason))
+            if reason == 'client closed':
+                return
             return self._do_CONNECT(True)
+        self.rbuffer = deque()
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
         forward_socket(self.connection, self.remotesoc, 30, self.bufsize)
 
