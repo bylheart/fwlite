@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: UTF-8
 import socket
 import ssl
 import base64
@@ -50,18 +52,18 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
 
 
 def do_tunnel(soc, netloc, pp, timeout):
-        s = ['CONNECT %s:%s HTTP/1.1\r\n' % (netloc[0], netloc[1]), ]
-        if pp.parse.username:
-            a = '%s:%s' % (pp.parse.username, pp.parse.password)
-            s.append('Proxy-Authorization: Basic %s' % base64.b64encode(a.encode()))
-        s.append('\r\n\r\n')
-        soc.settimeout(timeout)
-        soc.sendall(''.join(s).encode())
-        remoterfile = soc.makefile('rb', 0)
-        line, version, status, reason = read_reaponse_line(remoterfile)
-        if status != 200:
-            raise IOError(0, 'remote closed')
-        read_header_data(remoterfile)
+    s = ['CONNECT %s:%s HTTP/1.1\r\n' % (netloc[0], netloc[1]), ]
+    if pp.parse.username:
+        a = '%s:%s' % (pp.parse.username, pp.parse.password)
+        s.append('Proxy-Authorization: Basic %s' % base64.b64encode(a.encode()))
+    s.append('\r\n\r\n')
+    soc.settimeout(timeout)
+    soc.sendall(''.join(s).encode())
+    remoterfile = soc.makefile('rb', 0)
+    line, version, status, reason = read_reaponse_line(remoterfile)
+    if status != 200:
+        raise IOError(0, 'remote closed')
+    read_header_data(remoterfile)
 
 
 def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None, iplist=None, parentproxy=None, via=None, tunnel=False):
