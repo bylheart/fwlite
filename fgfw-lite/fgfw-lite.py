@@ -758,11 +758,12 @@ class ProxyHandler(HTTPRequestHandler):
         if self.pproxy.name == 'direct' and self.requesthost[0] in self.conf.HOSTS and not self.failed_parents:
             iplist = self.conf.HOSTS.get(self.requesthost[0])
             self._proxylist.insert(0, self.pproxy)
+        self.phase = 'connect'
         try:
             self.remotesoc = self._connect_via_proxy(self.requesthost, iplist, tunnel=True)
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
-            self.logger.warning('%s %s via %s failed on connection! %r' % (self.command, self.path, self.ppname, e))
+            self.logger.warning('%s %s via %s failed on connect! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT(True)
         if self.rbuffer:
             self.logger.debug('remote write rbuffer')
@@ -772,10 +773,10 @@ class ProxyHandler(HTTPRequestHandler):
                 reason = ''
                 (ins, _, _) = select.select([self.connection, self.remotesoc], [], [], 5)
                 if not ins:
-                    reason = 'read timed out'
+                    reason = 'timeout'
                     break
                 if self.connection in ins:
-                    self.logger.debug('read from client')
+                    self.phase = 'read from client'
                     data = self.connection_recv(self.bufsize)
                     if not data:
                         reason = 'client closed'
@@ -783,7 +784,7 @@ class ProxyHandler(HTTPRequestHandler):
                     self.rbuffer.append(data)
                     self.remotesoc.sendall(data)
                 if self.remotesoc in ins:
-                    self.logger.debug('read from remote')
+                    self.phase = 'read from remote'
                     data = self.remotesoc.recv(self.bufsize)
                     if not data:  # remote connection closed
                         reason = 'remote closed'
@@ -795,7 +796,7 @@ class ProxyHandler(HTTPRequestHandler):
                 break
         if self.retryable:
             reason = reason or "don't know why"
-            self.logger.warning('{} {} via {} failed! %s'.format(self.command, self.path, self.ppname, reason))
+            self.logger.warning('%s %s via %s failed on %s! %s' % (self.command, self.path, self.ppname, self.phase, reason))
             if reason == 'client closed':
                 return
             return self._do_CONNECT(True)
