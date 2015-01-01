@@ -16,7 +16,8 @@ except ImportError:
     import urlparse
 from parent_proxy import ParentProxy
 from dh import DH
-method = 'rc4-md5'
+
+method = 'chacha20'
 keys = {}
 
 
