@@ -17,7 +17,7 @@ except ImportError:
 from parent_proxy import ParentProxy
 from dh import DH
 
-method = 'chacha20'
+method = 'rc4-md5'
 keys = {}
 
 
