@@ -174,7 +174,7 @@ class Encryptor(object):
 
 if __name__ == '__main__':
     method = 'rc4-md5'
-    print('encrypt and decrypt 20MB data with %s' % method)
+    print('encrypt and decrypt 20MB data.')
     s = os.urandom(1000)
     import time
     lst = sorted(method_supported.keys())
