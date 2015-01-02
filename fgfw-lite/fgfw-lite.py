@@ -1470,7 +1470,7 @@ class Config(object):
             self.listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
 
         self.region = set(x.upper() for x in self.userconf.dget('fgfwproxy', 'region', '').split('|') if x.strip())
-        self.profiles = len(self.userconf.dget('fgfwproxy', 'profile', '134'))
+        self.profiles = len(self.userconf.dget('fgfwproxy', 'profile', '13'))
         self.xheaders = self.userconf.dgetbool('fgfwproxy', 'xheaders', False)
 
         if self.userconf.dget('fgfwproxy', 'parentproxy', ''):
