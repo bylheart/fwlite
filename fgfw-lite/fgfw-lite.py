@@ -1077,8 +1077,8 @@ class parent_proxy(object):
 
     def add_rule(self, line, force=False):
         try:
-            if line.startswith('@@'):
-                self.gfwlist.add(line)
+            if '||' in line:
+                self.force.add(line)
             elif force:
                 self.force.add(line)
             else:
@@ -1119,7 +1119,7 @@ class parent_proxy(object):
         except:
             pass
 
-    def if_temp(self, uri, level):
+    def if_temp(self, uri):
         for rule in self.temp:
             try:
                 if rule.match(uri):
@@ -1137,19 +1137,19 @@ class parent_proxy(object):
         if ip is None:
             return True
 
-        if any((ip.is_loopback, ip.is_private)):
-            return False
-
-        if level == 4:
-            return True
+        a = self.if_temp(uri)
+        if a is not None:
+            return a
 
         a = self.force.match(uri, host)
         if a is not None:
             return a
 
-        a = self.if_temp(uri, level)
-        if a is not None:
-            return a
+        if any((ip.is_loopback, ip.is_private)):
+            return False
+
+        if level == 4:
+            return True
 
         if any(rule.match(uri) for rule in self.ignore):
             return None
