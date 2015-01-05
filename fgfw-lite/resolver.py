@@ -20,7 +20,7 @@ def ip_address(q):
     return _ip_address(q)
 
 
-@lru_cache(4096, timeout=90)
+@lru_cache(4096, timeout=900)
 def _resolver(host):
     try:
         return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
@@ -90,28 +90,24 @@ def _udp_dns_records(host, qtype='A', dnsserver='8.8.8.8'):
     query = dnslib.DNSRecord.question(host, qtype=qtype)
     query_data = query.pack()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(0.3)
+    sock.settimeout(0.2)
     sock.sendto(query_data, (dnsserver, 53))
     reply_data, reply_address = sock.recvfrom(8192)
     record = dnslib.DNSRecord.parse(reply_data)
     return record
 
-poisoned_cache = {}
 
-
+@lru_cache(4096, timeout=900)
 def is_poisoned(host):
-    if host in poisoned_cache:
-        return poisoned_cache[host]
     try:
         record = _udp_dns_records(host, 'AAAA')
         result = bool([r for r in record.rr if r.rtype is dnslib.QTYPE.A])
-        poisoned_cache[host] = result
         return result
     except:
         return False
 
 
-@lru_cache(4096, timeout=90)
+@lru_cache(4096, timeout=900)
 def tcp_dns_record(host):
     for _ in range(2):
         try:
@@ -129,7 +125,7 @@ def tcp_dns_record(host):
             logger.warning('get_dns_record %s failed. %r' % (host, e))
 
 
-@lru_cache(1024, timeout=90)
+@lru_cache(1024, timeout=900)
 def get_ip_address(host):
     try:
         return ip_address(host)
