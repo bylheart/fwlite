@@ -41,7 +41,10 @@ def resolver(host):
         pass
     try:
         iplist = _resolver(host)
-        verify_iplist(iplist)
+        if not iplist:
+            raise ValueError('%s empty iplist' % host)
+        if is_poisoned(host):
+            raise ValueError('%s is poisoned')
         return iplist
     except Exception as e:
         logger.debug('resolving %s: %r' % (host, e))
@@ -55,22 +58,13 @@ def resolver(host):
         return iplist
 
 
-def verify_iplist(iplist):
-    if not iplist:
-        raise ValueError('Empty iplist')
-    if len(iplist) == 1:
-        if iplist[0][1] in badip:
-            raise ValueError('Bad ip')
-        # raise ValueError('only 1 answer, could be bad ip')
-
-
 def report_bad_host(host):
     '''this host could be dns poisoned, please check.'''
     pass
 
 
-def udp_dns_records(host, dnsserver='8.8.8.8'):
-    query = dnslib.DNSRecord(q=dnslib.DNSQuestion(host))
+def udp_dns_records(host, qtype='A', dnsserver='8.8.8.8'):
+    query = dnslib.DNSRecord.question(host, qtype=qtype)
     query_data = query.pack()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(0.5)
@@ -90,6 +84,31 @@ def udp_dns_records(host, dnsserver='8.8.8.8'):
     if tcp:
         return []
     return record_list
+
+
+def _udp_dns_records(host, qtype='A', dnsserver='8.8.8.8'):
+    query = dnslib.DNSRecord.question(host, qtype=qtype)
+    query_data = query.pack()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(0.3)
+    sock.sendto(query_data, (dnsserver, 53))
+    reply_data, reply_address = sock.recvfrom(8192)
+    record = dnslib.DNSRecord.parse(reply_data)
+    return record
+
+poisoned_cache = {}
+
+
+def is_poisoned(host):
+    if host in poisoned_cache:
+        return poisoned_cache[host]
+    try:
+        record = _udp_dns_records(host, 'AAAA')
+        result = bool([r for r in record.rr if r.rtype is dnslib.QTYPE.A])
+        poisoned_cache[host] = result
+        return result
+    except:
+        return False
 
 
 @lru_cache(4096, timeout=90)
@@ -125,7 +144,8 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     host = 'twitter.com'
     print(resolver(host))
-    record_list = udp_dns_records(host)
+    record_list = udp_dns_records(host, 'AAAA')
     for line in record_list:
         print(line)
         print()
+    print(is_poisoned('twitter.com'))
