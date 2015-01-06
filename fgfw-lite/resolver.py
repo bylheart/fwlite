@@ -12,8 +12,6 @@ try:
 except ImportError:
     from ipaddr import IPAddress as _ip_address
 
-badip = set()
-
 
 @lru_cache(4096, timeout=3600)
 def ip_address(q):
@@ -34,6 +32,7 @@ def resolver(host):
        >>>
        [(2, '82.94.164.162'),
         (10, '2001:888:2000:d::a2')]"""
+    return _resolver(host)
     try:
         ip = ip_address(host)
         return [(2 if ip._version == 4 else 10, host), ]
