@@ -103,7 +103,7 @@ class Salsa20Crypto(object):
         if padding:
             data = (b'\0' * padding) + data
         self.cipher(byref(buf), c_char_p(data), padding + l,
-                    self.iv_ptr, int(self.counter / BLOCK_SIZE), self.key_ptr)
+                    self.iv_ptr, self.counter // BLOCK_SIZE, self.key_ptr)
         self.counter += l
         # buf is copied to a str object when we access buf.raw
         # strip off the padding
