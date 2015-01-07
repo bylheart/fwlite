@@ -80,9 +80,9 @@ class Salsa20Crypto(object):
         self.iv = iv
         self.key_ptr = c_char_p(key)
         self.iv_ptr = c_char_p(iv)
-        if cipher_name == b'salsa20':
+        if cipher_name == 'salsa20':
             self.cipher = libsodium.crypto_stream_salsa20_xor_ic
-        elif cipher_name == b'chacha20':
+        elif cipher_name == 'chacha20':
             self.cipher = libsodium.crypto_stream_chacha20_xor_ic
         else:
             raise Exception('Unknown cipher')
@@ -111,6 +111,6 @@ class Salsa20Crypto(object):
 
 
 ciphers = {
-    b'salsa20': (32, 8, Salsa20Crypto),
-    b'chacha20': (32, 8, Salsa20Crypto),
+    'salsa20': (32, 8, Salsa20Crypto),
+    'chacha20': (32, 8, Salsa20Crypto),
 }
