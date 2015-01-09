@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: UTF-8 -*-
+# -*- coding: UTF-8 -*-
 #
 # FGFW_Lite.py A Proxy Server help go around the Great Firewall
 #
@@ -126,12 +126,9 @@ class ap_filter(object):
         self.fast[key].append(o)
 
     def _add_slow(self, rule):
-        try:
-            o = ap_rule(rule)
-            lst = self.excludes if o.override else self.matches
-            lst.append(o)
-        except TypeError:
-            logging.warning(rule)
+        o = ap_rule(rule)
+        lst = self.excludes if o.override else self.matches
+        lst.append(o)
 
     def _add_exclude_domain(self, rule):
         rule = rule.rstrip('/')
