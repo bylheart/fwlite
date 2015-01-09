@@ -83,6 +83,7 @@ from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fm
 from apfilter import ap_rule, ap_filter, ExpiredError
 from parent_proxy import ParentProxyList
 from connection import create_connection
+import resolver
 from resolver import get_ip_address
 from httputil import read_reaponse_line, read_headers, read_header_data
 try:
@@ -1028,6 +1029,7 @@ class parent_proxy(object):
         self.temp_rules = set()
         self.redirlst = []
         self.ignore = []
+        resolver.apfilter = self.force
 
         for line in open('./fgfw-lite/local.txt'):
             rule = line.strip().split()
@@ -1173,10 +1175,10 @@ class parent_proxy(object):
                   'http://www.inxian.com'
             host: ('www.google.com', 443) (no port number is allowed)
             level: 0 -- direct
-                   1 -- proxy if force, direct if ip in region or override, proxy if gfwlist
-                   2 -- proxy if force or not https, direct if ip in region or override, proxy if gfwlist
-                   3 -- proxy if force, direct if ip in region or override, proxy if all
-                   4 -- proxy if not local
+                   1 -- auto:        proxy if force, direct if ip in region or override, proxy if gfwlist
+                   2 -- encrypt all: proxy if force or not https, direct if ip in region or override, proxy if gfwlist
+                   3 -- chnroute:    proxy if force, direct if ip in region or override, proxy if all
+                   4 -- global:      proxy if not local
         '''
         host, port = host
 
@@ -1543,10 +1545,14 @@ def main():
     Timer(10, updater, (conf, )).start()
     d = {'http': '127.0.0.1:%d' % conf.listen[1], 'https': '127.0.0.1:%d' % conf.listen[1]}
     urllib2.install_opener(urllib2.build_opener(urllib2.ProxyHandler(d)))
-    for i, level in enumerate(list(conf.userconf.dget('fgfwproxy', 'profile', '134'))):
+    for i, level in enumerate(list(conf.userconf.dget('fgfwproxy', 'profile', '13'))):
         server = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + i), ProxyHandler, conf=conf, level=int(level))
         t = Thread(target=server.serve_forever)
         t.start()
+        # if not resolver.proxy and level >= 3:
+        #     resolver.proxy = '127.0.0.1:%d' % (conf.listen[1] + i)
+    if not resolver.proxy:
+        resolver.proxy = '127.0.0.1:%d' % conf.listen[1]
     conf.stdout()
     t.join()
 

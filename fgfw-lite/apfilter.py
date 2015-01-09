@@ -144,7 +144,7 @@ class ap_filter(object):
         temp.add('.' + rule[2:])
         self.domain_endswith = tuple(temp)
 
-    def match(self, url, host=None):
+    def match(self, url, host=None, domain_only=False):
         if host is None:
             if '://' in url:
                 host = urlparse.urlparse(url).hostname
@@ -154,6 +154,8 @@ class ap_filter(object):
             return False
         if self._domainmatch(host) is not None:
             return self._domainmatch(host)
+        if domain_only:
+            return None
         if url.startswith(self.url_startswith):
             return True
         if self._fastmatch(url):

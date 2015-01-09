@@ -11,6 +11,8 @@ try:
     from ipaddress import ip_address as _ip_address
 except ImportError:
     from ipaddr import IPAddress as _ip_address
+apfilter = None
+proxy = ''
 
 
 @lru_cache(4096, timeout=3600)
@@ -32,23 +34,20 @@ def resolver(host):
        >>>
        [(2, '82.94.164.162'),
         (10, '2001:888:2000:d::a2')]"""
-    return _resolver(host)
     try:
         ip = ip_address(host)
         return [(2 if ip._version == 4 else 10, host), ]
     except:
         pass
     try:
+        if apfilter and apfilter.match(host, host, domain_only=True):
+            raise ValueError('in domain rules')
         iplist = _resolver(host)
         if not iplist:
-            raise ValueError('%s empty iplist' % host)
-        if is_poisoned(host):
-            raise ValueError('%s is poisoned')
+            raise ValueError('empty iplist')
         return iplist
     except Exception as e:
         logger.debug('resolving %s: %r' % (host, e))
-        fake_iplist = iplist
-        logger.debug('fake ip list: %s' % (fake_iplist))
         record = tcp_dns_record(host)
         while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
             logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
@@ -89,7 +88,7 @@ def _udp_dns_records(host, qtype='A', dnsserver='8.8.8.8'):
     query = dnslib.DNSRecord.question(host, qtype=qtype)
     query_data = query.pack()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(0.2)
+    sock.settimeout(0.5)
     sock.sendto(query_data, (dnsserver, 53))
     reply_data, reply_address = sock.recvfrom(8192)
     record = dnslib.DNSRecord.parse(reply_data)
@@ -110,7 +109,7 @@ def is_poisoned(host):
 def tcp_dns_record(host):
     for _ in range(2):
         try:
-            sock = create_connection(('8.8.8.8', 53), ctimeout=1, rtimeout=5, parentproxy='127.0.0.1:8118', tunnel=True)
+            sock = create_connection(('8.8.8.8', 53), ctimeout=1, rtimeout=5, parentproxy=proxy, tunnel=True)
             query = dnslib.DNSRecord.question(host, qtype='ANY')
             query_data = query.pack()
             sock.send(struct.pack('>h', len(query_data)) + query_data)
