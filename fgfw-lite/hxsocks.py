@@ -17,7 +17,7 @@ except ImportError:
 from parent_proxy import ParentProxy
 from dh import DH
 
-method = 'rc4-md5'
+default_method = 'rc4-md5'
 keys = {}
 
 
@@ -43,6 +43,7 @@ class hxssocket(object):
         self.parentproxy = parentproxy
         if self.hxsServer:
             self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
+            self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [''])[0] or default_method
         self._sock = None
         self.cipher = None
         self.connected = 0
@@ -63,7 +64,7 @@ class hxssocket(object):
         host, port, usn, psw = (p.hostname, p.port, p.username, p.password)
         if self.hxsServer.proxy not in keys:
             self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
-            cipher = encrypt.Encryptor(self.PSK, method)
+            cipher = encrypt.Encryptor(self.PSK, self.method)
             dh = DH()
             data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(hex2bytes(dh.hexPub))) + hex2bytes(dh.hexPub) + hashlib.sha256(hex2bytes(dh.hexPub) + usn.encode() + psw.encode()).digest()
             self._sock.sendall(cipher.encrypt(data))
@@ -113,8 +114,8 @@ class hxssocket(object):
 
     def sendall(self, data):
         if self.connected == 0:
-            cipher = encrypt.Encryptor(self.PSK, method)
-            self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], method)
+            cipher = encrypt.Encryptor(self.PSK, self.method)
+            self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], self.method)
             self._sock.sendall(cipher.encrypt(chr(1) + keys[self.hxsServer.proxy][0]) + self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data))
             self.connected = 1
         else:
@@ -219,6 +220,7 @@ class hxssocket(object):
         new.PSK = self.PSK
         new.connected = self.connected
         new._rbuffer = self._rbuffer
+        new.method = self.method
         return new
 
     def settimeout(self, timeout):
