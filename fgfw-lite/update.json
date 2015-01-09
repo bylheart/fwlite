@@ -6,12 +6,12 @@
     "./fgfw-lite/apfilter.py": "c3598fe3123e64cd7a180f709a939fc75a20f1a7011a5bd4fd00bacc3b89857f",
     "./fgfw-lite/cloud.txt": "a7e695ba483793bd616fb5fbc12feacf3fa39e514721524a64306cc0f07213ba",
     "./fgfw-lite/connection.py": "1d1531595fc4bf2907c79db49d651449742c37767b8be88f473e810f27ac8b61",
-    "./fgfw-lite/ctypes_libsodium.py": "f48f7bb6a8e4d2080da473f3cd4f11b1e633c5a36b19627a63d63f3425f0e514",
-    "./fgfw-lite/encrypt.py": "c7854b4529b1949a0d8221026f49989eae383b1f1716a3189ee8e1a03ccf7c49",
-    "./fgfw-lite/fgfw-lite.py": "36fe9d5c3e5e0dbdce2edead88bcb6b50ba1f2edfd4b1fe5446366f8b36b2bdf",
+    "./fgfw-lite/ctypes_libsodium.py": "b0247da98cbfe91e72e2ecac7bf271e524301912e0a5d37e4e5d5b7cd4308286",
+    "./fgfw-lite/encrypt.py": "69ca5edc88f85cb58489b8eb2a9e128de34635340a73cd81404ef935bbcde8b1",
+    "./fgfw-lite/fgfw-lite.py": "986da09315bf58d6c44e1750a7bff3a3eb8a7fcbe9515fdaf58248d685e6f75b",
     "./fgfw-lite/httputil.py": "b7916d4f5cff65d0f2fc2995e54550b8e71a7c3c27ab4ac3148747b88881ebf0",
     "./fgfw-lite/parent_proxy.py": "33618b1da287028dec120a25bc2148138fba775bc723cd0ba02c60242072a982",
-    "./fgfw-lite/resolver.py": "270482fca182c72223b147bc54100c1d974a1bd6fe48e6b482291323c91bed55",
+    "./fgfw-lite/resolver.py": "4f58d630ad53d39a5a9331d113de5a105ba860d503b53fd4ebb9d15492bd8566",
     "./fgfw-lite/shadowsocks.py": "47011745ad2227ed4a7355bf737e5ea1f8b0e7964fd193b99c8fa5e0821503b9",
     "./fgfw-lite/singleton.py": "2fc7ed8cfc47b001053a257f9e8ad521edcef446776adaee022122eb6dbda152",
     "./fgfw-lite/streamcipher.py": "3be7f63c6e2f788f116bcdcb0e7f891a45c7e109af4c2ce19e6677af989c456f",
@@ -28,5 +28,5 @@
     "./goagent/proxy.sample.ini": "9badde4fb3723074819a968ed4d05ca2475b00938196b1ea212db82b73a811b3",
     "./goagent/proxylib.py": "41912ec0ab4291fc7706bcb617b386f8c0dbe04ad7ee36ea6e49f7a29ce8d862",
     "./release_note.txt": "1ab815f89a3e6f2f6306a39800a74aaca91a4ec55ab2da1b9b3648cb24d8193c",
-    "./userconf.sample.ini": "ab10c1542ff32aa6dc567bacd866dad55d81c7527517e217f60d8bd6fdef6608"
+    "./userconf.sample.ini": "d1f0f1d65ffd7aa6573d1c54a491b3cd97489c19448d6a64fb1ed16134674e40"
 }
