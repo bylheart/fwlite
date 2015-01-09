@@ -832,11 +832,11 @@ class ProxyHandler(HTTPRequestHandler):
     def _connect_via_proxy(self, netloc, iplist=None, tunnel=False):
         if self._proxylist:
             if self.ppname == 'direct':
-                rtimeout = 5
-                ctimeout = 5
+                rtimeout = self.conf.timeout
+                ctimeout = self.conf.timeout
             else:
-                rtimeout = min(2 ** len(self.failed_parents) + 3, 20)
-                ctimeout = len(self.failed_parents) + 3
+                rtimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 10)
+                ctimeout = len(self.failed_parents) + self.conf.timeout
         else:
             ctimeout = rtimeout = 10
         self.on_conn_log()
@@ -1449,7 +1449,8 @@ class Config(object):
         self.userconf = SConfigParser()
         self.reload()
         self.UPDATE_INTV = 6
-        self.parentlist = ParentProxyList(self.userconf.dgetint('fgfwproxy', 'timeout', 4))
+        self.timeout = self.userconf.dgetint('fgfwproxy', 'timeout', 4)
+        self.parentlist = ParentProxyList(self.timeout)
         self.HOSTS = defaultdict(list)
         self.GUI = '-GUI' in sys.argv
         self.rproxy = self.userconf.dgetbool('fgfwproxy', 'rproxy', False)
