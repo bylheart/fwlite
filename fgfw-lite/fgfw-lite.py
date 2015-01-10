@@ -1139,6 +1139,12 @@ class parent_proxy(object):
         if ip is None:
             return True
 
+        if any((ip.is_loopback, ip.is_private)):
+            return False
+
+        if level == 4:
+            return True
+
         a = self.if_temp(uri)
         if a is not None:
             return a
@@ -1146,12 +1152,6 @@ class parent_proxy(object):
         a = self.force.match(uri, host)
         if a is not None:
             return a
-
-        if any((ip.is_loopback, ip.is_private)):
-            return False
-
-        if level == 4:
-            return True
 
         if any(rule.match(uri) for rule in self.ignore):
             return None
