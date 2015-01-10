@@ -8,9 +8,8 @@ Works on Windows, Linux and Mac(untested).
 
 ##Features
 
-- A HTTP Proxy Server fits HTTP1.1 standard
 - Fast and Reliable
-- Configure IE proxy automatically on windows
+- Set IE proxy automatically (windows)
 - URL Search
 - Detect blocked sites
   - autoproxy-gfwlist
@@ -23,9 +22,9 @@ Works on Windows, Linux and Mac(untested).
   - encrypt-all
   - chnroute
   - global mode
-- Avoid use of GoAgent for SSL automatically
-- Supports Network which require a HTTP Proxy
+- Support Network which require a HTTP Proxy
 - Support HOSTS
+- Support FTP LIST/RETR
 - Supported parent proxy
   - HTTP Proxy
   - HTTPS Proxy
@@ -33,7 +32,8 @@ Works on Windows, Linux and Mac(untested).
   - SNI Proxy
   - [GoAgent]
   - [Shadowsocks]
-- Supports FTP LIST/RETR
+- Use GoAgent for HTTP request only
+- Remove bad parent proxy automatically
 - Redirector
 - Automatic Update
 
