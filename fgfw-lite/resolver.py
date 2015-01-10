@@ -49,6 +49,8 @@ def resolver(host):
     except Exception as e:
         logger.debug('resolving %s: %r' % (host, e))
         record = tcp_dns_record(host)
+        if record is None:
+            return []
         while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
             logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
             record = tcp_dns_record(str(record.rr[0].rdata))
