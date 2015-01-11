@@ -6,6 +6,7 @@ import base64
 import struct
 import logging
 from shadowsocks import sssocket
+from hxsocks import hxssocket
 from parent_proxy import ParentProxy
 from httputil import read_reaponse_line, read_header_data
 logger = logging.getLogger('FW_Lite')
@@ -91,6 +92,9 @@ def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None,
             do_tunnel(s, netloc, parentproxy, rtimeout)
     elif parentproxy.parse.scheme == 'ss':
         s = sssocket(parentproxy, ctimeout, via, iplist=iplist)
+        s.connect(netloc)
+    elif parentproxy.parse.scheme == 'hxs':
+        s = hxssocket(parentproxy, ctimeout, via, iplist=iplist)
         s.connect(netloc)
     elif parentproxy.parse.scheme == 'sni':
         s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 443), ctimeout)
