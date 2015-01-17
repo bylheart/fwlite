@@ -772,7 +772,7 @@ class ProxyHandler(HTTPRequestHandler):
         while 1:
             try:
                 reason = ''
-                (ins, _, _) = select.select([self.connection, self.remotesoc], [], [], 5)
+                (ins, _, _) = select.select([self.connection, self.remotesoc], [], [], self.conf.timeout)
                 if not ins:
                     reason = 'timeout'
                     break
@@ -803,7 +803,7 @@ class ProxyHandler(HTTPRequestHandler):
             return self._do_CONNECT(True)
         self.rbuffer = deque()
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
-        forward_socket(self.connection, self.remotesoc, 30, self.bufsize)
+        forward_socket(self.connection, self.remotesoc, 60, self.bufsize)
 
     def wfile_write(self, data=None):
         if data is None:
