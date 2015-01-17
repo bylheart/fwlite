@@ -4,6 +4,8 @@ import socket
 import logging
 import dnslib
 import struct
+from collections import defaultdict
+from threading import RLock
 from repoze.lru import lru_cache
 from connection import create_connection
 logger = logging.getLogger('FW_Lite')
@@ -13,6 +15,8 @@ except ImportError:
     from ipaddr import IPAddress as _ip_address
 apfilter = None
 proxy = ''
+
+host_lock_map = defaultdict(RLock)
 
 
 @lru_cache(4096, timeout=3600)
@@ -34,28 +38,29 @@ def resolver(host):
        >>>
        [(2, '82.94.164.162'),
         (10, '2001:888:2000:d::a2')]"""
-    try:
-        ip = ip_address(host)
-        return [(2 if ip._version == 4 else 10, host), ]
-    except:
-        pass
-    try:
-        if apfilter and apfilter.match(host, host, domain_only=True):
-            raise ValueError('in domain rules')
-        iplist = _resolver(host)
-        if not iplist:
-            raise ValueError('empty iplist')
-        return iplist
-    except Exception as e:
-        logger.debug('resolving %s: %r' % (host, e))
-        record = tcp_dns_record(host)
-        if record is None:
-            return []
-        while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
-            logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
-            record = tcp_dns_record(str(record.rr[0].rdata))
-        iplist = [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
-        return iplist
+    with host_lock_map[host]:
+        try:
+            ip = ip_address(host)
+            return [(2 if ip._version == 4 else 10, host), ]
+        except:
+            pass
+        try:
+            if apfilter and apfilter.match(host, host, domain_only=True):
+                raise ValueError('in domain rules')
+            iplist = _resolver(host)
+            if not iplist:
+                raise ValueError('empty iplist')
+            return iplist
+        except Exception as e:
+            logger.debug('resolving %s: %r' % (host, e))
+            record = tcp_dns_record(host)
+            if record is None:
+                return []
+            while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
+                logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
+                record = tcp_dns_record(str(record.rr[0].rdata))
+            iplist = [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
+            return iplist
 
 
 def report_bad_host(host):
@@ -125,7 +130,7 @@ def tcp_dns_record(host):
             logger.warning('get_dns_record %s failed. %r' % (host, e))
 
 
-@lru_cache(1024, timeout=900)
+@lru_cache(1024, timeout=7200)
 def get_ip_address(host):
     try:
         return ip_address(host)
