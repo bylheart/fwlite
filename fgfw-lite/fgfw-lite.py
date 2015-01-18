@@ -455,6 +455,19 @@ class ProxyHandler(HTTPRequestHandler):
             else:
                 return self.redirect(new_url)
 
+        # user defined redirector
+        new_url = redirector(self)
+        if new_url:
+            self.logger.debug('redirecting to %s' % new_url)
+            if new_url.isdigit() and 400 <= int(new_url) < 600:
+                return self.send_error(int(new_url))
+            elif new_url in self.conf.parentlist.dict.keys():
+                self._proxylist = [self.conf.parentlist.dict.get(new_url)]
+            elif new_url.lower() == 'noxff':
+                noxff = True
+            else:
+                return self.redirect(new_url)
+
         parse = urlparse.urlparse(self.path)
 
         if 'Host' not in self.headers:
@@ -462,7 +475,7 @@ class ProxyHandler(HTTPRequestHandler):
 
         self.requesthost = parse_hostport(self.headers['Host'], 80)
 
-        if self._request_is_loopback(self.requesthost):
+        if self._request_is_loopback(self.requesthost) or self.ssclient:
             if ip_address(self.client_address[0]).is_loopback:
                 if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
                     return self.api(parse)
@@ -476,20 +489,6 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(403)
 
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
-
-        # user defined redirector
-        noxff = False
-        new_url = redirector(self)
-        if new_url:
-            self.logger.debug('redirecting to %s' % new_url)
-            if new_url.isdigit() and 400 <= int(new_url) < 600:
-                return self.send_error(int(new_url))
-            elif new_url in self.conf.parentlist.dict.keys():
-                self._proxylist = [self.conf.parentlist.dict.get(new_url)]
-            elif new_url.lower() == 'noxff':
-                noxff = True
-            else:
-                return self.redirect(new_url)
 
         if not self.ssclient and self.conf.xheaders:
             ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
@@ -718,13 +717,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.requesthost = (host, int(port))
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
-        if self._request_is_loopback(self.requesthost):
-            if ip_address(self.client_address[0]).is_loopback:
-                if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
-                    # prevent loop
-                    return self.send_error(403)
-            else:
-                return self.send_error(403, 'Go fuck yourself!')
+
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
         # redirector
@@ -744,6 +737,13 @@ class ProxyHandler(HTTPRequestHandler):
             elif new_url in self.conf.parentlist.dict.keys():
                 self._proxylist = [self.conf.parentlist.dict.get(new_url)]
 
+        if self._request_is_loopback(self.requesthost) or self.ssclient:
+            if ip_address(self.client_address[0]).is_loopback:
+                if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
+                    # prevent loop
+                    return self.send_error(403)
+            else:
+                return self.send_error(403, 'Go fuck yourself!')
         self.wfile.write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
         self._do_CONNECT()
 
