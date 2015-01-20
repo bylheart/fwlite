@@ -18,7 +18,6 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, see <http://www.gnu.org/licenses>.
 
-import base64
 import re
 import errno
 import socket
@@ -143,7 +142,7 @@ def is_connection_dropped(lst):  # modified from urllib3
     """
     try:
         return select.select(lst, [], [], 0.0)[0]
-    except socket.error:
+    except IOError:
         return lst
 
 
