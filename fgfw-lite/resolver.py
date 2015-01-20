@@ -91,12 +91,12 @@ def udp_dns_records(host, qtype='A', dnsserver='8.8.8.8'):
     return record_list
 
 
-def _udp_dns_record(host, qtype='A', dnsserver='8.8.8.8'):
+def _udp_dns_record(host, server=('8.8.8.8', 53), qtype='A'):
     query = dnslib.DNSRecord.question(host, qtype=qtype)
     query_data = query.pack()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(0.5)
-    sock.sendto(query_data, (dnsserver, 53))
+    sock.sendto(query_data, server)
     reply_data, reply_address = sock.recvfrom(8192)
     record = dnslib.DNSRecord.parse(reply_data)
     return record
@@ -113,11 +113,11 @@ def is_poisoned(host):
 
 
 @lru_cache(4096, timeout=900)
-def tcp_dns_record(host):
+def tcp_dns_record(host, server=('8.8.8.8', 53), qtype='ANY'):
     for _ in range(2):
         try:
-            sock = create_connection(('8.8.8.8', 53), ctimeout=1, rtimeout=5, parentproxy=proxy, tunnel=True)
-            query = dnslib.DNSRecord.question(host, qtype='ANY')
+            sock = create_connection(server, ctimeout=5, rtimeout=5, parentproxy=proxy, tunnel=True)
+            query = dnslib.DNSRecord.question(host, qtype)
             query_data = query.pack()
             sock.send(struct.pack('>h', len(query_data)) + query_data)
             rfile = sock.makefile('rb')
@@ -127,7 +127,7 @@ def tcp_dns_record(host):
             sock.close()
             return record
         except Exception as e:
-            logger.warning('get_dns_record %s failed. %r' % (host, e))
+            logger.warning('tcp_dns_record %s failed. %r' % (host, e))
 
 
 @lru_cache(1024, timeout=7200)
