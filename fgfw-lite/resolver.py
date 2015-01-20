@@ -91,7 +91,7 @@ def udp_dns_records(host, qtype='A', dnsserver='8.8.8.8'):
     return record_list
 
 
-def _udp_dns_records(host, qtype='A', dnsserver='8.8.8.8'):
+def _udp_dns_record(host, qtype='A', dnsserver='8.8.8.8'):
     query = dnslib.DNSRecord.question(host, qtype=qtype)
     query_data = query.pack()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -105,7 +105,7 @@ def _udp_dns_records(host, qtype='A', dnsserver='8.8.8.8'):
 @lru_cache(4096, timeout=900)
 def is_poisoned(host):
     try:
-        record = _udp_dns_records(host, 'AAAA')
+        record = _udp_dns_record(host, 'AAAA')
         result = bool([r for r in record.rr if r.rtype is dnslib.QTYPE.A])
         return result
     except:
