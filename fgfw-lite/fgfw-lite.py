@@ -441,6 +441,14 @@ class ProxyHandler(HTTPRequestHandler):
             if 'Host' not in self.headers:
                 return self.send_error(403)
             self.path = 'http://%s%s' % (self.headers['Host'], self.path)
+
+        parse = urlparse.urlparse(self.path)
+
+        if 'Host' not in self.headers:
+            self.headers['Host'] = parse.netloc
+
+        self.requesthost = parse_hostport(self.headers['Host'], 80)
+
         # redirector
         noxff = False
         new_url = self.conf.PARENT_PROXY.redirect(self.path)
@@ -467,13 +475,6 @@ class ProxyHandler(HTTPRequestHandler):
                 noxff = True
             else:
                 return self.redirect(new_url)
-
-        parse = urlparse.urlparse(self.path)
-
-        if 'Host' not in self.headers:
-            self.headers['Host'] = parse.netloc
-
-        self.requesthost = parse_hostport(self.headers['Host'], 80)
 
         if self._request_is_loopback(self.requesthost) or self.ssclient:
             if ip_address(self.client_address[0]).is_loopback:
