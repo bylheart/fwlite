@@ -10,6 +10,8 @@ import binascii
 import hashlib
 import logging
 logger = logging.getLogger('FW_Lite')
+from collections import defaultdict
+from threading import RLock
 try:
     import urllib.parse as urlparse
 except ImportError:
@@ -19,6 +21,7 @@ from dh import DH
 
 default_method = 'rc4-md5'
 keys = {}
+newkey_lock = defaultdict(RLock)
 
 
 def hex2bytes(data):
@@ -54,34 +57,38 @@ class hxssocket(object):
 
     def connect(self, address):
         self.getKey()
+        if self._sock is None:
+            from connection import create_connection
+            p = self.hxsServer.parse
+            host, port = p.hostname, p.port
+            self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
         self._address = ('%s:%s' % address).encode()
         self.setsockopt = self._sock.setsockopt
         self.fileno = self._sock.fileno
 
     def getKey(self):
         from connection import create_connection
-        p = self.hxsServer.parse
-        host, port, usn, psw = (p.hostname, p.port, p.username, p.password)
-        if self.hxsServer.proxy not in keys:
-            self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
-            cipher = encrypt.Encryptor(self.PSK, self.method)
-            dh = DH()
-            data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(hex2bytes(dh.hexPub))) + hex2bytes(dh.hexPub) + hashlib.sha256(hex2bytes(dh.hexPub) + usn.encode() + psw.encode()).digest()
-            self._sock.sendall(cipher.encrypt(data))
-            fp = self._sock.makefile('rb')
-            resp = ord(cipher.decrypt(fp.read(cipher.iv_len() + 1)))
-            if resp == 0:
-                pklen = struct.unpack('>H', cipher.decrypt(fp.read(2)))[0]
-                pkey = cipher.decrypt(fp.read(pklen))
-                auth = cipher.decrypt(fp.read(32))
-                if auth == hashlib.sha256(hex2bytes(dh.hexPub) + pkey + usn + psw).digest():
-                    shared_secret = dh.genKey(bytes2hex(pkey))
-                    keys[self.hxsServer.proxy] = (hashlib.md5(hex2bytes(dh.hexPub)).digest(), shared_secret)
-                    return
-                raise IOError(0, 'connect to hxsocket server failed! getKey: server auth failed')
-            raise IOError(0, 'connect to hxsocket server failed! getKey: bad user')
-        else:
-            self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
+        with newkey_lock[self.hxsServer]:
+            if self.hxsServer.proxy not in keys:
+                p = self.hxsServer.parse
+                host, port, usn, psw = (p.hostname, p.port, p.username, p.password)
+                self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
+                cipher = encrypt.Encryptor(self.PSK, self.method)
+                dh = DH()
+                data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(hex2bytes(dh.hexPub))) + hex2bytes(dh.hexPub) + hashlib.sha256(hex2bytes(dh.hexPub) + usn.encode() + psw.encode()).digest()
+                self._sock.sendall(cipher.encrypt(data))
+                fp = self._sock.makefile('rb')
+                resp = ord(cipher.decrypt(fp.read(cipher.iv_len() + 1)))
+                if resp == 0:
+                    pklen = struct.unpack('>H', cipher.decrypt(fp.read(2)))[0]
+                    pkey = cipher.decrypt(fp.read(pklen))
+                    auth = cipher.decrypt(fp.read(32))
+                    if auth == hashlib.sha256(hex2bytes(dh.hexPub) + pkey + usn + psw).digest():
+                        shared_secret = dh.genKey(bytes2hex(pkey))
+                        keys[self.hxsServer.proxy] = (hashlib.md5(hex2bytes(dh.hexPub)).digest(), shared_secret)
+                        return
+                    raise IOError(0, 'connect to hxsocket server failed! getKey: server auth failed')
+                raise IOError(0, 'connect to hxsocket server failed! getKey: bad user')
 
     def recv(self, size):
         if self.connected == 0:
