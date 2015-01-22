@@ -56,8 +56,8 @@ def do_tunnel(soc, netloc, pp, timeout):
     s = ['CONNECT %s:%s HTTP/1.1\r\n' % (netloc[0], netloc[1]), ]
     if pp.parse.username:
         a = '%s:%s' % (pp.parse.username, pp.parse.password)
-        s.append('Proxy-Authorization: Basic %s' % base64.b64encode(a.encode()))
-    s.append('\r\n\r\n')
+        s.append('Proxy-Authorization: Basic %s\r\n' % base64.b64encode(a.encode()))
+    s.append('Host: %s:%s\r\n\r\n' % (netloc[0], netloc[1]))
     soc.settimeout(timeout)
     soc.sendall(''.join(s).encode())
     remoterfile = soc.makefile('rb', 0)
