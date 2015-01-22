@@ -63,7 +63,7 @@ def do_tunnel(soc, netloc, pp, timeout):
     remoterfile = soc.makefile('rb', 0)
     line, version, status, reason = read_reaponse_line(remoterfile)
     if status != 200:
-        raise IOError(0, 'remote closed')
+        raise IOError(0, 'create tunnel via %s failed!' % pp.name)
     read_header_data(remoterfile)
 
 
