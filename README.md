@@ -22,7 +22,7 @@ Works on Windows, Linux and Mac(untested).
   - encrypt-all
   - chnroute
   - global mode
-- Support Network which require a HTTP Proxy
+- Support Network which require a Proxy
 - Support HOSTS
 - Support FTP LIST/RETR
 - Supported parent proxy
@@ -37,7 +37,6 @@ Works on Windows, Linux and Mac(untested).
 - Remove bad parent proxy automatically
 - Redirector
 - Automatic Update
-
 
 ##Quick Start
 
