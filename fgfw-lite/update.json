@@ -2,16 +2,16 @@
     "./FW_Lite.exe": "266498c1e92c1858850fcadd6589a87a6e505259b156a8b09356e8a6584bfe40",
     "./FW_Lite.pyw": "aeb00688bf585c033267af31035aa417d96b0cdb7e78a3d0b13148b19ec1b0fb",
     "./Python27/python27.zip": "b72b8d69fb4dcba93c4afb13397fccdfe7dd9425837eb1ddd7a7de0be516fcec",
-    "./README.md": "71c8458d827269966bd72ccbcbb833cc9a504b545a5febb4e19e5dff4bd8b235",
+    "./README.md": "5df770a9fed4853d517a105338af307a29166e6933bc94cc4c29d07dacf8f58b",
     "./fgfw-lite/apfilter.py": "530d6ccc9c1be8c0d0c002ad1b1e9fbc30a3ab298129e6a78f3a5b2178b7e0b9",
     "./fgfw-lite/cloud.txt": "a7e695ba483793bd616fb5fbc12feacf3fa39e514721524a64306cc0f07213ba",
-    "./fgfw-lite/connection.py": "a9ba9ffbfbce520627fdcbc1c821d94cfa8dc3fdb9276b0e988dbca7bdf57fba",
+    "./fgfw-lite/connection.py": "d132a8f710e42f67189cdff4c4fca7297e33e42ffd667eb4e67cc3cdff537e9f",
     "./fgfw-lite/ctypes_libsodium.py": "b0247da98cbfe91e72e2ecac7bf271e524301912e0a5d37e4e5d5b7cd4308286",
     "./fgfw-lite/dh.py": "5e9d2b5179168385fea9e9fbb7dd341e0826b84b39234414b5e09b1b40b6583b",
     "./fgfw-lite/encrypt.py": "69ca5edc88f85cb58489b8eb2a9e128de34635340a73cd81404ef935bbcde8b1",
-    "./fgfw-lite/fgfw-lite.py": "1a8d44d475919e1402c2467e71ec8c5d98b62ac778faa2b77183d2894d6898fb",
+    "./fgfw-lite/fgfw-lite.py": "c662ec1eea3a66cca151c2852efafe4e3caaa58fb12a256679e1669323116c79",
     "./fgfw-lite/httputil.py": "b7916d4f5cff65d0f2fc2995e54550b8e71a7c3c27ab4ac3148747b88881ebf0",
-    "./fgfw-lite/hxsocks.py": "6b7d8a7599135a8dc1033eae08e2debd471aff2aeb7c371a66099b412d611ac8",
+    "./fgfw-lite/hxsocks.py": "feff462ffe1db50d5033f98115fe2e47a63adcb14cb010862b233dce796a4a72",
     "./fgfw-lite/parent_proxy.py": "33618b1da287028dec120a25bc2148138fba775bc723cd0ba02c60242072a982",
     "./fgfw-lite/resolver.py": "65900f843e8c658147317f80f23e4d87d8164e28d5bea01d9f5d72583b89759b",
     "./fgfw-lite/shadowsocks.py": "47011745ad2227ed4a7355bf737e5ea1f8b0e7964fd193b99c8fa5e0821503b9",
@@ -30,5 +30,5 @@
     "./goagent/proxy.sample.ini": "9badde4fb3723074819a968ed4d05ca2475b00938196b1ea212db82b73a811b3",
     "./goagent/proxylib.py": "41912ec0ab4291fc7706bcb617b386f8c0dbe04ad7ee36ea6e49f7a29ce8d862",
     "./release_note.txt": "1ab815f89a3e6f2f6306a39800a74aaca91a4ec55ab2da1b9b3648cb24d8193c",
-    "./userconf.sample.ini": "d1f0f1d65ffd7aa6573d1c54a491b3cd97489c19448d6a64fb1ed16134674e40"
+    "./userconf.sample.ini": "d9dd171adc63e561c6e0176066dadfece6d69655d4e77297d456d9395bb7d7c5"
 }
