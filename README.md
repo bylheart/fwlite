@@ -97,6 +97,10 @@ Assign a parent proxy for certain sites
 
 GPLv2
 
+##ICCPR, Article 19.2
+
+**Everyone shall have the right to freedom of expression; this right shall include freedom to seek, receive and impart information and ideas of all kinds, regardless of frontiers, either orally, in writing or in print, in the form of art, or through any other media of his choice.**
+
 ##Others
 [COW]
 
