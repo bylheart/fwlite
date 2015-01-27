@@ -460,6 +460,9 @@ class ProxyHandler(HTTPRequestHandler):
                 self._proxylist = [self.conf.parentlist.dict.get(new_url)]
             elif new_url.lower() == 'noxff':
                 noxff = True
+            elif new_url.lower() == 'reset':
+                self.close_connection = 1
+                return
             else:
                 return self.redirect(new_url)
 
@@ -473,6 +476,9 @@ class ProxyHandler(HTTPRequestHandler):
                 self._proxylist = [self.conf.parentlist.dict.get(new_url)]
             elif new_url.lower() == 'noxff':
                 noxff = True
+            elif new_url.lower() == 'reset':
+                self.close_connection = 1
+                return
             else:
                 return self.redirect(new_url)
 
@@ -729,6 +735,8 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(int(new_url))
             elif new_url in self.conf.parentlist.dict.keys():
                 self._proxylist = [self.conf.parentlist.dict.get(new_url)]
+            elif new_url.lower() == 'reset':
+                return
 
         new_url = redirector(self)
         if new_url:
@@ -737,6 +745,8 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(int(new_url))
             elif new_url in self.conf.parentlist.dict.keys():
                 self._proxylist = [self.conf.parentlist.dict.get(new_url)]
+            elif new_url.lower() == 'reset':
+                return
 
         if self._request_is_loopback(self.requesthost) or self.ssclient:
             if ip_address(self.client_address[0]).is_loopback:
