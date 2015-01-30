@@ -1091,7 +1091,7 @@ class parent_proxy(object):
                 if result.startswith('/') and result.endswith('/'):
                     return rule._regex.sub(result[1:-1], hdlr.path)
                 return result
-        return redirector(self)
+        return redirector(hdlr)
 
     def bad302(self, uri):
         return self._bad302.match(uri)
