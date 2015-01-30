@@ -451,25 +451,9 @@ class ProxyHandler(HTTPRequestHandler):
 
         # redirector
         noxff = False
-        new_url = self.conf.PARENT_PROXY.redirect(self.path)
+        new_url = self.conf.PARENT_PROXY.redirect(self)
         if new_url:
-            self.logger.debug('redirecting to %s' % new_url)
-            if new_url.isdigit() and 400 <= int(new_url) < 600:
-                return self.send_error(int(new_url))
-            elif new_url in self.conf.parentlist.dict.keys():
-                self._proxylist = [self.conf.parentlist.dict.get(new_url)]
-            elif new_url.lower() == 'noxff':
-                noxff = True
-            elif new_url.lower() == 'reset':
-                self.close_connection = 1
-                return
-            else:
-                return self.redirect(new_url)
-
-        # user defined redirector
-        new_url = redirector(self)
-        if new_url:
-            self.logger.debug('redirecting to %s' % new_url)
+            self.logger.info('redirect %s, %s %s' % (new_url, self.command, self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
             elif new_url in self.conf.parentlist.dict.keys():
@@ -728,19 +712,9 @@ class ProxyHandler(HTTPRequestHandler):
         if 'Host' not in self.headers:
             self.headers['Host'] = self.path
         # redirector
-        new_url = self.conf.PARENT_PROXY.redirect(self.path)
+        new_url = self.conf.PARENT_PROXY.redirect(self)
         if new_url:
-            self.logger.debug('redirecting to %s' % new_url)
-            if new_url.isdigit() and 400 <= int(new_url) < 600:
-                return self.send_error(int(new_url))
-            elif new_url in self.conf.parentlist.dict.keys():
-                self._proxylist = [self.conf.parentlist.dict.get(new_url)]
-            elif new_url.lower() == 'reset':
-                return
-
-        new_url = redirector(self)
-        if new_url:
-            self.logger.debug('redirecting to %s' % new_url)
+            self.logger.info('redirect %s, %s %s' % (new_url, self.command, self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
             elif new_url in self.conf.parentlist.dict.keys():
@@ -1099,8 +1073,8 @@ class parent_proxy(object):
         except ValueError as e:
             self.logger.debug('create autoproxy rule failed: %s' % e)
 
-    def redirect(self, uri, host=None):
-        searchword = re.match(r'^http://([\w-]+)/$', uri)
+    def redirect(self, hdlr):
+        searchword = re.match(r'^http://([\w-]+)/$', hdlr.path)
         if searchword:
             q = searchword.group(1)
             if 'xn--' in q:
@@ -1108,15 +1082,16 @@ class parent_proxy(object):
             self.logger.debug('Match redirect rule addressbar-search')
             return 'https://www.google.com/search?q=%s&ie=utf-8&oe=utf-8&aq=t&rls=org.mozilla:zh-CN:official' % urlquote(q.encode('utf-8'))
         for rule, result in self.redirlst:
-            if rule.match(uri):
+            if rule.match(hdlr.path):
                 self.logger.debug('Match redirect rule {}, {}'.format(rule.rule, result))
                 if rule.override:
                     return None
                 if result == 'forcehttps':
-                    return uri.replace('http://', 'https://', 1)
+                    return hdlr.path.replace('http://', 'https://', 1)
                 if result.startswith('/') and result.endswith('/'):
-                    return rule._regex.sub(result[1:-1], uri)
+                    return rule._regex.sub(result[1:-1], hdlr.path)
                 return result
+        return redirector(self)
 
     def bad302(self, uri):
         return self._bad302.match(uri)
