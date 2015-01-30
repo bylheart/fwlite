@@ -1389,11 +1389,10 @@ class goagentHandler(FGFWProxyHandler):
         if self.enable:
             self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20 200 8')
 
-        if self.conf.userconf.dget('goagent', 'phpfetchserver'):
-            goagent.set('php', 'enable', '1')
-            goagent.set('php', 'password', self.conf.userconf.dget('goagent', 'phppassword', '123456'))
-            goagent.set('php', 'fetchserver', self.conf.userconf.dget('goagent', 'phpfetchserver', 'http://.com/'))
-            self.conf.addparentproxy('goagent-php', 'http://127.0.0.1:8088')
+        if self.conf.userconf.dget('goagent', 'vps'):
+            goagent.set('vps', 'enable', '1')
+            goagent.set('vps', 'fetchserver', self.conf.userconf.dget('goagent', 'vps'))
+            self.conf.addparentproxy('goagent-vps', 'http://127.0.0.1:8088')
         else:
             goagent.set('php', 'enable', '0')
 
