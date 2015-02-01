@@ -1369,7 +1369,7 @@ class goagentHandler(FGFWProxyHandler):
         goagent.read('./goagent/proxy.sample.ini')
 
         goagent.set('gae', 'appid', self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'))
-        if self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent':
+        if self.enable and self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent':
             self.logger.warning('GoAgent APPID is NOT set!')
             self.enable = False
         goagent.set("gae", "password", self.conf.userconf.dget('goagent', 'gaepassword', ''))
