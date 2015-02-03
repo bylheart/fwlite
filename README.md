@@ -99,19 +99,6 @@ Assign a parent proxy for certain sites
 
 GPLv2
 
-##ICCPR Article 19
-
-
-1. Everyone shall have the right to hold opinions without interference.
-
-2. Everyone shall have the right to freedom of expression; this right shall include freedom to seek, receive and impart information and ideas of all kinds, regardless of frontiers, either orally, in writing or in print, in the form of art, or through any other media of his choice.
-
-3. The exercise of the rights provided for in paragraph 2 of this article carries with it special duties and responsibilities. It may therefore be subject to certain restrictions, but these shall only be such as are provided by law and are necessary:
-
-    (a) For respect of the rights or reputations of others;
-
-    (b) For the protection of national security or of public order (ordre public), or of public health or morals. 
-
 ##Others
 [COW]
 
