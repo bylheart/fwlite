@@ -7,3 +7,5 @@
 ||googleusercontent.com
 |https://www.mozilla.org
 @@||cn.bing.com
+@@||weibo.com
+@@||ykimg.com
