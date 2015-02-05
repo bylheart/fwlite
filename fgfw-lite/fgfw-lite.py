@@ -442,6 +442,9 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(403)
             self.path = 'http://%s%s' % (self.headers['Host'], self.path)
 
+        if self.path.count('http://') > 1:
+            self.path = self.path[self.path.index('http://', self.path.count('http://')):]
+
         parse = urlparse.urlparse(self.path)
 
         if 'Host' not in self.headers:
