@@ -1027,26 +1027,25 @@ class parent_proxy(object):
             else:
                 self.add_temp(line, quiet=True)
 
-        if not self.conf.rproxy:
-            for line in open('./fgfw-lite/cloud.txt'):
-                rule = line.strip().split()
-                if len(rule) == 2:  # |http://www.google.com/url forcehttps
-                    rule, dest = rule
-                    self.add_redirect(rule, dest)
-                else:
-                    self.add_rule(line, force=True)
+        for line in open('./fgfw-lite/cloud.txt'):
+            rule = line.strip().split()
+            if len(rule) == 2:  # |http://www.google.com/url forcehttps
+                rule, dest = rule
+                self.add_redirect(rule, dest)
+            else:
+                self.add_rule(line, force=True)
 
-            self.logger.info('loading  gfwlist...')
-            try:
-                with open('./fgfw-lite/gfwlist.txt') as f:
-                    data = f.read()
-                    if '!' not in data:
-                        data = ''.join(data.split())
-                        data = base64.b64decode(data).decode()
-                    for line in data.splitlines():
-                        self.add_rule(line)
-            except TypeError:
-                self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
+        self.logger.info('loading  gfwlist...')
+        try:
+            with open('./fgfw-lite/gfwlist.txt') as f:
+                data = f.read()
+                if '!' not in data:
+                    data = ''.join(data.split())
+                    data = base64.b64decode(data).decode()
+                for line in data.splitlines():
+                    self.add_rule(line)
+        except TypeError:
+            self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
 
         self.geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
 
@@ -1173,7 +1172,7 @@ class parent_proxy(object):
 
         ip = get_ip_address(host)
 
-        ifgfwed = self.ifgfwed(uri, host, port, ip, level)
+        ifgfwed = None if self.conf.rproxy else self.ifgfwed(uri, host, port, ip, level)
 
         if ifgfwed is False:
             if ip.is_private:
