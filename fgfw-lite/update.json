@@ -24,7 +24,7 @@
     "./fgfw-lite/ui_remoteresolver.py": "25033c41b07a99c0dd265152fa45e9156f5667a8139f6e98b01a2af103cfa015",
     "./fgfw-lite/ui_settings.py": "8b6d859aa54444e34646d90d529759f71d2488d9bc03941b2b417121cb4c30ec",
     "./fgfw-lite/util.py": "95c0f77a190106c4d98d98bc740769d4f4259169c79016774d4649668aaaf69b",
-    "./goagent/GeoIP.dat": "642680a7c98da514dfbd1b4921cf590fca9a913141843fd773e7330145579d3c",
+    "./goagent/GeoIP.dat": "c5a3eb54607db0b8587d752b92f80e85646a9ca9e0d363106e81cba6afd961d7",
     "./goagent/cacert.pem": "eb1288b800cb2fdf7c5d8d14fb79a5c00a8b05722c7f2a08763919ef6df11dc3",
     "./goagent/proxy.py": "1410f3d3e74c6b54e11b4d3858199c59e0ceb55447ba7f159bb1b6726db7798c",
     "./goagent/proxy.sample.ini": "20729e7fae293849cd26a1a282fb3abf41fa428f59646ef9ec3f6803f29218a1",
