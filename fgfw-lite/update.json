@@ -4,7 +4,7 @@
     "./Python27/python27.zip": "b72b8d69fb4dcba93c4afb13397fccdfe7dd9425837eb1ddd7a7de0be516fcec",
     "./README.md": "dacf5baf5852d01d033f8f87da795be0724a3053232b876d9c24475a196b79cc",
     "./fgfw-lite/apfilter.py": "530d6ccc9c1be8c0d0c002ad1b1e9fbc30a3ab298129e6a78f3a5b2178b7e0b9",
-    "./fgfw-lite/cloud.txt": "9f08266ef959532e5d9fc7eee7fdbd2a54636d5a337164110acf2b88cc9925de",
+    "./fgfw-lite/cloud.txt": "3ca10d8b9db0fd646fb02a20fc8588471a1be31225cee699a8f87a29fc3d349e",
     "./fgfw-lite/connection.py": "d132a8f710e42f67189cdff4c4fca7297e33e42ffd667eb4e67cc3cdff537e9f",
     "./fgfw-lite/ctypes_libsodium.py": "b0247da98cbfe91e72e2ecac7bf271e524301912e0a5d37e4e5d5b7cd4308286",
     "./fgfw-lite/dh.py": "5e9d2b5179168385fea9e9fbb7dd341e0826b84b39234414b5e09b1b40b6583b",

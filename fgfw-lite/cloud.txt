@@ -9,3 +9,4 @@
 @@||cn.bing.com
 @@||weibo.com
 @@||ykimg.com
+@@||qq.com
