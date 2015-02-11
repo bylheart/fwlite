@@ -8,6 +8,11 @@ P15 = 0xFFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA6
 G = 2
 P = P15
 
+def bytes2int(s):
+    if s.endswith('L'):
+        s = s[:-1]
+    return int(s, 16)
+
 
 class DH(object):
     size = 512
@@ -24,12 +29,7 @@ class DH(object):
         return pow(G, self.privateKey, P)
 
     def _genSecret(self, otherKey):
-        if isinstance(otherKey, unicode):
-            if otherKey.startswith('0x'):
-                otherKey = otherKey[2:]
-            if otherKey.endswith('L'):
-                otherKey = otherKey[:-1]
-            otherKey = int(otherKey, 16)
+        otherKey = bytes2int(otherKey)
         return pow(otherKey, self.privateKey, P)
 
     def genKey(self, otherKey):
