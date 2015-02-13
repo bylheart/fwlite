@@ -6,7 +6,6 @@ import encrypt
 import errno
 import io
 import time
-import binascii
 import hashlib
 import logging
 logger = logging.getLogger('FW_Lite')
@@ -22,15 +21,6 @@ from dh import DH
 default_method = 'rc4-md5'
 keys = {}
 newkey_lock = defaultdict(RLock)
-
-
-def hex2bytes(data):
-    data = '0' * (len(data) % 2) + data
-    return binascii.unhexlify(data)
-
-
-def bytes2hex(data):
-    return binascii.hexlify(data).decode()
 
 
 class hxssocket(object):
@@ -75,7 +65,8 @@ class hxssocket(object):
                 self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
                 cipher = encrypt.Encryptor(self.PSK, self.method)
                 dh = DH()
-                data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(hex2bytes(dh.hexPub))) + hex2bytes(dh.hexPub) + hashlib.sha256(hex2bytes(dh.hexPub) + usn.encode() + psw.encode()).digest()
+                pubk = dh.getPubKey()
+                data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
                 self._sock.sendall(cipher.encrypt(data))
                 fp = self._sock.makefile('rb')
                 resp = ord(cipher.decrypt(fp.read(cipher.iv_len() + 1)))
@@ -83,9 +74,9 @@ class hxssocket(object):
                     pklen = struct.unpack('>H', cipher.decrypt(fp.read(2)))[0]
                     pkey = cipher.decrypt(fp.read(pklen))
                     auth = cipher.decrypt(fp.read(32))
-                    if auth == hashlib.sha256(hex2bytes(dh.hexPub) + pkey + usn + psw).digest():
-                        shared_secret = dh.genKey(bytes2hex(pkey))
-                        keys[self.hxsServer.proxy] = (hashlib.md5(hex2bytes(dh.hexPub)).digest(), shared_secret)
+                    if auth == hashlib.sha256(pubk + pkey + usn + psw).digest():
+                        shared_secret = dh.genKey(pkey)
+                        keys[self.hxsServer.proxy] = (hashlib.md5(pubk).digest(), shared_secret)
                         return
                     raise IOError(0, 'connect to hxsocket server failed! getKey: server auth failed')
                 raise IOError(0, 'connect to hxsocket server failed! getKey: bad user')
