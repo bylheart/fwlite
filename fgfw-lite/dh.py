@@ -27,9 +27,10 @@ class DH(object):
 
 if __name__ == '__main__':
     import time
+    t = DH()
     t = time.time()
     alice = DH()
     bob = DH()
     print(repr(alice.genKey(bob.getPubKey())))
     print(repr(bob.genKey(alice.getPubKey())))
-    print('DH: %fs' % (time.time() - t))
+    print('ECDH: %fs' % (time.time() - t))
