@@ -49,8 +49,6 @@ class StreamCipher(object):
             return Cipher(algorithms.AES(self.key), mode, default_backend())
         if self.method.startswith('camellia'):
             return Cipher(algorithms.Camellia(self.key), mode, default_backend())
-        if self.method.startswith('cast5'):
-            return Cipher(algorithms.CAST5(self.key), mode, default_backend())
         if self.method.startswith('seed'):
             return Cipher(algorithms.SEED(self.key), mode, default_backend())
         raise ValueError('crypto method %s not supported!' % self.method)
