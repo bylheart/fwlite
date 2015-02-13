@@ -86,8 +86,6 @@ method_supported = {
     'aes-128-ofb': (16, 16),
     'aes-192-ofb': (24, 16),
     'aes-256-ofb': (32, 16),
-    'cast5-cfb': (16, 8),
-    'cast5-ofb': (16, 8),
     'rc4': (16, 0),
     'rc4-md5': (16, 16),
     'salsa20': (32, 8),
@@ -173,7 +171,6 @@ class Encryptor(object):
             return self.decipher.update(buf)
 
 if __name__ == '__main__':
-    method = 'rc4-md5'
     print('encrypt and decrypt 20MB data.')
     s = os.urandom(10000)
     import time
