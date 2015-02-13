@@ -70,23 +70,27 @@ def setIEproxy(enable, proxy=u'', override=u'<local>'):
     ctypes.windll.Wininet.InternetSetOptionW(0, 39, 0, 0)
 
 
+def setFont(item):
+    if sys.platform.startswith('win'):
+        font = QtGui.QFont()
+        font.setFamily("Consolas")
+        item.setFont(font)
+    elif sys.platform.startswith('linux'):
+        font = QtGui.QFont()
+        font.setFamily("Droid Sans Mono")
+        item.setFont(font)
+    elif sys.platform.startswith('darwin'):
+        font = QtGui.QFont()
+        font.setFamily("Menlo")
+        item.setFont(font)
+
+
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        if sys.platform.startswith('win'):
-            font = QtGui.QFont()
-            font.setFamily("Consolas")
-            self.ui.console.setFont(font)
-        elif sys.platform.startswith('linux'):
-            font = QtGui.QFont()
-            font.setFamily("Droid Sans Mono")
-            self.ui.console.setFont(font)
-        elif sys.platform.startswith('darwin'):
-            font = QtGui.QFont()
-            font.setFamily("Menlo")
-            self.ui.console.setFont(font)
+        setFont(self.ui.console)
         self.ui.console.setWordWrapMode(QtGui.QTextOption.WrapAnywhere)
         self.setWindowIcon(QtGui.QIcon(TRAY_ICON))
         self.center()
@@ -500,7 +504,7 @@ class Settings(QtGui.QWidget):
         self.ref.connect(self.refresh)
         self.port = parent.port
         self.icon = parent
-
+        setFont(self.ui.ssMethodBox)
         header = [u'名称', u'地址', u'优先级']
         data = []
         self.table_model = MyTableModel(self, data, header)
