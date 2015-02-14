@@ -26,6 +26,7 @@ import hashlib
 import string
 import struct
 import logging
+from collections import defaultdict, deque
 from repoze.lru import lru_cache
 from ctypes_libsodium import Salsa20Crypto
 try:
@@ -38,7 +39,6 @@ except ImportError:
         from streamcipher import StreamCipher as Cipher
     except ImportError:
         Cipher = None
-logger = logging.getLogger('FW_Lite')
 
 
 @lru_cache(128)
@@ -79,6 +79,18 @@ def EVP_BytesToKey(password, key_len, iv_len):
     iv = ms[key_len:key_len + iv_len]
     return (key, iv)
 
+
+def check(key, method):
+    if method.lower() == 'table':
+        encrypt_table = ''.join(get_table(key))
+        string.maketrans(encrypt_table, string.maketrans('', ''))
+    else:
+        try:
+            Encryptor(key, method)  # test if the settings if OK
+        except Exception as e:
+            logging.error(e)
+            raise e
+
 method_supported = {
     'aes-128-cfb': (16, 16),
     'aes-192-cfb': (24, 16),
@@ -93,6 +105,13 @@ method_supported = {
 }
 
 
+class sized_deque(deque):
+    def __init__(self):
+        deque.__init__(self, maxlen=1048576)
+
+USED_IV = defaultdict(sized_deque)
+
+
 def create_rc4_md5(method, key, iv, op):
     md5 = hashlib.md5()
     md5.update(key)
@@ -102,11 +121,12 @@ def create_rc4_md5(method, key, iv, op):
 
 
 class Encryptor(object):
-    def __init__(self, key, method=None):
+    def __init__(self, key, method=None, servermode=False):
         if method == 'table':
             method = None
         self.key = key
         self.method = method
+        self.servermode = servermode
         self.iv = None
         self.iv_sent = False
         self.cipher_iv = ''
@@ -141,7 +161,7 @@ class Encryptor(object):
                 return Salsa20Crypto(method, key, iv, op)
             else:
                 return Cipher(method.replace('-', '_'), key, iv, op)
-        logger.error('method %s not supported' % method)
+        raise IOError(0, 'method %s not supported' % method)
 
     def encrypt(self, buf):
         if len(buf) == 0:
@@ -164,6 +184,10 @@ class Encryptor(object):
             if self.decipher is None:
                 decipher_iv_len = self.get_cipher_len(self.method)[1]
                 decipher_iv = buf[:decipher_iv_len]
+                if self.servermode:
+                    if decipher_iv in USED_IV[self.key]:
+                        raise ValueError('iv reused, possible replay attrack')
+                    USED_IV[self.key].append(decipher_iv)
                 self.decipher = self.get_cipher(self.key, self.method, 0, decipher_iv)
                 buf = buf[decipher_iv_len:]
                 if len(buf) == 0:
