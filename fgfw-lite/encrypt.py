@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright (c) 2012 clowwindy
-# Copyright (c) 2013 - 2014 v3aqb
+# Copyright (c) 2013 - 2015 v3aqb
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,6 @@ import os
 import hashlib
 import string
 import struct
-import logging
 from collections import defaultdict, deque
 from repoze.lru import lru_cache
 from ctypes_libsodium import Salsa20Crypto
@@ -41,7 +40,6 @@ except ImportError:
         Cipher = None
 
 
-@lru_cache(128)
 def get_table(key):
     m = hashlib.md5()
     m.update(key)
@@ -61,35 +59,28 @@ def init_table(key):
 
 
 @lru_cache(128)
-def EVP_BytesToKey(password, key_len, iv_len):
+def EVP_BytesToKey(password, key_len):
     # equivalent to OpenSSL's EVP_BytesToKey() with count 1
     # so that we make the same key and iv as nodejs version
     m = []
-    i = 0
-    while len(b''.join(m)) < (key_len + iv_len):
+    l = 0
+    while l < key_len:
         md5 = hashlib.md5()
         data = password
-        if i > 0:
-            data = m[i - 1] + password
+        if len(m) > 0:
+            data = m[len(m) - 1] + password
         md5.update(data)
         m.append(md5.digest())
-        i += 1
+        l += 16
     ms = b''.join(m)
-    key = ms[:key_len]
-    iv = ms[key_len:key_len + iv_len]
-    return (key, iv)
+    return ms[:key_len]
 
 
 def check(key, method):
     if method.lower() == 'table':
-        encrypt_table = ''.join(get_table(key))
-        string.maketrans(encrypt_table, string.maketrans('', ''))
+        init_table(key)
     else:
-        try:
-            Encryptor(key, method)  # test if the settings if OK
-        except Exception as e:
-            logging.error(e)
-            raise e
+        Encryptor(key, method)  # test if the settings if OK
 
 method_supported = {
     'aes-128-cfb': (16, 16),
@@ -103,6 +94,10 @@ method_supported = {
     'salsa20': (32, 8),
     'chacha20': (32, 8),
 }
+
+
+def get_cipher_len(method):
+    return method_supported.get(method.lower(), None)
 
 
 class sized_deque(deque):
@@ -120,6 +115,21 @@ def create_rc4_md5(method, key, iv, op):
     return Cipher('rc4', rc4_key, '', op)
 
 
+def get_cipher(password, method, op, iv):
+    password = password.encode('utf-8')
+    method = method.lower()
+    m = get_cipher_len(method)
+    if m:
+        key = EVP_BytesToKey(password, m[0])
+        if method == 'rc4-md5':
+            return create_rc4_md5(method, key, iv, op)
+        elif method in ('salsa20', 'chacha20'):
+            return Salsa20Crypto(method, key, iv, op)
+        else:
+            return Cipher(method.replace('-', '_'), key, iv, op)
+    raise IOError(0, 'method %s not supported' % method)
+
+
 class Encryptor(object):
     def __init__(self, key, method=None, servermode=False):
         if method == 'table':
@@ -129,39 +139,19 @@ class Encryptor(object):
         self.servermode = servermode
         self.iv = None
         self.iv_sent = False
-        self.cipher_iv = ''
+        self.cipher_iv = b''
         self.decipher = None
         if method is not None:
-            self.cipher = self.get_cipher(key, method, 1, random_string(32))
+            iv_len = get_cipher_len(method)[1]
+            self.cipher_iv = random_string(iv_len)
+            self.cipher = get_cipher(key, method, 1, self.cipher_iv)
         else:
             self.cipher = None
             self.decipher = 0
             self.encrypt_table, self.decrypt_table = init_table(key)
 
-    def get_cipher_len(self, method):
-        method = method.lower()
-        m = method_supported.get(method, None)
-        return m
-
     def iv_len(self):
         return len(self.cipher_iv)
-
-    def get_cipher(self, password, method, op, iv):
-        password = password.encode('utf-8')
-        method = method.lower()
-        m = self.get_cipher_len(method)
-        if m:
-            key, _ = EVP_BytesToKey(password, m[0], 0)
-            iv = iv[:m[1]]
-            if op == 1:
-                self.cipher_iv = iv  # this iv is for cipher, not decipher
-            if method == 'rc4-md5':
-                return create_rc4_md5(method, key, iv, op)
-            elif method in ('salsa20', 'chacha20'):
-                return Salsa20Crypto(method, key, iv, op)
-            else:
-                return Cipher(method.replace('-', '_'), key, iv, op)
-        raise IOError(0, 'method %s not supported' % method)
 
     def encrypt(self, buf):
         if len(buf) == 0:
@@ -182,17 +172,43 @@ class Encryptor(object):
             return string.translate(buf, self.decrypt_table)
         else:
             if self.decipher is None:
-                decipher_iv_len = self.get_cipher_len(self.method)[1]
-                decipher_iv = buf[:decipher_iv_len]
+                decipher_iv = buf[:len(self.cipher_iv)]
                 if self.servermode:
                     if decipher_iv in USED_IV[self.key]:
                         raise ValueError('iv reused, possible replay attrack')
                     USED_IV[self.key].append(decipher_iv)
-                self.decipher = self.get_cipher(self.key, self.method, 0, decipher_iv)
-                buf = buf[decipher_iv_len:]
+                self.decipher = get_cipher(self.key, self.method, 0, decipher_iv)
+                buf = buf[len(self.cipher_iv):]
                 if len(buf) == 0:
                     return buf
             return self.decipher.update(buf)
+
+
+# For python3
+def _compare_bytes(a, b):
+    if len(a) != len(b):
+        return False
+    result = 0
+    for x, y in zip(a, b):
+        result |= x ^ y
+    return result == 0
+
+
+def _compare_str(a, b):
+    if len(a) != len(b):
+        return False
+    result = 0
+    for x, y in zip(a, b):
+        result |= ord(x) ^ ord(y)
+    return result == 0
+
+
+def compare_digest(a, b):
+    if isinstance(a, str):
+        return _compare_str(a, b)
+    else:
+        return _compare_bytes(a, b)
+
 
 if __name__ == '__main__':
     print('encrypt and decrypt 20MB data.')
