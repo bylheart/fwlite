@@ -95,6 +95,12 @@ method_supported = {
     'chacha20': (32, 8),
 }
 
+hash_method = {
+    16: hashlib.sha256,
+    24: hashlib.sha384,
+    32: hashlib.sha512,
+}
+
 
 def get_cipher_len(method):
     return method_supported.get(method.lower(), None)
@@ -138,20 +144,18 @@ class Encryptor(object):
         self.method = method
         self.servermode = servermode
         self.iv = None
+        self.iv_len = 0
         self.iv_sent = False
         self.cipher_iv = b''
         self.decipher = None
         if method is not None:
-            iv_len = get_cipher_len(method)[1]
-            self.cipher_iv = random_string(iv_len)
+            self.iv_len = get_cipher_len(method)[1]
+            self.cipher_iv = random_string(self.iv_len)
             self.cipher = get_cipher(key, method, 1, self.cipher_iv)
         else:
             self.cipher = None
             self.decipher = 0
             self.encrypt_table, self.decrypt_table = init_table(key)
-
-    def iv_len(self):
-        return len(self.cipher_iv)
 
     def encrypt(self, buf):
         if len(buf) == 0:
@@ -172,13 +176,13 @@ class Encryptor(object):
             return string.translate(buf, self.decrypt_table)
         else:
             if self.decipher is None:
-                decipher_iv = buf[:len(self.cipher_iv)]
+                decipher_iv = buf[:self.iv_len]
                 if self.servermode:
                     if decipher_iv in USED_IV[self.key]:
                         raise ValueError('iv reused, possible replay attrack')
                     USED_IV[self.key].append(decipher_iv)
                 self.decipher = get_cipher(self.key, self.method, 0, decipher_iv)
-                buf = buf[len(self.cipher_iv):]
+                buf = buf[self.iv_len:]
                 if len(buf) == 0:
                     return buf
             return self.decipher.update(buf)

@@ -69,7 +69,7 @@ class hxssocket(object):
                 data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
                 self._sock.sendall(cipher.encrypt(data))
                 fp = self._sock.makefile('rb')
-                resp = ord(cipher.decrypt(fp.read(cipher.iv_len() + 1)))
+                resp = ord(cipher.decrypt(fp.read(cipher.iv_len + 1)))
                 if resp == 0:
                     pklen = struct.unpack('>H', cipher.decrypt(fp.read(2)))[0]
                     pkey = cipher.decrypt(fp.read(pklen))
@@ -86,7 +86,7 @@ class hxssocket(object):
             self.sendall(b'')
         if self.connected == 1:
             fp = self._sock.makefile('rb')
-            if ord(self.cipher.decrypt(fp.read(self.cipher.iv_len() + 1))) != 0:
+            if ord(self.cipher.decrypt(fp.read(self.cipher.iv_len + 1))) != 0:
                 fp.read(ord(self.cipher.decrypt(fp.read(1))))
                 del keys[self.hxsServer.proxy]
                 logger.error('connect to hxsocket server failed! invalid shared key.')
