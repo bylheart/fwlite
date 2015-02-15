@@ -95,12 +95,6 @@ method_supported = {
     'chacha20': (32, 8),
 }
 
-hash_method = {
-    16: hashlib.sha256,
-    24: hashlib.sha384,
-    32: hashlib.sha512,
-}
-
 
 def get_cipher_len(method):
     return method_supported.get(method.lower(), None)
@@ -121,45 +115,39 @@ def create_rc4_md5(method, key, iv, op):
     return Cipher('rc4', rc4_key, '', op)
 
 
-def get_cipher(password, method, op, iv):
-    password = password.encode('utf-8')
-    method = method.lower()
-    m = get_cipher_len(method)
-    if m:
-        key = EVP_BytesToKey(password, m[0])
-        if method == 'rc4-md5':
-            return create_rc4_md5(method, key, iv, op)
-        elif method in ('salsa20', 'chacha20'):
-            return Salsa20Crypto(method, key, iv, op)
-        else:
-            return Cipher(method.replace('-', '_'), key, iv, op)
-    raise IOError(0, 'method %s not supported' % method)
+def get_cipher(key, method, op, iv):
+    if method == 'rc4-md5':
+        return create_rc4_md5(method, key, iv, op)
+    elif method in ('salsa20', 'chacha20'):
+        return Salsa20Crypto(method, key, iv, op)
+    else:
+        return Cipher(method.replace('-', '_'), key, iv, op)
 
 
 class Encryptor(object):
-    def __init__(self, key, method=None, servermode=False):
+    def __init__(self, password, method=None, servermode=False):
         if method == 'table':
             method = None
-        self.key = key
+        self.key = password
         self.method = method
         self.servermode = servermode
-        self.iv = None
         self.iv_len = 0
         self.iv_sent = False
         self.cipher_iv = b''
         self.decipher = None
         if method is not None:
-            self.iv_len = get_cipher_len(method)[1]
+            klen, self.iv_len = get_cipher_len(method)
+            self.key = EVP_BytesToKey(password, klen)
             self.cipher_iv = random_string(self.iv_len)
-            self.cipher = get_cipher(key, method, 1, self.cipher_iv)
+            self.cipher = get_cipher(self.key, method, 1, self.cipher_iv)
         else:
             self.cipher = None
             self.decipher = 0
-            self.encrypt_table, self.decrypt_table = init_table(key)
+            self.encrypt_table, self.decrypt_table = init_table(password)
 
     def encrypt(self, buf):
         if len(buf) == 0:
-            return buf
+            raise ValueError('buf should not be empty')
         if self.method is None:
             return string.translate(buf, self.encrypt_table)
         else:
@@ -171,7 +159,7 @@ class Encryptor(object):
 
     def decrypt(self, buf):
         if len(buf) == 0:
-            return buf
+            raise ValueError('buf should not be empty')
         if self.method is None:
             return string.translate(buf, self.decrypt_table)
         else:
@@ -186,32 +174,6 @@ class Encryptor(object):
                 if len(buf) == 0:
                     return buf
             return self.decipher.update(buf)
-
-
-# For python3
-def _compare_bytes(a, b):
-    if len(a) != len(b):
-        return False
-    result = 0
-    for x, y in zip(a, b):
-        result |= x ^ y
-    return result == 0
-
-
-def _compare_str(a, b):
-    if len(a) != len(b):
-        return False
-    result = 0
-    for x, y in zip(a, b):
-        result |= ord(x) ^ ord(y)
-    return result == 0
-
-
-def compare_digest(a, b):
-    if isinstance(a, str):
-        return _compare_str(a, b)
-    else:
-        return _compare_bytes(a, b)
 
 
 if __name__ == '__main__':
