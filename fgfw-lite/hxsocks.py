@@ -95,20 +95,21 @@ class hxssocket(basesocket):
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
         self._rbuffer = io.BytesIO()  # reset _rbuf.  we consume it via buf.
-        if not buf_len:
+        if buf_len == 0:
             # Nothing in buffer? Try to read.
-            data = self._sock.recv(size)
+            data = self._sock.recv(self.bufsize)
             if not data:
                 return b''
             data = self.crypto.decrypt(data)
             if len(data) <= size:
                 return data
-        if buf_len < size:
-            buf.seek(0)
-            return buf.read(size)
+            buf_len = len(data)
+            buf.write(data)
+            del data  # explicit free
         buf.seek(0)
         rv = buf.read(size)
-        self._rbuffer.write(buf.read())
+        if buf_len > size:
+            self._rbuffer.write(buf.read())
         return rv
 
     def sendall(self, data):
