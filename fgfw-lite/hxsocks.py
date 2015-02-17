@@ -22,6 +22,7 @@ keys = {}
 newkey_lock = defaultdict(RLock)
 salt = b'G\x91V\x14{\x00\xd9xr\x9d6\x99\x81GL\xe6c>\xa9\\\xd2\xc6\xe0:\x9c\x0b\xefK\xd4\x9ccU'
 ctx = b'hxsocks'
+mac_len = 16
 
 
 class hxssocket(basesocket):
@@ -104,10 +105,13 @@ class hxssocket(basesocket):
                 resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
                 # now don't need to worry pskcipher iv anymore.
                 logger.debug('resp_len: %d' % resp_len)
-                if ord(self.pskcipher.decrypt(fp.read(resp_len))) == 0:
+                data = fp.read(resp_len)
+                d = ord(self.pskcipher.decrypt(data)) if data else None
+                if d == 0:
                     break
                 else:
-                    fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
+                    if d is not None:
+                        fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
                     if self.serverid in keys:
                         del keys[self.serverid]
                     logger.error('hxsocket Error: invalid shared key.')
@@ -119,16 +123,21 @@ class hxssocket(basesocket):
                     self.sendall(self._data_bak or b'')
             fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
             self.connected = 2
+        fp = self._sock.makefile('rb')
         buf = self._rbuffer
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
         self._rbuffer = io.BytesIO()  # reset _rbuf.  we consume it via buf.
         if buf_len == 0:
             # Nothing in buffer? Try to read.
-            data = self._sock.recv(self.bufsize)
-            if not data:
+            # data = self._sock.recv(self.bufsize)
+            ctlen = fp.read(2)
+            if not ctlen:
                 return b''
-            data = self.cipher.decrypt(data)
+            ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
+            ct = fp.read(ctlen)
+            mac = fp.read(mac_len)
+            data = self.cipher.decrypt(ct, mac)
             if len(data) <= size:
                 return data
             buf_len = len(data)
@@ -143,13 +152,16 @@ class hxssocket(basesocket):
     def sendall(self, data):
         if self.connected == 0:
             logger.debug('hxsocks send connect request')
-            self.cipher = encrypt.Encryptor(keys[self.serverid][1], self.method)
-            self._sock.sendall(self.pskcipher.encrypt(chr(1) + keys[self.serverid][0]) + self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data))
+            self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, salt, ctx, 0)
+            pt = struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data
+            ct, mac = self.cipher.encrypt(pt)
+            self._sock.sendall(self.pskcipher.encrypt(chr(1) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
             if data and self._data_bak is None:
                 self._data_bak = data
             self.connected = 1
         else:
-            self._sock.sendall(self.cipher.encrypt(data))
+            ct, mac = self.cipher.encrypt(data)
+            self._sock.sendall(self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac)
 
 if __name__ == '__main__':
     hxs = hxssocket('hxs://user:pass@127.0.0.1:80')
