@@ -29,8 +29,6 @@ class sssocket(basesocket):
         from connection import create_connection
         self._sock = create_connection((sshost, ssport), self.timeout, parentproxy=self.parentproxy, tunnel=True)
         self.crypto = encrypt.Encryptor(sspassword, ssmethod)
-        self.setsockopt = self._sock.setsockopt
-        self.fileno = self._sock.fileno
 
     def recv(self, size):
         if not self.connected:
@@ -67,14 +65,3 @@ class sssocket(basesocket):
                                                    struct.pack(b">H", port),
                                                    data])))
             self.connected = True
-
-    def dup(self):
-        new = sssocket()
-        new.ssServer = self.ssServer
-        new.timeout = self.timeout
-        new.parentproxy = self.parentproxy
-        new._sock = self._sock.dup()
-        new.crypto = self.crypto
-        new.connected = self.connected
-        new._rbuffer = self._rbuffer
-        return new

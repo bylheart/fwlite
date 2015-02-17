@@ -99,5 +99,11 @@ class basesocket(object):
     def __del__(self):
         self.close()
 
-    def settimeout(self, timeout):
-        self._sock.settimeout(timeout)
+    def settimeout(self, value):
+        return self._sock.settimeout(value)
+
+    def setsockopt(self, level, optname, value):
+        return self._sock.setsockopt(level, optname, value)
+
+    def fileno(self):
+        return self._sock.fileno()

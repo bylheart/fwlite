@@ -53,8 +53,6 @@ class hxssocket(basesocket):
             self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
             self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
         self._address = ('%s:%s' % address).encode()
-        self.setsockopt = self._sock.setsockopt
-        self.fileno = self._sock.fileno
 
     def getKey(self):
         with newkey_lock[self.serverid]:
@@ -129,21 +127,6 @@ class hxssocket(basesocket):
             self.connected = 1
         else:
             self._sock.sendall(self.cipher.encrypt(data))
-
-    def dup(self):
-        new = hxssocket()
-        new.hxsServer = self.hxsServer
-        new.timeout = self.timeout
-        new.parentproxy = self.parentproxy
-        new._sock = self._sock.dup()
-        new.cipher = self.cipher
-        new.pskcipher = self.pskcipher
-        new.PSK = self.PSK
-        new.connected = self.connected
-        new._rbuffer = self._rbuffer
-        new.method = self.method
-        new.serverid = self.serverid
-        return new
 
 if __name__ == '__main__':
     hxs = hxssocket('hxs://user:pass@127.0.0.1:80')
