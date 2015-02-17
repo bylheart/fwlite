@@ -85,6 +85,7 @@ from parent_proxy import ParentProxyList
 from connection import create_connection
 import resolver
 from resolver import get_ip_address
+from redirector import redirector
 from httputil import read_reaponse_line, read_headers, read_header_data
 try:
     import urllib.request as urllib2
@@ -132,21 +133,8 @@ def prestart():
 ! rules: https://autoproxy.org/zh-CN/Rules
 ! /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1/
 ''')
-    if not os.path.isfile('./fgfw-lite/_redirector.py'):
-        with open('./fgfw-lite/_redirector.py', 'w') as f:
-            f.write('''\
-#!/usr/bin/env python
-# coding: UTF-8
-# This file is designed for expirenced user to edit
-
-
-def redirector(handler):
-    pass
-''')
 
 prestart()
-
-from _redirector import redirector as uredirector
 
 
 class stats(object):
@@ -930,7 +918,7 @@ class ProxyHandler(HTTPRequestHandler):
             except Exception as e:
                 return self.send_error(404, repr(e))
         elif parse.path == '/api/redirector' and self.command == 'GET':
-            data = json.dumps([(index, rule[0].rule, rule[1]) for index, rule in enumerate(self.conf.PARENT_PROXY.redirlst)])
+            data = json.dumps([(index, rule[0].rule, rule[1]) for index, rule in enumerate(self.conf.REDIRECTOR.redirlst)])
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/redirector' and self.command == 'POST':
             'accept a json encoded tuple: (str rule, str dest)'
@@ -942,8 +930,8 @@ class ProxyHandler(HTTPRequestHandler):
             try:
                 rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
                 if rule:
-                    assert base64.urlsafe_b64decode(rule) == self.conf.PARENT_PROXY.redirlst[int(parse.path[16:])][0].rule
-                rule, dest = self.conf.PARENT_PROXY.redirlst.pop(int(parse.path[16:]))
+                    assert base64.urlsafe_b64decode(rule) == self.conf.REDIRECTOR.redirlst[int(parse.path[16:])][0].rule
+                rule, dest = self.conf.REDIRECTOR.redirlst.pop(int(parse.path[16:]))
                 self.write(200, json.dumps([int(parse.path[16:]), rule.rule, dest]), 'application/json')
                 return self.conf.stdout()
             except Exception as e:
@@ -1012,10 +1000,8 @@ class parent_proxy(object):
     def config(self):
         self.gfwlist = ap_filter()
         self.force = ap_filter()
-        self._bad302 = ap_filter()
         self.temp = []
         self.temp_rules = set()
-        self.redirlst = []
         self.ignore = []
         resolver.apfilter = self.force
 
@@ -1050,20 +1036,17 @@ class parent_proxy(object):
 
         self.geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
 
+    def redirect(self, hdlr):
+        return self.conf.REDIRECTOR.redirect(hdlr)
+
     def add_redirect(self, rule, dest):
-        try:
-            if rule in [a.rule for a, b in self.redirlst]:
-                self.logger.warning('multiple redirector rule! %s' % rule)
-                return
-            if dest.lower() == 'auto':
-                self.ignore.append(ap_rule(rule))
-                return
-            if dest.lower() == 'bad302':
-                self._bad302.add(rule)
-                return
-            self.redirlst.append((ap_rule(rule), dest))
-        except ValueError as e:
-            self.logger.debug('create autoproxy rule failed: %s' % e)
+        return self.conf.REDIRECTOR.add_redirect(rule, dest)
+
+    def bad302(self, uri):
+        return self.conf.REDIRECTOR.bad302(uri)
+
+    def add_ignore(self, rule):
+        self.ignore.append(ap_rule(rule))
 
     def add_rule(self, line, force=False):
         try:
@@ -1075,29 +1058,6 @@ class parent_proxy(object):
                 self.gfwlist.add(line)
         except ValueError as e:
             self.logger.debug('create autoproxy rule failed: %s' % e)
-
-    def redirect(self, hdlr):
-        searchword = re.match(r'^http://([\w-]+)/$', hdlr.path)
-        if searchword:
-            q = searchword.group(1)
-            if 'xn--' in q:
-                q = q.encode().decode('idna')
-            self.logger.debug('Match redirect rule addressbar-search')
-            return 'https://www.google.com/search?q=%s&ie=utf-8&oe=utf-8&aq=t&rls=org.mozilla:zh-CN:official' % urlquote(q.encode('utf-8'))
-        for rule, result in self.redirlst:
-            if rule.match(hdlr.path):
-                self.logger.debug('Match redirect rule {}, {}'.format(rule.rule, result))
-                if rule.override:
-                    return None
-                if result == 'forcehttps':
-                    return hdlr.path.replace('http://', 'https://', 1)
-                if result.startswith('/') and result.endswith('/'):
-                    return rule._regex.sub(result[1:-1], hdlr.path)
-                return result
-        return uredirector(hdlr)
-
-    def bad302(self, uri):
-        return self._bad302.match(uri)
 
     @lru_cache(256, timeout=120)
     def ifhost_in_region(self, host, ip):
@@ -1500,6 +1460,7 @@ class Config(object):
                     except Exception as e:
                         self.logger.warning('%s %s' % (e, line))
 
+        self.REDIRECTOR = redirector(self)
         self.PARENT_PROXY = parent_proxy(self)
 
     def reload(self):
