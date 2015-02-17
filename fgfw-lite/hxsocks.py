@@ -61,17 +61,17 @@ class hxssocket(basesocket):
                 p = self.hxsServer.parse
                 host, port, usn, psw = (p.hostname, p.port, p.username, p.password)
                 self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
-                cipher = encrypt.Encryptor(self.PSK, self.method)
+                self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
                 dh = DH()
                 pubk = dh.getPubKey()
                 data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
-                self._sock.sendall(cipher.encrypt(data))
+                self._sock.sendall(self.pskcipher.encrypt(data))
                 fp = self._sock.makefile('rb')
-                resp = ord(cipher.decrypt(fp.read(cipher.iv_len + 1)))
+                resp = ord(self.pskcipher.decrypt(fp.read(self.pskcipher.iv_len + 1)))
                 if resp == 0:
-                    pklen = struct.unpack('>H', cipher.decrypt(fp.read(2)))[0]
-                    pkey = cipher.decrypt(fp.read(pklen))
-                    auth = cipher.decrypt(fp.read(32))
+                    pklen = struct.unpack('>H', self.pskcipher.decrypt(fp.read(2)))[0]
+                    pkey = self.pskcipher.decrypt(fp.read(pklen))
+                    auth = self.pskcipher.decrypt(fp.read(32))
                     if auth == hashlib.sha256(pubk + pkey + usn + psw).digest():
                         shared_secret = dh.genKey(pkey)
                         keys[self.hxsServer.proxy] = (hashlib.md5(pubk).digest(), shared_secret)
@@ -114,9 +114,9 @@ class hxssocket(basesocket):
 
     def sendall(self, data):
         if self.connected == 0:
-            cipher = encrypt.Encryptor(self.PSK, self.method)
+            self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
             self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], self.method)
-            self._sock.sendall(cipher.encrypt(chr(1) + keys[self.hxsServer.proxy][0]) + self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data))
+            self._sock.sendall(self.pskcipher.encrypt(chr(1) + keys[self.hxsServer.proxy][0]) + self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data))
             self.connected = 1
         else:
             self._sock.sendall(self.cipher.encrypt(data))
@@ -128,6 +128,7 @@ class hxssocket(basesocket):
         new.parentproxy = self.parentproxy
         new._sock = self._sock.dup()
         new.cipher = self.cipher
+        new.pskcipher = self.pskcipher
         new.PSK = self.PSK
         new.connected = self.connected
         new._rbuffer = self._rbuffer
