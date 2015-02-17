@@ -115,6 +115,7 @@ else:
 
 NetWorkIOError = (IOError, OSError)
 DEFAULT_TIMEOUT = 5
+FAKEGIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x01D\x00;'
 
 
 def prestart():
@@ -332,7 +333,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 
     def write(self, code=200, msg=None, ctype=None):
         if msg is None:
-            msg = ''
+            msg = b''
         self.send_response(code)
         if ctype:
             self.send_header('Content-type', ctype)
@@ -454,6 +455,8 @@ class ProxyHandler(HTTPRequestHandler):
             elif new_url.lower() == 'reset':
                 self.close_connection = 1
                 return
+            elif new_url.lower() == 'adblock':
+                return self.write(msg=FAKEGIF, ctype='image/gif')
             else:
                 return self.redirect(new_url)
 
@@ -710,7 +713,7 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(int(new_url))
             elif new_url in self.conf.parentlist.dict.keys():
                 self._proxylist = [self.conf.parentlist.dict.get(new_url)]
-            elif new_url.lower() == 'reset':
+            elif new_url.lower() in ('reset', 'adblock'):
                 return
 
         if self._request_is_loopback(self.requesthost) or self.ssclient:
