@@ -100,7 +100,7 @@ class hxssocket(basesocket):
             data = self._sock.recv(self.bufsize)
             if not data:
                 return b''
-            data = self.crypto.decrypt(data)
+            data = self.cipher.decrypt(data)
             if len(data) <= size:
                 return data
             buf_len = len(data)
