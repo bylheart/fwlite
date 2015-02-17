@@ -87,12 +87,14 @@ class hxssocket(basesocket):
         if self.connected == 1:
             fp = self._sock.makefile('rb')
             resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
+            # now don't need to worry pskcipher iv anymore.
             if ord(self.pskcipher.decrypt(fp.read(resp_len))) != 0:
                 fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
                 del keys[self.hxsServer.proxy]
                 logger.error('connect to hxsocket server failed! invalid shared key.')
                 # TODO: it is possible to reconnect here.
                 return b''
+            fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
             self.connected = 2
         buf = self._rbuffer
         buf.seek(0, 2)  # seek end
