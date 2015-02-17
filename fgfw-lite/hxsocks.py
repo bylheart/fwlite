@@ -50,6 +50,7 @@ class hxssocket(basesocket):
             p = self.hxsServer.parse
             host, port = p.hostname, p.port
             self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
+            self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
         self._address = ('%s:%s' % address).encode()
         self.setsockopt = self._sock.setsockopt
         self.fileno = self._sock.fileno
@@ -60,8 +61,9 @@ class hxssocket(basesocket):
             if self.hxsServer.proxy not in keys:
                 p = self.hxsServer.parse
                 host, port, usn, psw = (p.hostname, p.port, p.username, p.password)
-                self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
-                self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+                if self._sock is None:
+                    self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
+                    self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
                 dh = DH()
                 pubk = dh.getPubKey()
                 data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
@@ -114,7 +116,6 @@ class hxssocket(basesocket):
 
     def sendall(self, data):
         if self.connected == 0:
-            self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
             self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], self.method)
             self._sock.sendall(self.pskcipher.encrypt(chr(1) + keys[self.hxsServer.proxy][0]) + self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data))
             self.connected = 1
