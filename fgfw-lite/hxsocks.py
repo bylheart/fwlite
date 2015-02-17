@@ -37,6 +37,7 @@ class hxssocket(basesocket):
         if self.hxsServer:
             self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
             self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [''])[0] or default_method
+            self.serverid = (self.hxsServer.parse.username, self.hxsServer.parse.hostname)
         self.cipher = None
         self.connected = 0
         # value: 0: request not sent
@@ -56,30 +57,33 @@ class hxssocket(basesocket):
         self.fileno = self._sock.fileno
 
     def getKey(self):
-        from connection import create_connection
-        with newkey_lock[self.hxsServer]:
-            if self.hxsServer.proxy not in keys:
-                p = self.hxsServer.parse
-                host, port, usn, psw = (p.hostname, p.port, p.username, p.password)
-                if self._sock is None:
-                    self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
-                    self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
-                dh = DH()
-                pubk = dh.getPubKey()
-                data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
-                self._sock.sendall(self.pskcipher.encrypt(data))
-                fp = self._sock.makefile('rb')
-                resp = ord(self.pskcipher.decrypt(fp.read(self.pskcipher.iv_len + 1)))
-                if resp == 0:
-                    pklen = struct.unpack('>H', self.pskcipher.decrypt(fp.read(2)))[0]
-                    pkey = self.pskcipher.decrypt(fp.read(pklen))
-                    auth = self.pskcipher.decrypt(fp.read(32))
-                    if auth == hashlib.sha256(pubk + pkey + usn + psw).digest():
-                        shared_secret = dh.genKey(pkey)
-                        keys[self.hxsServer.proxy] = (hashlib.md5(pubk).digest(), shared_secret)
-                        return
-                    raise IOError(0, 'connect to hxsocket server failed! getKey: server auth failed')
-                raise IOError(0, 'connect to hxsocket server failed! getKey: bad user')
+        with newkey_lock[self.serverid]:
+            if self.serverid not in keys:
+                for _ in range(2):
+                    p = self.hxsServer.parse
+                    host, port, usn, psw = (p.hostname, p.port, p.username, p.password)
+                    if self._sock is None:
+                        from connection import create_connection
+                        self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
+                        self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+                    dh = DH()
+                    pubk = dh.getPubKey()
+                    data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
+                    self._sock.sendall(self.pskcipher.encrypt(data))
+                    fp = self._sock.makefile('rb')
+                    resp = ord(self.pskcipher.decrypt(fp.read(self.pskcipher.iv_len + 1)))
+                    if resp == 0:
+                        pklen = struct.unpack('>H', self.pskcipher.decrypt(fp.read(2)))[0]
+                        server_key = self.pskcipher.decrypt(fp.read(pklen))
+                        auth = self.pskcipher.decrypt(fp.read(32))
+                        if auth == hashlib.sha256(pubk + server_key + usn + psw).digest():
+                            shared_secret = dh.genKey(server_key)
+                            keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
+                            return
+                        logger.error('hxsocket getKey Error: server auth failed')
+                    else:
+                        fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
+                        logger.error('hxsocket getKey Error. bad password or timestamp.')
 
     def recv(self, size):
         if self.connected == 0:
@@ -90,8 +94,9 @@ class hxssocket(basesocket):
             # now don't need to worry pskcipher iv anymore.
             if ord(self.pskcipher.decrypt(fp.read(resp_len))) != 0:
                 fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
-                del keys[self.hxsServer.proxy]
-                logger.error('connect to hxsocket server failed! invalid shared key.')
+                if self.serverid in keys:
+                    del keys[self.serverid]
+                logger.error('hxsocket Error: invalid shared key.')
                 # TODO: it is possible to reconnect here.
                 return b''
             fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
@@ -119,8 +124,8 @@ class hxssocket(basesocket):
 
     def sendall(self, data):
         if self.connected == 0:
-            self.cipher = encrypt.Encryptor(keys[self.hxsServer.proxy][1], self.method)
-            self._sock.sendall(self.pskcipher.encrypt(chr(1) + keys[self.hxsServer.proxy][0]) + self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data))
+            self.cipher = encrypt.Encryptor(keys[self.serverid][1], self.method)
+            self._sock.sendall(self.pskcipher.encrypt(chr(1) + keys[self.serverid][0]) + self.cipher.encrypt(struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data))
             self.connected = 1
         else:
             self._sock.sendall(self.cipher.encrypt(data))
@@ -137,6 +142,7 @@ class hxssocket(basesocket):
         new.connected = self.connected
         new._rbuffer = self._rbuffer
         new.method = self.method
+        new.serverid = self.serverid
         return new
 
 if __name__ == '__main__':
