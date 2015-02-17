@@ -22,8 +22,6 @@ import re
 import errno
 import socket
 import select
-import struct
-import dnslib
 import logging
 try:
     import configparser
@@ -107,26 +105,6 @@ def forward_socket(local, remote, timeout, bufsize):
                 sock.close()
             except (OSError, IOError):
                 pass
-
-
-def dns_via_tcp(query, proxy=None, dnsserver='8.8.8.8:53', user=None, passwd=None):
-    # used by gui, a lot of problem, depreciated. check resolver.py
-    from connection import create_connection
-    server, port = parse_hostport(dnsserver, default_port=53)
-    if ':' in server:
-        server = '[%s]' % server
-    dnsserver = '%s:%d' % (server, port)
-    sock = create_connection(parse_hostport(dnsserver), ctimeout=3, rtimeout=3, parentproxy=proxy, tunnel=True)
-    query = dnslib.DNSRecord.question(query, qtype='ANY')
-    query_data = query.pack()
-    sock.send(struct.pack('>h', len(query_data)) + query_data)
-    rfile = sock.makefile('rb')
-    reply_data_length = rfile.read(2)
-    reply_data = rfile.read(struct.unpack('>h', reply_data_length)[0])
-    record = dnslib.DNSRecord.parse(reply_data)
-    iplist = [str(x.rdata) for x in record.rr if x.rtype in (1, 28, 255)]
-    sock.close()
-    return iplist
 
 
 def parse_hostport(host, default_port=80):

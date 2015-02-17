@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>FGFW-Lite Remote Resolver</string>
+   <string>FW-Lite Remote Resolver</string>
   </property>
   <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">

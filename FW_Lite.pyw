@@ -27,7 +27,8 @@ from ui_localrules import Ui_LocalRules
 from ui_localrule import Ui_LocalRule
 from ui_redirectorrules import Ui_RedirectorRules
 from ui_settings import Ui_Settings
-from util import SConfigParser, dns_via_tcp
+from util import SConfigParser, parse_hostport
+from resolver import tcp_dns_record
 try:
     import httplib
     import urllib2
@@ -115,7 +116,7 @@ class MainWindow(QtGui.QMainWindow):
         self.ui.tabWidget.addTab(self.Settings, "")
         self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.Settings), QtGui.QApplication.translate("MainWindow", "设置", None, QtGui.QApplication.UnicodeUTF8))
 
-        self.resolve = RemoteResolve()
+        self.resolve = RemoteResolve(self)
 
         self.trayIcon = None
         self.createActions()
@@ -460,7 +461,8 @@ class RemoteResolve(QtGui.QWidget):
     trigger = QtCore.Signal(str)
 
     def __init__(self, parent=None):
-        super(RemoteResolve, self).__init__(parent)
+        super(RemoteResolve, self).__init__()
+        self.port = parent.port
         self.ui = Ui_remote_resolver()
         self.ui.setupUi(self)
         self.ui.goButton.clicked.connect(self.do_resolve)
@@ -473,7 +475,14 @@ class RemoteResolve(QtGui.QWidget):
     def _do_resolve(self, host, server):
         try:
             # result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host.encode()).decode().strip('='), server), timeout=1).read().decode())
-            result = dns_via_tcp(host, '127.0.0.1:8118', server)
+            proxy = 'http://127.0.0.1:%d' % self.port
+            server = parse_hostport(server, 53)
+            record = tcp_dns_record(host, proxy, server)
+            if record is None:
+                return []
+            while len(record.rr) == 1 and record.rr[0].rtype == 5:
+                record = tcp_dns_record(str(record.rr[0].rdata), proxy)
+            result = [str(x.rdata) for x in record.rr if x.rtype in (1, 28)]
         except Exception as e:
             result = [repr(e)]
         self.trigger.emit('\n'.join(result))

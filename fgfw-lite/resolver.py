@@ -53,12 +53,12 @@ def resolver(host):
             return iplist
         except Exception as e:
             logger.debug('resolving %s: %r' % (host, e))
-            record = tcp_dns_record(host)
+            record = tcp_dns_record(host, proxy)
             if record is None:
                 return []
             while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
                 logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
-                record = tcp_dns_record(str(record.rr[0].rdata))
+                record = tcp_dns_record(str(record.rr[0].rdata), proxy)
             iplist = [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
             return iplist
 
@@ -113,7 +113,7 @@ def is_poisoned(host):
 
 
 @lru_cache(4096, timeout=900)
-def tcp_dns_record(host, server=('8.8.8.8', 53), qtype='ANY'):
+def tcp_dns_record(host, proxy, server=('8.8.8.8', 53), qtype='ANY'):
     for _ in range(2):
         try:
             sock = create_connection(server, ctimeout=5, rtimeout=5, parentproxy=proxy, tunnel=True)

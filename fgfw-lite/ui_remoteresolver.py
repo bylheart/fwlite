@@ -49,7 +49,7 @@ class Ui_remote_resolver(object):
         QtCore.QMetaObject.connectSlotsByName(remote_resolver)
 
     def retranslateUi(self, remote_resolver):
-        remote_resolver.setWindowTitle(QtGui.QApplication.translate("remote_resolver", "FGFW-Lite Remote Resolver", None, QtGui.QApplication.UnicodeUTF8))
+        remote_resolver.setWindowTitle(QtGui.QApplication.translate("remote_resolver", "FW-Lite Remote Resolver", None, QtGui.QApplication.UnicodeUTF8))
         self.hostLabel.setText(QtGui.QApplication.translate("remote_resolver", "Hostname:", None, QtGui.QApplication.UnicodeUTF8))
         self.hostLineEdit.setText(QtGui.QApplication.translate("remote_resolver", "www.google.com", None, QtGui.QApplication.UnicodeUTF8))
         self.serverLabel.setText(QtGui.QApplication.translate("remote_resolver", "DNS Server:", None, QtGui.QApplication.UnicodeUTF8))
