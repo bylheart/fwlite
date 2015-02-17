@@ -91,7 +91,7 @@ try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
     urlquote = urlparse.quote
-    urlquote = urlparse.unquote
+    urlunquote = urlparse.unquote
     from socketserver import ThreadingMixIn
     from http.server import BaseHTTPRequestHandler, HTTPServer
     from ipaddress import ip_address, IPv4Address
@@ -99,7 +99,7 @@ except ImportError:
     import urllib2
     import urlparse
     urlquote = urllib2.quote
-    unquote = urllib2.unquote
+    urlunquote = urllib2.unquote
     from SocketServer import ThreadingMixIn
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
     from ipaddr import IPAddress as ip_address
@@ -826,13 +826,13 @@ class ProxyHandler(HTTPRequestHandler):
         user, passwd = p.username or "anonymous", p.password or None
         if self.command == "GET":
             if p.path.endswith('/'):
-                return self.do_FTP_LIST(p.netloc, unquote(p.path), user, passwd)
+                return self.do_FTP_LIST(p.netloc, urlunquote(p.path), user, passwd)
             else:
                 try:
                     ftp = ftplib.FTP(p.netloc)
                     ftp.login(user, passwd)
                     lst = []
-                    response = ftp.retrlines("LIST %s" % unquote(p.path), lst.append)
+                    response = ftp.retrlines("LIST %s" % urlunquote(p.path), lst.append)
                     if not lst:
                         return self.send_error(504, response)
                     if len(lst) != 1 or lst[0].startswith('d'):
@@ -841,7 +841,7 @@ class ProxyHandler(HTTPRequestHandler):
                     self.send_header('Content-Length', lst[0].split()[4])
                     self.send_header('Connection', 'keep_alive')
                     self.end_headers()
-                    ftp.retrbinary("RETR %s" % unquote(p.path), self._wfile_write, self.bufsize)
+                    ftp.retrbinary("RETR %s" % urlunquote(p.path), self._wfile_write, self.bufsize)
                     ftp.quit()
                 except Exception as e:  # Possibly no such file
                     self.logger.warning("FTP Exception: %r" % e)
