@@ -531,12 +531,14 @@ class ProxyHandler(HTTPRequestHandler):
                     self.headers['Proxy-Authorization'] = 'Basic %s' % base64.b64encode(a.encode())
             else:
                 s.append('%s /%s %s\r\n' % (self.command, '/'.join(self.path.split('/')[3:]), self.request_version))
-            del self.headers['Proxy-Connection']
+            # Does the client want to close connection after this request?
             conntype = self.headers.get('Connection', "")
             if self.request_version >= b"HTTP/1.1":
                 client_close = conntype.lower() == 'close'
             else:
                 client_close = conntype.lower() != 'keep_alive'
+            del self.headers['Upgrade']
+            del self.headers['Proxy-Connection']
             self.headers['Connection'] = 'keep_alive'
             for k, v in self.headers.items():
                 if isinstance(v, bytes):
@@ -694,7 +696,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
         return self.send_error(504)
 
-    do_OPTIONS = do_PATCH = do_POST = do_DELETE = do_TRACE = do_HEAD = do_PUT = do_GET
+    do_HEAD = do_POST = do_PUT = do_DELETE = do_OPTIONS = do_PATCH = do_TRACE = do_GET
 
     def do_CONNECT(self):
         self.close_connection = 1
