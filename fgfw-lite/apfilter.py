@@ -49,7 +49,7 @@ class ap_rule(object):
     def _parse(self):
         def parse(rule):
             if rule.startswith('||'):
-                regex = rule.replace('.', r'\.').replace('?', r'\?').replace('/', '').replace('*', '[^/]*').replace('^', r'[^\w%._-]').replace('||', '^(?:https?://)?(?:[^/]+\.)?') + r'(?:[:/]|$)'
+                regex = rule.replace('.', r'\.').replace('?', r'\?').replace('/', '').replace('*', '[^/]*').replace('^', r'[\/:]').replace('||', '^(?:https?://)?(?:[^/]+\.)?') + r'(?:[:/]|$)'
                 return re.compile(regex)
             elif rule.startswith('/') and rule.endswith('/'):
                 return re.compile(rule[1:-1])
@@ -59,7 +59,7 @@ class ap_rule(object):
                 regex = r'^(?:https://)?%s(?:[:/])' % regex.replace('.', r'\.').replace('*', '[^/]*')
                 return re.compile(regex)
             else:
-                regex = rule.replace('.', r'\.').replace('?', r'\?').replace('*', '.*').replace('^', r'[^\w%._-]')
+                regex = rule.replace('.', r'\.').replace('?', r'\?').replace('*', '.*').replace('^', r'[\/:]')
                 regex = re.sub(r'^\|', r'^', regex)
                 regex = re.sub(r'\|$', r'$', regex)
                 if not rule.startswith(('|', 'http://')):
@@ -96,8 +96,10 @@ class ap_filter(object):
 
     def add(self, rule, expire=None):
         rule = rule.strip()
-        if len(rule) < 3 or rule.startswith(('!', '[')) or '#' in rule:
+        if len(rule) < 3 or rule.startswith(('!', '[')) or '#' in rule or '$' in rule:
             return
+        if '||' in rule and '/' in rule[:-1]:
+            return self.add(rule.replace('||', '|http://'))
         if rule.startswith('||') and '*' not in rule:
             self._add_domain(rule)
         elif rule.startswith('@@||') and '*' not in rule:
@@ -131,14 +133,14 @@ class ap_filter(object):
         lst.append(o)
 
     def _add_exclude_domain(self, rule):
-        rule = rule.rstrip('/')
+        rule = rule.rstrip('/^')
         self.exclude_domains.add(rule[4:])
         temp = set(self.exclude_domain_endswith)
         temp.add('.' + rule[4:])
         self.exclude_domain_endswith = tuple(temp)
 
     def _add_domain(self, rule):
-        rule = rule.rstrip('/')
+        rule = rule.rstrip('/^')
         self.domains.add(rule[2:])
         temp = set(self.domain_endswith)
         temp.add('.' + rule[2:])
