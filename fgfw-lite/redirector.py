@@ -31,6 +31,7 @@ class redirector(object):
         self.conf = conf
         self.logger = conf.logger
         self._bad302 = ap_filter()
+        self.adblock = ap_filter()
         self.redirlst = []
 
     def redirect(self, hdlr):
@@ -51,6 +52,8 @@ class redirector(object):
                 if result.startswith('/') and result.endswith('/'):
                     return rule._regex.sub(result[1:-1], hdlr.path)
                 return result
+        if self.adblock.match(hdlr.path):
+            return 'adblock'
         return uredirector(hdlr)
 
     def bad302(self, uri):
@@ -65,6 +68,8 @@ class redirector(object):
                 return self.conf.PARENT_PROXY.add_ignore(rule)
             if dest.lower() == 'bad302':
                 return self._bad302.add(rule)
+            if dest.lower() == 'adblock':
+                return self.adblock.add(rule)
             self.redirlst.append((ap_rule(rule), dest))
         except ValueError as e:
             self.logger.debug('create autoproxy rule failed: %s' % e)
