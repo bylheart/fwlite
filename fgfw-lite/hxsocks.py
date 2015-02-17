@@ -95,14 +95,17 @@ class hxssocket(basesocket):
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
         self._rbuffer = io.BytesIO()  # reset _rbuf.  we consume it via buf.
-        if buf_len < size:
-            # Not enough data in buffer?  Try to read.
-            data = self.cipher.decrypt(self._sock.recv(size - buf_len))
-            if len(data) == size and not buf_len:
-                # Shortcut.  Avoid buffer data copies
+        if not buf_len:
+            # Nothing in buffer? Try to read.
+            data = self._sock.recv(size)
+            if not data:
+                return b''
+            data = self.crypto.decrypt(data)
+            if len(data) <= size:
                 return data
-            buf.write(data)
-            del data  # explicit free
+        if buf_len < size:
+            buf.seek(0)
+            return buf.read(size)
         buf.seek(0)
         rv = buf.read(size)
         self._rbuffer.write(buf.read())
