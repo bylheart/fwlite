@@ -10,6 +10,4 @@
 /userconf.ini
 *.py[cod]
 /goagent/proxy.ini
-/Python27/python27/*
-/fgfw-lite/userfilter.py
-/fgfw-lite/redirector.py
+/fgfw-lite/_redirector.py

@@ -132,8 +132,8 @@ def prestart():
 ! rules: https://autoproxy.org/zh-CN/Rules
 ! /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1/
 ''')
-    if not os.path.isfile('./fgfw-lite/redirector.py'):
-        with open('./fgfw-lite/redirector.py', 'w') as f:
+    if not os.path.isfile('./fgfw-lite/_redirector.py'):
+        with open('./fgfw-lite/_redirector.py', 'w') as f:
             f.write('''\
 #!/usr/bin/env python
 # coding: UTF-8
@@ -146,7 +146,7 @@ def redirector(handler):
 
 prestart()
 
-from redirector import redirector
+from _redirector import redirector as uredirector
 
 
 class stats(object):
@@ -1094,7 +1094,7 @@ class parent_proxy(object):
                 if result.startswith('/') and result.endswith('/'):
                     return rule._regex.sub(result[1:-1], hdlr.path)
                 return result
-        return redirector(hdlr)
+        return uredirector(hdlr)
 
     def bad302(self, uri):
         return self._bad302.match(uri)
