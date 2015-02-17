@@ -14,7 +14,7 @@ try:
 except ImportError:
     from ipaddr import IPAddress as _ip_address
 apfilter = None
-proxy = 'direct'
+proxy = ''
 
 host_lock_map = defaultdict(RLock)
 
