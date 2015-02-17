@@ -27,9 +27,7 @@ import dnslib
 import logging
 try:
     import configparser
-    import _thread as thread
 except ImportError:
-    import thread
     import ConfigParser as configparser
 configparser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 
@@ -81,30 +79,34 @@ class SConfigParser(configparser.ConfigParser):
 
 def forward_socket(local, remote, timeout, bufsize):
     """forward socket"""
-    def __io_copy(dest, source, timeout):
-        try:
-            dest.settimeout(timeout)
-            source.settimeout(timeout)
-            while 1:
-                data = source.recv(bufsize)
+    try:
+        while 1:
+            ins, _, _ = select.select([local, remote], [], [], timeout)
+            if not ins:
+                break
+            if local in ins:
+                data = local.recv(bufsize)
                 if not data:
                     break
-                dest.sendall(data)
-        except socket.timeout:
-            pass
-        except (OSError, IOError) as e:
-            if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
-                raise
-            if e.args[0] in (errno.EBADF,):
-                return
-        finally:
-            for sock in (dest, source):
-                try:
-                    sock.close()
-                except (IOError, OSError):
-                    pass
-    thread.start_new_thread(__io_copy, (remote.dup(), local.dup(), timeout))
-    __io_copy(local, remote, timeout)
+                remote.sendall(data)
+            if remote in ins:
+                data = remote.recv(bufsize)
+                if not data:
+                    break
+                local.sendall(data)
+    except socket.timeout:
+        pass
+    except (OSError, IOError) as e:
+        if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
+            raise
+        if e.args[0] in (errno.EBADF,):
+            return
+    finally:
+        for sock in (remote, local):
+            try:
+                sock.close()
+            except (OSError, IOError):
+                pass
 
 
 def dns_via_tcp(query, proxy=None, dnsserver='8.8.8.8:53', user=None, passwd=None):
