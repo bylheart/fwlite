@@ -20,6 +20,8 @@ from dh import DH
 default_method = 'rc4-md5'
 keys = {}
 newkey_lock = defaultdict(RLock)
+salt = b'G\x91V\x14{\x00\xd9xr\x9d6\x99\x81GL\xe6c>\xa9\\\xd2\xc6\xe0:\x9c\x0b\xefK\xd4\x9ccU'
+ctx = b'hxsocks'
 
 
 class hxssocket(basesocket):
