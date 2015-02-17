@@ -23,6 +23,7 @@
 
 import os
 import hashlib
+import hmac
 import string
 import struct
 from collections import defaultdict, deque
@@ -38,6 +39,24 @@ except ImportError:
         from streamcipher import StreamCipher as Cipher
     except ImportError:
         Cipher = None
+try:
+    from hmac import compare_digest
+except ImportError:
+    def compare_digest(a, b):
+        if isinstance(a, str):
+            if len(a) != len(b):
+                return False
+            result = 0
+            for x, y in zip(a, b):
+                result |= ord(x) ^ ord(y)
+            return result == 0
+        else:
+            if len(a) != len(b):
+                return False
+            result = 0
+            for x, y in zip(a, b):
+                result |= x ^ y
+            return result == 0
 
 
 def get_table(key):
@@ -176,6 +195,70 @@ class Encryptor(object):
             return self.decipher.update(buf)
 
 
+class AEncryptor(object):
+    '''
+    Provide Authenticated Encryption
+    '''
+    def __init__(self, key, method, salt, ctx, servermode, hfunc=hashlib.md5):
+        if method not in method_supported:
+            raise ValueError('method not supported')
+        self.method = method
+        self.servermode = servermode
+        self.key_len, self.iv_len = get_cipher_len(method)
+        if servermode:
+            self.encrypt_key, self.auth_key, self.decrypt_key, self.de_auth_key = self.hkdf(key, salt, ctx)
+        else:
+            self.decrypt_key, self.de_auth_key, self.encrypt_key, self.auth_key = self.hkdf(key, salt, ctx)
+        self.iv_sent = False
+        self.cipher_iv = random_string(self.iv_len)
+        self.cipher = get_cipher(self.encrypt_key, method, 1, self.cipher_iv)
+        self.decipher = None
+        self.enmac = hmac.new(self.auth_key, digestmod=hfunc)
+        self.demac = hmac.new(self.de_auth_key, digestmod=hfunc)
+
+    def hkdf(self, key, salt, ctx):
+        '''
+        consider key come from a key exchange protocol.
+        '''
+        key = hmac.new(salt, key, hashlib.sha256).digest()
+        sek = hmac.new(key, ctx + b'server_encrypt_key', hashlib.sha256).digest()[:self.key_len]
+        sak = hmac.new(key, ctx + b'server_authenticate_key', hashlib.sha256).digest()
+        cek = hmac.new(key, ctx + b'client_encrypt_key', hashlib.sha256).digest()[:self.key_len]
+        cak = hmac.new(key, ctx + b'client_authenticate_key', hashlib.sha256).digest()
+        return sek, sak, cek, cak
+
+    def encrypt(self, buf):
+        if len(buf) == 0:
+            raise ValueError('buf should not be empty')
+        if self.method is None:
+            return string.translate(buf, self.encrypt_table)
+        else:
+            if self.iv_sent:
+                ct = self.cipher.update(buf)
+            else:
+                self.iv_sent = True
+                ct = self.cipher_iv + self.cipher.update(buf)
+            self.enmac.update(ct)
+            return ct, self.enmac.digest()
+
+    def decrypt(self, buf, mac):
+        if len(buf) == 0:
+            raise ValueError('buf should not be empty')
+        self.demac.update(buf)
+        rmac = self.demac.digest()
+        if self.decipher is None:
+            decipher_iv = buf[:self.iv_len]
+            if self.servermode:
+                if decipher_iv in USED_IV[self.decrypt_key]:
+                    raise ValueError('iv reused, possible replay attrack')
+                USED_IV[self.decrypt_key].append(decipher_iv)
+            self.decipher = get_cipher(self.decrypt_key, self.method, 0, decipher_iv)
+            buf = buf[self.iv_len:]
+        pt = self.decipher.update(buf) if buf else b''
+        if compare_digest(rmac, mac):
+            return pt
+        raise ValueError('MAC verification failed!')
+
 if __name__ == '__main__':
     print('encrypt and decrypt 20MB data.')
     s = os.urandom(10000)
@@ -191,5 +274,25 @@ if __name__ == '__main__':
                 c = cipher.decrypt(a)
                 d = cipher.decrypt(b)
             print('%s %ss' % (method, time.time() - t))
+        except Exception as e:
+            print(repr(e))
+    print('test AE')
+    ae1 = AEncryptor(b'123456', 'aes-256-cfb', 'salt', 'ctx', False, hashlib.sha256)
+    ae2 = AEncryptor(b'123456', 'aes-256-cfb', 'salt', 'ctx', True, hashlib.sha256)
+    a, b = ae1.encrypt(b'abcde')
+    c, d = ae1.encrypt(b'fg')
+    print(ae2.decrypt(a, b))
+    print(ae2.decrypt(c, d))
+    for method in lst:
+        try:
+            cipher1 = AEncryptor(b'123456', method, 'salt', 'ctx', False, hashlib.md5,)
+            cipher2 = AEncryptor(b'123456', method, 'salt', 'ctx', True, hashlib.md5)
+            t = time.time()
+            for _ in range(1049):
+                a, b = cipher1.encrypt(s)
+                c, d = cipher1.encrypt(s)
+                cipher2.decrypt(a, b)
+                cipher2.decrypt(c, d)
+            print('%s-HMAC-MD5 %ss' % (method, time.time() - t))
         except Exception as e:
             print(repr(e))
