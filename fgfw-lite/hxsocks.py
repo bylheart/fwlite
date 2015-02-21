@@ -81,7 +81,8 @@ class hxssocket(basesocket):
                     data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
                     self._sock.sendall(self.pskcipher.encrypt(data))
                     fp = self._sock.makefile('rb')
-                    resp = ord(self.pskcipher.decrypt(fp.read(self.pskcipher.iv_len + 1)))
+                    resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
+                    resp = ord(self.pskcipher.decrypt(fp.read(resp_len)))
                     if resp == 0:
                         logger.debug('hxsocks read key exchange respond')
                         pklen = struct.unpack('>H', self.pskcipher.decrypt(fp.read(2)))[0]
@@ -111,15 +112,16 @@ class hxssocket(basesocket):
                 if d == 0:
                     break
                 else:
-                    if d is not None:
-                        fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
                     if self.serverid in keys:
                         del keys[self.serverid]
-                    logger.error('hxsocket Error: invalid shared key.')
                     if i:
+                        logger.error('hxsocket Error: invalid shared key.')
                         return b''
                     logger.debug('hxsocket Error: invalid shared key. try again.')
-                    self._sock = None
+                    if d is None:
+                        self._sock = None
+                    else:
+                        fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
                     self._connect()
                     self.sendall(self._data_bak or b'')
             fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
