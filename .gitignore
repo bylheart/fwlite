@@ -1,9 +1,5 @@
-/shadowsocks/config.json
-/cow/
-/snova/
 /fgfw-lite/local.txt
 /fgfw-lite/redirector.txt
-/goagent-logo.png
 /goagent/CA.*
 /goagent/certs/
 /.directory
