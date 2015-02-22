@@ -6,6 +6,8 @@ import socket
 
 
 class basesocket(object):
+    bufsize = 8192
+
     def __init__(self):
         self._rbuffer = io.BytesIO()
         self._sock = None

@@ -26,8 +26,6 @@ mac_len = 16
 
 
 class hxssocket(basesocket):
-    bufsize = 8192
-
     def __init__(self, hxsServer=None, ctimeout=1, parentproxy=None, iplist=None):
         basesocket.__init__(self)
         if hxsServer and not isinstance(hxsServer, ParentProxy):
@@ -80,7 +78,7 @@ class hxssocket(basesocket):
                     logger.debug('hxsocks send key exchange request')
                     data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
                     self._sock.sendall(self.pskcipher.encrypt(data))
-                    fp = self._sock.makefile('rb')
+                    fp = self._sock.makefile('rb', 0)
                     resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
                     resp = ord(self.pskcipher.decrypt(fp.read(resp_len)))
                     if resp == 0:
@@ -103,7 +101,7 @@ class hxssocket(basesocket):
             self.sendall(b'')
         if self.connected == 1:
             for i in range(2):
-                fp = self._sock.makefile('rb')
+                fp = self._sock.makefile('rb', 0)
                 resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
                 # now don't need to worry pskcipher iv anymore.
                 logger.debug('resp_len: %d' % resp_len)
@@ -126,14 +124,13 @@ class hxssocket(basesocket):
                     self.sendall(self._data_bak or b'')
             fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
             self.connected = 2
-        fp = self._sock.makefile('rb')
+        fp = self._sock.makefile('rb', 0)
         buf = self._rbuffer
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
         self._rbuffer = io.BytesIO()  # reset _rbuf.  we consume it via buf.
         if buf_len == 0:
             # Nothing in buffer? Try to read.
-            # data = self._sock.recv(self.bufsize)
             ctlen = fp.read(2)
             if not ctlen:
                 return b''
