@@ -28,7 +28,5 @@ function FindProxyForURL(url, host) {
         return goagent;
     }
 
-    return FindProxyForURLByAutoProxy(url, host);
-}
-return "DIRECT";
+    return "DIRECT";
 }

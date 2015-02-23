@@ -425,6 +425,10 @@ class ProxyHandler(HTTPRequestHandler):
             self.path = self.path.decode('latin1')
         if self.path.lower().startswith('ftp://'):
             return self.do_FTP()
+        if self.path == '/pac':
+            _ip = ip_address(parse_hostport(self.headers.get('Host', ''))[0])
+            if _ip.is_loopback or str(_ip) in self.conf.local_ip:
+                return self.write(msg=self.conf.PAC, ctype='application/x-ns-proxy-autoconfig')
         # transparent proxy
         if self.path.startswith('/'):
             if 'Host' not in self.headers:
@@ -1419,6 +1423,19 @@ class Config(object):
         self.GUI = '-GUI' in sys.argv
         self.rproxy = self.userconf.dgetbool('fgfwproxy', 'rproxy', False)
 
+        listen = self.userconf.dget('fgfwproxy', 'listen', '8118')
+        if listen.isdigit():
+            self.listen = ('127.0.0.1', int(listen))
+        else:
+            self.listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
+
+        self.local_ip = set(socket.gethostbyname_ex(socket.gethostname())[2])
+
+        self.PAC = 'function FindProxyForURL(url, host) {return "PROXY %s:%s; DIRECT";}' % (socket.gethostbyname(socket.gethostname()), self.listen[1])
+        if self.userconf.dget('fgfwproxy', 'pac', ''):
+            self.PAC = 'function FindProxyForURL(url, host) {return "PROXY %s; DIRECT";}' % self.userconf.dget('fgfwproxy', 'pac', '')
+        self.PAC = self.PAC.encode()
+
         if self.userconf.dget('FGFW_Lite', 'logfile', ''):
             path = self.userconf.dget('FGFW_Lite', 'logfile', '')
             dirname = os.path.dirname(path)
@@ -1428,11 +1445,6 @@ class Config(object):
             hdlr = logging.handlers.RotatingFileHandler(path, maxBytes=1048576, backupCount=5)
             hdlr.setFormatter(formatter)
             self.logger.addHandler(hdlr)
-        listen = self.userconf.dget('fgfwproxy', 'listen', '8118')
-        if listen.isdigit():
-            self.listen = ('127.0.0.1', int(listen))
-        else:
-            self.listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
 
         self.region = set(x.upper() for x in self.userconf.dget('fgfwproxy', 'region', '').split('|') if x.strip())
         self.profiles = len(self.userconf.dget('fgfwproxy', 'profile', '13'))
