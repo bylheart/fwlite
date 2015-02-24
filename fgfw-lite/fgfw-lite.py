@@ -1463,7 +1463,7 @@ class Config(object):
                 continue
             self.addparentproxy(k, v)
 
-        if len([k for k in self.parentlist.httpsparents() if k.httpspriority < 100]) <= 1:
+        if not self.rproxy and len([k for k in self.parentlist.httpsparents() if k.httpspriority < 100]) <= 1:
             self.addparentproxy('shadowsocks_0', 'ss://aes-128-cfb:6Rc59g0jFlTppvel@155.254.32.50:8000')
 
         self.maxretry = self.userconf.dgetint('fgfwproxy', 'maxretry', 4)
