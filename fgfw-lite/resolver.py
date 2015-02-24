@@ -53,12 +53,16 @@ def resolver(host):
             return iplist
         except Exception as e:
             logger.debug('resolving %s: %r' % (host, e))
-            record = tcp_dns_record(host, proxy)
-            if record is None:
+            try:
+                record = tcp_dns_record(host, proxy)
+            except:
                 return []
             while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
                 logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
-                record = tcp_dns_record(str(record.rr[0].rdata), proxy)
+                try:
+                    record = tcp_dns_record(str(record.rr[0].rdata), proxy)
+                except:
+                    return []
             iplist = [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
             return iplist
 
@@ -128,6 +132,7 @@ def tcp_dns_record(host, proxy, server=('8.8.8.8', 53), qtype='ANY'):
             return record
         except Exception as e:
             logger.warning('tcp_dns_record %s failed. %r' % (host, e))
+            raise e
 
 
 @lru_cache(1024, timeout=7200)
