@@ -26,6 +26,8 @@ mac_len = 16
 
 
 class hxssocket(basesocket):
+    bufsize = 32768
+
     def __init__(self, hxsServer=None, ctimeout=1, parentproxy=None, iplist=None):
         basesocket.__init__(self)
         if hxsServer and not isinstance(hxsServer, ParentProxy):
