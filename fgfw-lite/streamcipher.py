@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-#-*- coding: UTF-8 -*-
-#
-# FGFW_Lite.py A Proxy Server help go around the Great Firewall
+# -*- coding: UTF-8 -*-
 #
 # Copyright (C) 2012-2014 Jiang Chao <sgzz.cj@gmail.com>
 #

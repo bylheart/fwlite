@@ -2,7 +2,7 @@
 
 A GoAgent / Shadowsocks client. A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
 
-Current Version: 4.6
+Current Version: 4.7
 
 Works on Windows, Linux and Mac(untested).
 
@@ -10,7 +10,7 @@ Works on Windows, Linux and Mac(untested).
 
 ##Features
 
-- Fast and Reliable
+- Fast and Reliable (OK, not so reliable sometimes, but that's the goal, right?)
 - Set IE proxy automatically (windows)
 - URL Search
 - Detect blocked sites
@@ -24,25 +24,27 @@ Works on Windows, Linux and Mac(untested).
   - encrypt-all
   - chnroute
   - global mode
-- Support Network which require a Proxy
+- Support Network which require a Proxy ([issue #39](https://github.com/v3aqb/fwlite/issues/39))
 - Support HOSTS
 - Support FTP LIST/RETR
 - Supported parent proxy
   - HTTP Proxy
-  - HTTPS Proxy
+  - HTTPS Proxy (HTTP Proxy over TLS)
   - Socks5 Proxy
   - SNI Proxy
   - [GoAgent]
   - [Shadowsocks]
   - [hxsocks]
-- Use GoAgent for HTTP request only
+- Use GoAgent for HTTP request only, no worry about certificates
 - Remove bad parent proxy automatically
 - Redirector
-- Automatic Update
+- Automatic Update (Yes, you can turn it off easily)
+
+Not all features are covered in GUI.
 
 ##Quick Start
 
-FW-Lite is Portable Software. You can set your own GoAgent APPID and other parent proxys in the main configuration file `userconf.ini`.
+FW-Lite is Portable Software. You can set your own GoAgent APPID and other parent proxys in the `parents` section of main configuration file `userconf.ini`.
 
 Set your browser's proxy setting to `http://127.0.0.1:8118`, enjoy.
 

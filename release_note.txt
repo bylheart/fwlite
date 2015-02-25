@@ -1,3 +1,15 @@
+2015.2.25 v4.7
+new hxsocks protocol, provide forward security
+fix issue with ProxyDroid and weixin
+fix compatability problem with CCProxy
+new DNS resolver
+support ChaCha20 and Salsa20
+remove bad parentproxy automatically(still need improving)
+handle Expect header properly
+new redirector keywords: adblock, bad302, reset
+configurable timeout
+logfile support
+
 2014.11.25 v4.6
 new O(1) autoproxy filter, 100 times faster
 rewrite connection pool
