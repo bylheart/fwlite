@@ -30,7 +30,7 @@ except ImportError:
     import urlparse
 from basesocket import basesocket
 from parent_proxy import ParentProxy
-from dh import DH
+from ecc import ECC
 
 default_method = 'rc4-md5'
 keys = {}
@@ -90,8 +90,8 @@ class hxssocket(basesocket):
                         from connection import create_connection
                         self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
                         self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
-                    dh = DH()
-                    pubk = dh.getPubKey()
+                    acipher = ECC(self.pskcipher.key_len)
+                    pubk = acipher.get_pub_key()
                     logger.debug('hxsocks send key exchange request')
                     data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
                     self._sock.sendall(self.pskcipher.encrypt(data))
@@ -104,7 +104,7 @@ class hxssocket(basesocket):
                         server_key = self.pskcipher.decrypt(fp.read(pklen))
                         auth = self.pskcipher.decrypt(fp.read(32))
                         if auth == hashlib.sha256(pubk + server_key + usn + psw).digest():
-                            shared_secret = dh.genKey(server_key)
+                            shared_secret = acipher.get_dh_key(server_key)
                             keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
                             logger.debug('hxsocks key exchange success')
                             return

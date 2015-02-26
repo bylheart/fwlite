@@ -170,8 +170,8 @@ class Encryptor(object):
         self.cipher_iv = b''
         self.decipher = None
         if method is not None:
-            klen, self.iv_len = get_cipher_len(method)
-            self.key = EVP_BytesToKey(password, klen)
+            self.key_len, self.iv_len = get_cipher_len(method)
+            self.key = EVP_BytesToKey(password, self.key_len)
             self.cipher_iv = random_string(self.iv_len)
             self.cipher = get_cipher(self.key, method, 1, self.cipher_iv)
         else:
