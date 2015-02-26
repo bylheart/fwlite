@@ -19,8 +19,6 @@
 # with this program; if not, see <http://www.gnu.org/licenses>.
 
 import re
-import errno
-import socket
 import select
 import logging
 try:
@@ -73,38 +71,6 @@ class SConfigParser(configparser.ConfigParser):
         if not self.has_section(section):
             self.add_section(section)
         configparser.ConfigParser.set(self, section, option, value)
-
-
-def forward_socket(local, remote, timeout, bufsize):
-    """forward socket"""
-    try:
-        while 1:
-            ins, _, _ = select.select([local, remote], [], [], timeout)
-            if not ins:
-                break
-            if local in ins:
-                data = local.recv(bufsize)
-                if not data:
-                    break
-                remote.sendall(data)
-            if remote in ins:
-                data = remote.recv(bufsize)
-                if not data:
-                    break
-                local.sendall(data)
-    except socket.timeout:
-        pass
-    except (OSError, IOError) as e:
-        if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
-            raise
-        if e.args[0] in (errno.EBADF,):
-            return
-    finally:
-        for sock in (remote, local):
-            try:
-                sock.close()
-            except (OSError, IOError):
-                pass
 
 
 def parse_hostport(host, default_port=80):

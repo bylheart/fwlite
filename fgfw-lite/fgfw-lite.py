@@ -79,7 +79,7 @@ import logging.handlers
 logging.basicConfig(level=logging.INFO,
                     format='FW-Lite %(asctime)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S', filemode='a+')
-from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt, forward_socket
+from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt
 from apfilter import ap_rule, ap_filter, ExpiredError
 from parent_proxy import ParentProxyList
 from connection import create_connection
@@ -288,6 +288,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         self.conf = server.conf
         self.logger = server.logger
+        self.traffic_count = [0, 0]  # [read from client, write to client]
         BaseHTTPRequestHandler.__init__(self, request, client_address, server)
 
     def _quote_html(self, html):
@@ -351,25 +352,32 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 
     def connection_recv(self, size):
         try:
-            return self.connection.recv(size)
+            data = self.connection.recv(size)
+            self.traffic_count[0] += len(data)
+            return data
         except NetWorkIOError as e:
             raise ClientError(e[0], e[1])
 
     def rfile_read(self, size=-1):
         try:
-            return self.rfile.read(size)
+            data = self.rfile.read(size)
+            self.traffic_count[0] += len(data)
+            return data
         except NetWorkIOError as e:
             raise ClientError(e[0], e[1])
 
     def rfile_readline(self, size=-1):
         try:
-            return self.rfile.readline(size)
+            data = self.rfile.readline(size)
+            self.traffic_count[0] += len(data)
+            return data
         except NetWorkIOError as e:
             raise ClientError(e[0], e[1])
 
     def _wfile_write(self, data):
         self.retryable = False
         try:
+            self.traffic_count[1] += len(data)
             return self.wfile.write(data)
         except NetWorkIOError as e:
             raise ClientError(e[0], e[1])
@@ -397,7 +405,9 @@ class ProxyHandler(HTTPRequestHandler):
         self.shortpath = None
         self.failed_parents = []
         self.phase = ''
+        self.path = ''
         self.count = 0
+        self.traffic_count = [0, 0]  # [read from client, write to client]
         try:
             HTTPRequestHandler.handle_one_request(self)
         except NetWorkIOError as e:
@@ -405,6 +415,9 @@ class ProxyHandler(HTTPRequestHandler):
                 self.close_connection = 1
             else:
                 raise
+        if self.path:
+            self.logger.debug(self.shortpath or self.path + ' finished.')
+            self.logger.debug('upload: %d, download %d' % tuple(self.traffic_count))
         if self.remotesoc:
             self.remotesoc.close()
 
@@ -549,7 +562,9 @@ class ProxyHandler(HTTPRequestHandler):
                     v = v.decode('latin1')
                 s.append("%s: %s\r\n" % ("-".join([w.capitalize() for w in k.split("-")]), v))
             s.append("\r\n")
-            self.remotesoc.sendall(''.join(s).encode('latin1'))
+            data = ''.join(s).encode('latin1')
+            self.remotesoc.sendall(data)
+            self.traffic_count[0] += len(data)
             remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
             # Expect
             skip = False
@@ -788,7 +803,35 @@ class ProxyHandler(HTTPRequestHandler):
             return self._do_CONNECT(True)
         self.rbuffer = deque()
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
-        forward_socket(self.connection, self.remotesoc, 60, self.bufsize)
+        """forward socket"""
+        try:
+            while 1:
+                ins, _, _ = select.select([self.connection, self.remotesoc], [], [], 60)
+                if not ins:
+                    break
+                if self.connection in ins:
+                    data = self.connection_recv(self.bufsize)
+                    if not data:
+                        break
+                    self.remotesoc.sendall(data)
+                if self.remotesoc in ins:
+                    data = self.remotesoc.recv(self.bufsize)
+                    if not data:
+                        break
+                    self._wfile_write(data)
+        except socket.timeout:
+            pass
+        except (OSError, IOError) as e:
+            if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
+                raise
+            if e.args[0] in (errno.EBADF,):
+                return
+        finally:
+            for sock in [self.connection, self.remotesoc]:
+                try:
+                    sock.close()
+                except (OSError, IOError):
+                    pass
 
     def wfile_write(self, data=None):
         if data is None:
