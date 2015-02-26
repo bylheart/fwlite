@@ -83,7 +83,7 @@ def parse_hostport(host, default_port=80):
 
 def is_connection_dropped(lst):  # modified from urllib3
     """
-    Returns sockets if the connection is dropped and should be closed.
+    Returns sockets that is dropped and should be closed.
 
     """
     try:
@@ -100,7 +100,3 @@ def sizeof_fmt(num):
             return "%.1f%s" % (num, x)
         num /= 1024.0
     return "%.1f%s" % (num, 'TB')
-
-
-if __name__ == "__main__":
-    pass
