@@ -10,3 +10,4 @@
 @@||weibo.com
 @@||ykimg.com
 @@||qq.com
+|http://www.v2ex.com^ forcehttps
