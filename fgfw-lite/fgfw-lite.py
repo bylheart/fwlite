@@ -457,12 +457,16 @@ class ProxyHandler(HTTPRequestHandler):
             self.headers['Host'] = parse.netloc
 
         self.requesthost = parse_hostport(self.headers['Host'], 80)
+        self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
         # redirector
         noxff = False
         new_url = self.conf.PARENT_PROXY.redirect(self)
         if new_url:
-            self.logger.info('redirect %s, %s %s' % (new_url, self.command, self.path))
+            self.logger.info('redirect %s, %s %s %s' % (new_url,
+                                                        self.command,
+                                                        self.shortpath or self.path,
+                                                        'client: {} {}'.format(self.ssclient, self.ssrealip) if self.ssclient else ''))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
             elif new_url in self.conf.parentlist.dict.keys():
@@ -489,8 +493,6 @@ class ProxyHandler(HTTPRequestHandler):
                 if self.conf.userconf.dgetbool('fgfwproxy', 'remoteapi', False):
                     return self.api(parse)
                 return self.send_error(403)
-
-        self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
         if not self.ssclient and self.conf.xheaders:
             ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
