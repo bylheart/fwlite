@@ -448,8 +448,8 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(403)
             self.path = 'http://%s%s' % (self.headers['Host'], self.path)
 
-        if self.path.count('http://') > 1:
-            self.path = self.path[self.path.index('http://', self.path.count('http://')):]
+        if self.path.startswith('http://http://'):
+            self.path = self.path[7:]
 
         parse = urlparse.urlparse(self.path)
 
