@@ -93,22 +93,33 @@ class hxssocket(basesocket):
                     acipher = ECC(self.pskcipher.key_len)
                     pubk = acipher.get_pub_key()
                     logger.debug('hxsocks send key exchange request')
-                    data = chr(0) + struct.pack('>I', int(time.time())) + struct.pack('>H', len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
+                    data = chr(0) + struct.pack('>I', int(time.time())) + chr(len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
                     self._sock.sendall(self.pskcipher.encrypt(data))
                     fp = self._sock.makefile('rb', 0)
                     resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
                     resp = ord(self.pskcipher.decrypt(fp.read(resp_len)))
                     if resp == 0:
                         logger.debug('hxsocks read key exchange respond')
-                        pklen = struct.unpack('>H', self.pskcipher.decrypt(fp.read(2)))[0]
+                        pklen = ord(self.pskcipher.decrypt(fp.read(1)))
                         server_key = self.pskcipher.decrypt(fp.read(pklen))
                         auth = self.pskcipher.decrypt(fp.read(32))
+                        pklen = ord(self.pskcipher.decrypt(fp.read(1)))
+                        server_cert = self.pskcipher.decrypt(fp.read(pklen))
+                        rlen = ord(self.pskcipher.decrypt(fp.read(1)))
+                        r = self.pskcipher.decrypt(fp.read(rlen))
+                        s = self.pskcipher.decrypt(fp.read(rlen))
                         if auth == hashlib.sha256(pubk + server_key + usn + psw).digest():
-                            shared_secret = acipher.get_dh_key(server_key)
-                            keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
-                            logger.debug('hxsocks key exchange success')
-                            return
-                        logger.error('hxsocket getKey Error: server auth failed')
+                            t = time.time()
+                            if ECC.verify_with_pub_key(server_cert, auth, r, s):
+                                logger.info(time.time() - t)
+                                shared_secret = acipher.get_dh_key(server_key)
+                                keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
+                                logger.debug('hxsocks key exchange success')
+                                return
+                            else:
+                                logger.error('hxsocket getKey Error: server auth failed, bad signature')
+                        else:
+                            logger.error('hxsocket getKey Error: server auth failed, bad username or password')
                     else:
                         fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
                         logger.error('hxsocket getKey Error. bad password or timestamp.')
