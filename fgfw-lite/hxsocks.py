@@ -109,9 +109,7 @@ class hxssocket(basesocket):
                         r = self.pskcipher.decrypt(fp.read(rlen))
                         s = self.pskcipher.decrypt(fp.read(rlen))
                         if auth == hashlib.sha256(pubk + server_key + usn + psw).digest():
-                            t = time.time()
                             if ECC.verify_with_pub_key(server_cert, auth, r, s):
-                                logger.info(time.time() - t)
                                 shared_secret = acipher.get_dh_key(server_key)
                                 keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
                                 logger.debug('hxsocks key exchange success')

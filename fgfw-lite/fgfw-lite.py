@@ -799,9 +799,9 @@ class ProxyHandler(HTTPRequestHandler):
                 break
         if self.retryable:
             reason = reason or "don't know why"
-            self.logger.warning('%s %s via %s failed on %s! %s' % (self.command, self.path, self.ppname, self.phase, reason))
             if reason == 'client closed':
                 return
+            self.logger.warning('%s %s via %s failed on %s! %s' % (self.command, self.path, self.ppname, self.phase, reason))
             return self._do_CONNECT(True)
         self.rbuffer = deque()
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
