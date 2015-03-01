@@ -15,6 +15,8 @@
 #
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, see <http://www.gnu.org/licenses>.
+
+import os
 import struct
 import encrypt
 import io
@@ -38,6 +40,13 @@ newkey_lock = defaultdict(RLock)
 salt = b'G\x91V\x14{\x00\xd9xr\x9d6\x99\x81GL\xe6c>\xa9\\\xd2\xc6\xe0:\x9c\x0b\xefK\xd4\x9ccU'
 ctx = b'hxsocks'
 mac_len = 16
+known_hosts = {}
+# load known certs
+if not os.path.exists('./.hxs_known_hosts'):
+    os.mkdir('./.hxs_known_hosts')
+for fname in os.listdir('./.hxs_known_hosts'):
+    if fname.endswith('.cert') and os.path.isfile(os.path.join('./.hxs_known_hosts', fname)):
+        known_hosts[fname[:-5]] = open('./.hxs_known_hosts/' + fname).read()
 
 
 class hxssocket(basesocket):
@@ -108,6 +117,15 @@ class hxssocket(basesocket):
                         rlen = ord(self.pskcipher.decrypt(fp.read(1)))
                         r = self.pskcipher.decrypt(fp.read(rlen))
                         s = self.pskcipher.decrypt(fp.read(rlen))
+                        # TODO: ask user if a certificate should be accepted or not.
+                        if host not in known_hosts:
+                            logger.info('hxs: server %s new cert %s saved.' % (host, hashlib.sha256(server_cert).hexdigest()[:8]))
+                            with open('./.hxs_known_hosts/' + host + '.cert', 'wb') as f:
+                                f.write(server_cert)
+                                known_hosts[host] = server_cert
+                        elif known_hosts[host] != server_cert:
+                            logger.error('hxs: server %s certificate mismatch! PLEASE CHECK!')
+                            raise OSError(0, 'hxs: bad certificate')
                         if auth == hashlib.sha256(pubk + server_key + usn + psw).digest():
                             if ECC.verify_with_pub_key(server_cert, auth, r, s):
                                 shared_secret = acipher.get_dh_key(server_key)

@@ -45,9 +45,12 @@ class ECC(object):
         '''Verify the given digest using ECDSA. r and s are the ECDSA signature parameters.
            if verified, return 1.
         '''
-        if isinstance(pubkey, bytes):
-            pubkey = EC.pub_key_from_der(buffer(pubkey))
-        return pubkey.verify_dsa(digest, r, s)
+        try:
+            if isinstance(pubkey, bytes):
+                pubkey = EC.pub_key_from_der(buffer(pubkey))
+            return pubkey.verify_dsa(digest, r, s)
+        except:
+            return 0
 
     @staticmethod
     def save_pub_key(pubkey, dest):
