@@ -80,7 +80,7 @@ other bug fix and improvements
 support lan with parent proxy
 some bug fix
 
-2014.5.14 v4.1.0:
+2014.5.14 v4.1:
 support HTTP keep-alive
 support FTP LIST
 fix chrash when non ascii char in request uri and headers
@@ -93,7 +93,7 @@ add default goagent appid
 support http proxy basic auth
 shadowsocks now support http parent proxy
 
-2014.4.12 v4.0.0
+2014.4.12 v4.0
 move to gevent
 support FTP RETR
 
