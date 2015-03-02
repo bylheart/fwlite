@@ -1,5 +1,4 @@
 2015.2.25 v4.7
-new hxsocks protocol, provide forward security
 fix issue with ProxyDroid and weixin
 fix compatability problem with CCProxy
 new DNS resolver

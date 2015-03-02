@@ -34,7 +34,6 @@ Works on Windows, Linux and Mac(untested).
   - SNI Proxy
   - [GoAgent]
   - [Shadowsocks]
-  - [hxsocks]
 - Use GoAgent for HTTP request only, no worry about certificates
 - Remove bad parent proxy automatically
 - Redirector
@@ -113,5 +112,4 @@ GPLv2
 [COW]:https://github.com/cyfdecyf/cow
 [GoAgent]:https://github.com/goagent/goagent
 [Shadowsocks]:https://github.com/clowwindy/shadowsocks
-[hxsocks]:https://github.com/v3aqb/hxsocks
 [pybuild]:https://github.com/goagent/pybuild
