@@ -768,11 +768,11 @@ class ProxyHandler(HTTPRequestHandler):
         except NetWorkIOError as e:
             self.logger.warning('%s %s via %s failed on connect! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT(True)
-        phase = 0
+        count = 0
         if self.rbuffer:
             self.logger.debug('remote write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))
-            phase += 1
+            count += 1
         while 1:
             try:
                 reason = ''
@@ -788,10 +788,10 @@ class ProxyHandler(HTTPRequestHandler):
                         break
 
                     self.remotesoc.sendall(data)
-                    phase += 1
+                    count += 1
                     if self.retryable:
                         self.rbuffer.append(data)
-                    elif phase > 1:
+                    elif count > 1:
                         self.phase = 'client key exchange sent'
                         break
                 if self.remotesoc in ins:
@@ -804,8 +804,8 @@ class ProxyHandler(HTTPRequestHandler):
             except socket.error as e:
                 self.logger.warning('socket error: %r' % e)
                 break
-        if self.rbuffer[0].startswith((b'\x16\x03\x00', b'\x16\x03\x01', b'\x16\x03\x02', b'\x16\x03\x03')) and phase < 2:
-            self.logger.warning('TLS key exchange failed? hostname: %s, %s' % (self.requesthost[0], self.phase))
+        if self.rbuffer[0].startswith((b'\x16\x03\x00', b'\x16\x03\x01', b'\x16\x03\x02', b'\x16\x03\x03')) and count < 2:
+            self.logger.warning('TLS key exchange failed? hostname: %s, %s %s' % (self.requesthost[0], self.phase, count))
         if self.retryable:
             reason = reason or "don't know why"
             if reason == 'client closed':
