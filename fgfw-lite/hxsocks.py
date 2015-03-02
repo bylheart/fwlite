@@ -21,6 +21,7 @@ import struct
 import encrypt
 import io
 import time
+import random
 import hashlib
 import logging
 logger = logging.getLogger('FW_Lite')
@@ -181,6 +182,8 @@ class hxssocket(basesocket):
             ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
             ct = fp.read(ctlen)
             mac = fp.read(mac_len)
+            if ctlen < 512:
+                fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
             data = self.cipher.decrypt(ct, mac)
             if len(data) <= size:
                 return data
@@ -206,7 +209,11 @@ class hxssocket(basesocket):
             self.connected = 1
         else:
             ct, mac = self.cipher.encrypt(data)
-            self._sock.sendall(self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac)
+            data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
+            if len(ct) < 512:
+                rint = random.randint(64, 255)
+                data += self.pskcipher.encrypt(chr(rint)) + os.urandom(rint)
+            self._sock.sendall(data)
 
 if __name__ == '__main__':
     hxs = hxssocket('hxs://user:pass@127.0.0.1:80')
