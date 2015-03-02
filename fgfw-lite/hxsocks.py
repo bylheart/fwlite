@@ -131,15 +131,17 @@ class hxssocket(basesocket):
                             if ECC.verify_with_pub_key(server_cert, auth, r, s):
                                 shared_secret = acipher.get_dh_key(server_key)
                                 keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
-                                logger.debug('hxsocks key exchange success')
+                                logger.debug('hxs key exchange success')
                                 return
                             else:
-                                logger.error('hxsocket getKey Error: server auth failed, bad signature')
+                                logger.error('hxs getKey Error: server auth failed, bad signature')
                         else:
-                            logger.error('hxsocket getKey Error: server auth failed, bad username or password')
+                            logger.error('hxs getKey Error: server auth failed, bad username or password')
                     else:
                         fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
-                        logger.error('hxsocket getKey Error. bad password or timestamp.')
+                        logger.error('hxs getKey Error. bad password or timestamp.')
+                else:
+                    raise IOError(0, 'hxs getKey Error')
 
     def recv(self, size):
         if self.connected == 0:
