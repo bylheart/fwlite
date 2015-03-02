@@ -771,6 +771,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.rbuffer:
             self.logger.debug('remote write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))
+        phase = 0
         while 1:
             try:
                 reason = ''
@@ -786,6 +787,9 @@ class ProxyHandler(HTTPRequestHandler):
                         break
                     self.rbuffer.append(data)
                     self.remotesoc.sendall(data)
+                    if phase > 0 and not self.retryable:
+                        break
+                    phase += 1
                 if self.remotesoc in ins:
                     self.phase = 'read from remote'
                     data = self.remotesoc.recv(self.bufsize)
@@ -793,7 +797,6 @@ class ProxyHandler(HTTPRequestHandler):
                         reason = 'remote closed'
                         break
                     self._wfile_write(data)
-                    break
             except socket.error as e:
                 self.logger.warning('socket error: %r' % e)
                 break
