@@ -576,7 +576,7 @@ class Settings(QtGui.QWidget):
 
     def loadgoagent(self):
         enable, appid, passwd = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/goagent/setting' % self.port, timeout=1).read().decode())
-        self.ui.goagentEnableBox.setCheckState(QtCore.Qt.CheckState.Checked if enable else QtCore.Qt.CheckState.UnChecked)
+        self.ui.goagentEnableBox.setCheckState(QtCore.Qt.CheckState.Checked if enable else QtCore.Qt.CheckState.Unchecked)
         self.ui.goagentAPPIDEdit.setText(appid)
         self.ui.goagentPassEdit.setText(passwd)
 
