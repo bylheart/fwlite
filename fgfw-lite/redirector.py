@@ -59,13 +59,15 @@ class redirector(object):
     def bad302(self, uri):
         return self._bad302.match(uri)
 
-    def add_redirect(self, rule, dest):
+    def add_redirect(self, rule, dest, pp=None):
+        if pp is None:
+            pp = self.conf.PARENT_PROXY
         try:
             if rule in [a.rule for a, b in self.redirlst]:
                 self.logger.warning('multiple redirector rule! %s' % rule)
                 return
             if dest.lower() == 'auto':
-                return self.conf.PARENT_PROXY.add_ignore(rule)
+                return pp.add_ignore(rule)
             if dest.lower() == 'bad302':
                 return self._bad302.add(rule)
             if dest.lower() == 'adblock':

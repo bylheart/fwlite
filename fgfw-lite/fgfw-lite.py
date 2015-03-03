@@ -1103,7 +1103,7 @@ class parent_proxy(object):
         return self.conf.REDIRECTOR.redirect(hdlr)
 
     def add_redirect(self, rule, dest):
-        return self.conf.REDIRECTOR.add_redirect(rule, dest)
+        return self.conf.REDIRECTOR.add_redirect(rule, dest, self)
 
     def bad302(self, uri):
         return self.conf.REDIRECTOR.bad302(uri)
