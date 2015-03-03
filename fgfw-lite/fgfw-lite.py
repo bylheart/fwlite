@@ -382,12 +382,6 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         except NetWorkIOError as e:
             raise ClientError(e[0], e[1])
 
-    def on_conn_log(self):
-        if self.ssclient:
-            self.logger.info('{} {} via {} client: {} {}'.format(self.command, self.shortpath or self.path, self.ppname, self.ssclient, self.ssrealip))
-        else:
-            self.logger.info('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
-
 
 class ProxyHandler(HTTPRequestHandler):
     server_version = "FW-Lite/" + __version__
@@ -408,6 +402,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.path = ''
         self.count = 0
         self.traffic_count = [0, 0]  # [read from client, write to client]
+        self.logmethod = self.logger.info
         try:
             HTTPRequestHandler.handle_one_request(self)
         except NetWorkIOError as e:
@@ -463,10 +458,7 @@ class ProxyHandler(HTTPRequestHandler):
         noxff = False
         new_url = self.conf.PARENT_PROXY.redirect(self)
         if new_url:
-            self.logger.info('redirect %s, %s %s %s' % (new_url,
-                                                        self.command,
-                                                        self.shortpath or self.path,
-                                                        'client: {} {}'.format(self.ssclient, self.ssrealip) if self.ssclient else ''))
+            self.logger.debug('redirect %s, %s %s' % (new_url, self.command, self.shortpath or self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
             elif new_url in self.conf.parentlist.dict.keys():
@@ -731,7 +723,7 @@ class ProxyHandler(HTTPRequestHandler):
         # redirector
         new_url = self.conf.PARENT_PROXY.redirect(self)
         if new_url:
-            self.logger.info('redirect %s, %s %s' % (new_url, self.command, self.path))
+            self.logger.debug('redirect %s, %s %s' % (new_url, self.command, self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
             elif new_url in self.conf.parentlist.dict.keys():
@@ -843,6 +835,12 @@ class ProxyHandler(HTTPRequestHandler):
                     sock.close()
                 except (OSError, IOError):
                     pass
+
+    def on_conn_log(self):
+        if self.ssclient:
+            self.logmethod('{} {} via {} client: {} {}'.format(self.command, self.shortpath or self.path, self.ppname, self.ssclient, self.ssrealip))
+        else:
+            self.logmethod('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
 
     def wfile_write(self, data=None):
         if data is None:
