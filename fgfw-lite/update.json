@@ -1,11 +1,11 @@
 {
     "./FW_Lite.exe": "266498c1e92c1858850fcadd6589a87a6e505259b156a8b09356e8a6584bfe40",
-    "./FW_Lite.pyw": "0c9940777758a495638e813cd677e9598da5612dc3578beb60b4fb4333629ee0",
+    "./FW_Lite.pyw": "81c7e0547b516bbeebb8211eea933f1f414beb25f3b0c00bef1c6db2ff01a314",
     "./Python27/python27.zip": "c291b32647dc4e7c947a453e95b64f24ddf5f99bdc2f7a2803200310c61cc419",
     "./README.md": "075e2ed501164dd261a695bf9d1038b5cf14fbf8fc0d24e0da5eb843ccb6fad7",
     "./fgfw-lite/apfilter.py": "9079d989f739cb5501e56e9ee2e277abd677ac780cc53e16481b09992671bbcf",
     "./fgfw-lite/basesocket.py": "3b9e6d2f67753e4d6da355871eb7b7c677091c898163d3720a1d7307bf3540c5",
-    "./fgfw-lite/cloud.txt": "b9add38c59d78aca44aecc10d52dda543034f7263ed3a231b6d3c2db0eca54e2",
+    "./fgfw-lite/cloud.txt": "e3ad353f5ce19b30c914242b148a4355ae6f53902eb940d89e724d4f5ae8c2fc",
     "./fgfw-lite/connection.py": "d132a8f710e42f67189cdff4c4fca7297e33e42ffd667eb4e67cc3cdff537e9f",
     "./fgfw-lite/ctypes_libsodium.py": "b0247da98cbfe91e72e2ecac7bf271e524301912e0a5d37e4e5d5b7cd4308286",
     "./fgfw-lite/ecc.py": "3ea32d0a7f7e9eb2f1062d1a0623bb1c3366ac3e5b6954154992807f310a4ad1",
