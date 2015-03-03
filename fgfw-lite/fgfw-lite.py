@@ -793,7 +793,7 @@ class ProxyHandler(HTTPRequestHandler):
                         reason = 'remote closed'
                         break
                     self._wfile_write(data)
-            except (OSError, IOError) as e:
+            except NetWorkIOError as e:
                 self.logger.warning('do_CONNECT error: %r on %s %s' % (e, self.phase, count))
                 break
         if self.rbuffer[0].startswith((b'\x16\x03\x00', b'\x16\x03\x01', b'\x16\x03\x02', b'\x16\x03\x03')) and count < 2:
@@ -824,7 +824,7 @@ class ProxyHandler(HTTPRequestHandler):
                     self._wfile_write(data)
         except socket.timeout:
             pass
-        except (OSError, IOError) as e:
+        except NetWorkIOError as e:
             if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
                 raise
             if e.args[0] in (errno.EBADF,):
@@ -833,7 +833,7 @@ class ProxyHandler(HTTPRequestHandler):
             for sock in [self.connection, self.remotesoc]:
                 try:
                     sock.close()
-                except (OSError, IOError):
+                except NetWorkIOError:
                     pass
 
     def on_conn_log(self):
