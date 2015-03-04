@@ -796,7 +796,7 @@ class ProxyHandler(HTTPRequestHandler):
             except NetWorkIOError as e:
                 self.logger.warning('do_CONNECT error: %r on %s %s' % (e, self.phase, count))
                 break
-        if self.rbuffer[0].startswith((b'\x16\x03\x00', b'\x16\x03\x01', b'\x16\x03\x02', b'\x16\x03\x03')) and count < 2:
+        if self.rbuffer and self.rbuffer[0].startswith((b'\x16\x03\x00', b'\x16\x03\x01', b'\x16\x03\x02', b'\x16\x03\x03')) and count < 2:
             self.logger.warning('TLS key exchange failed? hostname: %s, %s %s' % (self.requesthost[0], self.phase, count))
         if self.retryable:
             reason = reason or "don't know why"
