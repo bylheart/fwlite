@@ -156,6 +156,9 @@ class hxssocket(basesocket):
                 d = ord(self.pskcipher.decrypt(data)) if data else None
                 if d == 0:
                     break
+                elif d == 2:
+                    logger.error('hxsocket Error: remote connect timed out.')
+                    return b''
                 else:
                     if self.serverid in keys:
                         del keys[self.serverid]
