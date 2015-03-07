@@ -66,7 +66,6 @@ class hxssocket(basesocket):
             self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
             self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [''])[0] or default_method
             self.serverid = (self.hxsServer.parse.username, self.hxsServer.parse.hostname)
-            self.uphash = hashlib.sha256(self.hxsServer.parse.username.encode() + self.hxsServer.parse.password.encode()).digest()
         self.cipher = None
         self.connected = 0
         self._data_bak = None
@@ -103,7 +102,8 @@ class hxssocket(basesocket):
                     acipher = ECC(self.pskcipher.key_len)
                     pubk = acipher.get_pub_key()
                     logger.debug('hxsocks send key exchange request')
-                    data = chr(0) + struct.pack('>I', int(time.time())) + chr(len(pubk)) + pubk + hashlib.sha256(pubk + usn.encode() + psw.encode()).digest()
+                    ts = struct.pack('>I', int(time.time()))
+                    data = chr(0) + ts + chr(len(pubk)) + pubk + hashlib.sha256(ts + pubk + usn.encode() + psw.encode()).digest()
                     self._sock.sendall(self.pskcipher.encrypt(data))
                     fp = self._sock.makefile('rb', 0)
                     resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
@@ -206,7 +206,7 @@ class hxssocket(basesocket):
             logger.debug('hxsocks send connect request')
             self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, salt, ctx, 0)
 
-            pt = struct.pack('>I', int(time.time())) + self.uphash + chr(len(self._address)) + self._address + data
+            pt = struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data
             ct, mac = self.cipher.encrypt(pt)
             self._sock.sendall(self.pskcipher.encrypt(chr(1) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
             if data and self._data_bak is None:
