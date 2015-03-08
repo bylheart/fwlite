@@ -132,6 +132,7 @@ def tcp_dns_record(host, proxy, server=('8.8.8.8', 53), qtype='ANY'):
             logger.warning('tcp_dns_record %s failed. %r' % (host, e))
             traceback.print_exc(file=sys.stderr)
             sys.stderr.flush()
+    raise IOError(0, 'tcp_dns_record %s failed.' % host)
 
 
 @lru_cache(1024, timeout=7200)
