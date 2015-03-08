@@ -1067,18 +1067,16 @@ class parent_proxy(object):
         resolver.apfilter = self.force
 
         for line in open('./fgfw-lite/local.txt'):
-            rule = line.strip().split()
-            if len(rule) == 2:  # |http://www.google.com/url forcehttps
-                rule, dest = rule
+            rule, _, dest = line.strip().partition(' ')
+            if dest:  # |http://www.google.com/url forcehttps
                 self.add_redirect(rule, dest)
             else:
                 self.add_temp(line, quiet=True)
 
         if self.conf.rproxy is False:
             for line in open('./fgfw-lite/cloud.txt'):
-                rule = line.strip().split()
-                if len(rule) == 2:  # |http://www.google.com/url forcehttps
-                    rule, dest = rule
+                rule, _, dest = line.strip().partition(' ')
+                if dest:  # |http://www.google.com/url forcehttps
                     self.add_redirect(rule, dest)
                 else:
                     self.add_rule(line, force=True)
