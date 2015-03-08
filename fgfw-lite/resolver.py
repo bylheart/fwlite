@@ -4,6 +4,8 @@ import socket
 import logging
 import dnslib
 import struct
+import traceback
+import sys
 from collections import defaultdict
 from threading import RLock
 from repoze.lru import lru_cache
@@ -132,7 +134,8 @@ def tcp_dns_record(host, proxy, server=('8.8.8.8', 53), qtype='ANY'):
             return record
         except Exception as e:
             logger.warning('tcp_dns_record %s failed. %r' % (host, e))
-            raise e
+            traceback.print_exc(file=sys.stderr)
+            sys.stderr.flush()
 
 
 @lru_cache(1024, timeout=7200)

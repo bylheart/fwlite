@@ -44,11 +44,11 @@ class ParentProxy(object):
 
     @property
     def username(self):
-        return urlunquote(self.parse.username)
+        return urlunquote(self.parse.username) if self.parse.username else None
 
     @property
     def password(self):
-        return urlunquote(self.parse.password)
+        return urlunquote(self.parse.password) if self.parse.password else None
 
     @property
     def hostname(self):
