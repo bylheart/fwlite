@@ -461,8 +461,6 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.debug('redirect %s, %s %s' % (new_url, self.command, self.shortpath or self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
-            elif new_url in self.conf.parentlist.dict.keys():
-                self._proxylist = [self.conf.parentlist.dict.get(new_url)]
             elif new_url.lower() == 'noxff':
                 noxff = True
             elif new_url.lower() == 'reset':
@@ -470,6 +468,9 @@ class ProxyHandler(HTTPRequestHandler):
                 return
             elif new_url.lower() == 'adblock':
                 return self.write(msg=FAKEGIF, ctype='image/gif')
+            elif all(u in self.conf.parentlist.dict.keys() for u in new_url.split()):
+                self._proxylist = [self.conf.parentlist.dict.get(u) for u in new_url.split()]
+                random.shuffle(self._proxylist)
             else:
                 return self.redirect(new_url)
 
@@ -726,10 +727,11 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.debug('redirect %s, %s %s' % (new_url, self.command, self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
-            elif new_url in self.conf.parentlist.dict.keys():
-                self._proxylist = [self.conf.parentlist.dict.get(new_url)]
             elif new_url.lower() in ('reset', 'adblock'):
                 return
+            elif all(u in self.conf.parentlist.dict.keys() for u in new_url.split()):
+                self._proxylist = [self.conf.parentlist.dict.get(u) for u in new_url.split()]
+                random.shuffle(self._proxylist)
 
         if self._request_is_loopback(self.requesthost) or self.ssclient:
             if ip_address(self.client_address[0]).is_loopback:
