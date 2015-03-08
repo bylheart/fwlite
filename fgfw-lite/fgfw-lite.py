@@ -81,7 +81,7 @@ logging.basicConfig(level=logging.INFO,
                     datefmt='%H:%M:%S', filemode='a+')
 from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt
 from apfilter import ap_rule, ap_filter, ExpiredError
-from parent_proxy import ParentProxyList
+from parent_proxy import ParentProxyList, ParentProxy
 from connection import create_connection
 import resolver
 from resolver import get_ip_address
@@ -1585,7 +1585,7 @@ def main():
         # if not resolver.proxy and level >= 3:
         #     resolver.proxy = '127.0.0.1:%d' % (conf.listen[1] + i)
     if not resolver.proxy:
-        resolver.proxy = '127.0.0.1:%d' % conf.listen[1]
+        resolver.proxy = ParentProxy('localhost', '127.0.0.1:%d' % conf.listen[1])
     conf.stdout()
     t.join()
 
