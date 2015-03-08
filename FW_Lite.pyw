@@ -110,16 +110,13 @@ class MainWindow(QtGui.QMainWindow):
         self.port = int(listen) if listen.isdigit() else int(listen.split(':')[1])
 
         self.LocalRules = LocalRules(self)
-        self.ui.tabWidget.addTab(self.LocalRules, "")
-        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.LocalRules), QtGui.QApplication.translate("MainWindow", "用户规则", None, QtGui.QApplication.UnicodeUTF8))
+        self.ui.tabWidget.addTab(self.LocalRules, u"用户规则")
 
         self.RedirRules = RedirectorRules(self)
-        self.ui.tabWidget.addTab(self.RedirRules, "")
-        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.RedirRules), QtGui.QApplication.translate("MainWindow", "重定向规则", None, QtGui.QApplication.UnicodeUTF8))
+        self.ui.tabWidget.addTab(self.RedirRules, u"重定向规则")
 
         self.Settings = Settings(self)
-        self.ui.tabWidget.addTab(self.Settings, "")
-        self.ui.tabWidget.setTabText(self.ui.tabWidget.indexOf(self.Settings), QtGui.QApplication.translate("MainWindow", "设置", None, QtGui.QApplication.UnicodeUTF8))
+        self.ui.tabWidget.addTab(self.Settings, u"设置")
 
         self.resolve = RemoteResolve(self)
 
@@ -220,13 +217,13 @@ class MainWindow(QtGui.QMainWindow):
 
         profile = [int(x) for x in self.conf.dget('fgfwproxy', 'profile', '134')]
         for i, p in enumerate(profile):
-            d = {0: u'直接连接%d',
-                 1: u'智能代理%d',
-                 2: u'全局加密%d',
-                 3: u'国内直连%d',
-                 4: u'全局代理%d',
+            d = {0: u'直接连接',
+                 1: u'智能代理',
+                 2: u'全局加密',
+                 3: u'国内直连',
+                 4: u'全局代理',
                  }
-            title = d[p] % (self.port + i) if p in d else (u'127.0.0.1:%d profile%d' % ((self.port + i), p))
+            title = d[p] + str(self.port + i) if p in d else (u'127.0.0.1:%d profile%d' % ((self.port + i), p))
             if i < 6:
                 self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=getattr(self, 'set_ie_p%d' % i)))
         self.settingIEproxyMenu.addAction(self.setIENoneAction)
