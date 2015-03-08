@@ -426,7 +426,6 @@ class ProxyHandler(HTTPRequestHandler):
             return 1
         self.pproxy = self._proxylist.pop(0)
         self.ppname = self.pproxy.name
-        self.pproxyparse = self.pproxy.parse
 
     def do_GET(self):
         if isinstance(self.path, bytes):
@@ -538,8 +537,8 @@ class ProxyHandler(HTTPRequestHandler):
                     path[2] = '%s%s' % (iplist[0][1], ((':%d' % self.requesthost[1]) if self.requesthost[1] != 80 else ''))
                     path = ''.join(path)
                 s.append('%s %s %s\r\n' % (self.command, self.path, self.request_version))
-                if self.pproxyparse.username:
-                    a = '%s:%s' % (self.pproxyparse.username, self.pproxyparse.password)
+                if self.pproxy.username:
+                    a = '%s:%s' % (self.pproxy.username, self.pproxy.password)
                     self.headers['Proxy-Authorization'] = 'Basic %s' % base64.b64encode(a.encode())
             else:
                 s.append('%s /%s %s\r\n' % (self.command, '/'.join(self.path.split('/')[3:]), self.request_version))
@@ -1009,7 +1008,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.conf.goagent.setting(json.loads(body))
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/parent' and self.command == 'GET':
-            data = [(p.name, ('%s://%s:%s' % (p.parse.scheme, p.parse.hostname, p.parse.port)) if p.proxy else '', p.httppriority) for k, p in self.conf.parentlist.dict.items()]
+            data = [(p.name, ('%s://%s:%s' % (p.scheme, p.hostname, p.port)) if p.proxy else '', p.httppriority) for k, p in self.conf.parentlist.dict.items()]
             data = sorted(data, key=lambda item: item[0])
             data = json.dumps(sorted(data, key=lambda item: item[2]))
             return self.write(200, data, 'application/json')
@@ -1432,7 +1431,7 @@ class goagentHandler(FGFWProxyHandler):
         goagent.set('pac', 'enable', '0')
 
         goagent.set('proxy', 'autodetect', '0')
-        if self.conf.parentlist.dict.get('direct') and self.conf.parentlist.dict.get('direct').parse.scheme == 'http':
+        if self.conf.parentlist.dict.get('direct') and self.conf.parentlist.dict.get('direct').scheme == 'http':
             p = self.conf.parentlist.dict.get('direct').parse
             goagent.set('proxy', 'enable', '1')
             goagent.set('proxy', 'host', p.hostname)

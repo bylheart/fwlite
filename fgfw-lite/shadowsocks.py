@@ -24,8 +24,7 @@ class sssocket(basesocket):
 
     def connect(self, address):
         self.__address = address
-        p = self.ssServer.parse
-        sshost, ssport, ssmethod, sspassword = (p.hostname, p.port, p.username, p.password)
+        sshost, ssport, ssmethod, sspassword = (self.ssServer.hostname, self.ssServer.port, self.ssServer.username, self.ssServer.password)
         from connection import create_connection
         self._sock = create_connection((sshost, ssport), self.timeout, parentproxy=self.parentproxy, tunnel=True)
         self.crypto = encrypt.Encryptor(sspassword, ssmethod)

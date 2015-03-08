@@ -32,9 +32,14 @@ from resolver import tcp_dns_record
 try:
     import httplib
     import urllib2
+    urlquote = urllib2.quote
+    urlunquote = urllib2.unquote
 except ImportError:
     import http.client as httplib
     import urllib.request as urllib2
+    import urllib.parse as urlparse
+    urlquote = urlparse.quote
+    urlunquote = urlparse.unquote
 try:
     from singleton import SingleInstance
     SINGLEINSTANCE = SingleInstance()
@@ -548,7 +553,7 @@ class Settings(QtGui.QWidget):
         if not all([sServer, sPort.isdigit(), sMethod, sPass]):
             self.icon.showMessage(u'出错啦！')
             return
-        data = json.dumps((sName, ('ss://%s:%s@%s:%s %s' % (sMethod, sPass, sServer, sPort, sPriority)))).encode()
+        data = json.dumps((sName, ('ss://%s:%s@%s:%s %s' % (urlquote(sMethod), urlquote(sPass), sServer, sPort, sPriority)))).encode()
         try:
             urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, data, timeout=1).read()
         except:

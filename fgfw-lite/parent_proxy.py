@@ -3,8 +3,13 @@
 from threading import Timer
 try:
     import urllib.parse as urlparse
+    urlquote = urlparse.quote
+    urlunquote = urlparse.unquote
 except ImportError:
     import urlparse
+    import urllib2
+    urlquote = urllib2.quote
+    urlunquote = urllib2.unquote
 
 
 class ParentProxy(object):
@@ -32,6 +37,26 @@ class ParentProxy(object):
         self.timeout = int(timeout)
         if self.parse.scheme.lower() == 'sni':
             self.httppriority = -1
+
+    @property
+    def scheme(self):
+        return self.parse.scheme
+
+    @property
+    def username(self):
+        return urlunquote(self.parse.username)
+
+    @property
+    def password(self):
+        return urlunquote(self.parse.password)
+
+    @property
+    def hostname(self):
+        return self.parse.hostname
+
+    @property
+    def port(self):
+        return self.parse.port
 
     def __str__(self):
         return self.name

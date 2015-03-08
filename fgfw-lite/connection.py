@@ -54,8 +54,8 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
 
 def do_tunnel(soc, netloc, pp, timeout):
     s = ['CONNECT %s:%s HTTP/1.1\r\n' % (netloc[0], netloc[1]), ]
-    if pp.parse.username:
-        a = '%s:%s' % (pp.parse.username, pp.parse.password)
+    if pp.username:
+        a = '%s:%s' % (pp.username, pp.password)
         s.append('Proxy-Authorization: Basic %s\r\n' % base64.b64encode(a.encode()))
     s.append('Host: %s:%s\r\n\r\n' % (netloc[0], netloc[1]))
     soc.settimeout(timeout)
@@ -80,36 +80,36 @@ def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None,
     s = None
     if not parentproxy or not parentproxy.proxy:
         s = _create_connection(netloc, ctimeout, iplist=iplist)
-    elif parentproxy.parse.scheme == 'http':
-        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 80), ctimeout)
+    elif parentproxy.scheme == 'http':
+        s = _create_connection((parentproxy.hostname, parentproxy.port or 80), ctimeout)
         if tunnel:
             do_tunnel(s, netloc, parentproxy, rtimeout)
-    elif parentproxy.parse.scheme == 'https':
-        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 443), ctimeout)
+    elif parentproxy.scheme == 'https':
+        s = _create_connection((parentproxy.hostname, parentproxy.port or 443), ctimeout)
         s = ssl.wrap_socket(s)
         s.do_handshake()
         if tunnel:
             do_tunnel(s, netloc, parentproxy, rtimeout)
-    elif parentproxy.parse.scheme == 'ss':
+    elif parentproxy.scheme == 'ss':
         s = sssocket(parentproxy, ctimeout, via, iplist=iplist)
         s.connect(netloc)
-    elif parentproxy.parse.scheme == 'hxs':
+    elif parentproxy.scheme == 'hxs':
         s = hxssocket(parentproxy, ctimeout, via, iplist=iplist)
         s.connect(netloc)
-    elif parentproxy.parse.scheme == 'sni':
-        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 443), ctimeout)
-    elif parentproxy.parse.scheme == 'socks5':
-        s = _create_connection((parentproxy.parse.hostname, parentproxy.parse.port or 1080), ctimeout)
+    elif parentproxy.scheme == 'sni':
+        s = _create_connection((parentproxy.hostname, parentproxy.port or 443), ctimeout)
+    elif parentproxy.scheme == 'socks5':
+        s = _create_connection((parentproxy.hostname, parentproxy.port or 1080), ctimeout)
         s.settimeout(rtimeout)
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        s.sendall(b"\x05\x02\x00\x02" if parentproxy.parse.username else b"\x05\x01\x00")
+        s.sendall(b"\x05\x02\x00\x02" if parentproxy.username else b"\x05\x01\x00")
         data = s.recv(2)
         if data == b'\x05\x02':  # basic auth
             s.sendall(b''.join([b"\x01",
-                                chr(len(parentproxy.parse.username)).encode(),
-                                parentproxy.parse.username.encode(),
-                                chr(len(parentproxy.parse.password)).encode(),
-                                parentproxy.parse.password.encode()]))
+                                chr(len(parentproxy.username)).encode(),
+                                parentproxy.username.encode(),
+                                chr(len(parentproxy.password)).encode(),
+                                parentproxy.password.encode()]))
             data = s.recv(2)
         assert data[1] == b'\x00'  # no auth needed or auth passed
         s.sendall(b''.join([b"\x05\x01\x00\x03",
