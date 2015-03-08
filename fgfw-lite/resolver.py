@@ -57,16 +57,12 @@ def resolver(host):
             logger.debug('resolving %s: %r' % (host, e))
             try:
                 record = tcp_dns_record(host, proxy)
+                while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
+                    logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
+                    record = tcp_dns_record(str(record.rr[0].rdata), proxy)
+                return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
             except:
                 return []
-            while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
-                logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
-                try:
-                    record = tcp_dns_record(str(record.rr[0].rdata), proxy)
-                except:
-                    return []
-            iplist = [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
-            return iplist
 
 
 def report_bad_host(host):
