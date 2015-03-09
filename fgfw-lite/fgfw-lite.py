@@ -1482,9 +1482,32 @@ class Config(object):
 
         self.local_ip = set(socket.gethostbyname_ex(socket.gethostname())[2])
 
-        self.PAC = 'function FindProxyForURL(url, host) {return "PROXY %s:%s; DIRECT";}' % (socket.gethostbyname(socket.gethostname()), self.listen[1])
+        self.PAC = '''\
+function FindProxyForURL(url, host) {
+if (isPlainHostName(host) ||
+    host.indexOf('127.') == 0 ||
+    host.indexOf('192.168.') == 0 ||
+    host.indexOf('10.') == 0 ||
+    shExpMatch(host, 'localhost.*'))
+    {
+        return 'DIRECT';
+    }
+return "PROXY %s:%s; DIRECT";}''' % (socket.gethostbyname(socket.gethostname()), self.listen[1])
         if self.userconf.dget('fgfwproxy', 'pac', ''):
-            self.PAC = 'function FindProxyForURL(url, host) {return "PROXY %s; DIRECT";}' % self.userconf.dget('fgfwproxy', 'pac', '')
+            if os.path.isfile(self.userconf.dget('fgfwproxy', 'pac', '')):
+                self.PAC = open(self.userconf.dget('fgfwproxy', 'pac', '')).read()
+            else:
+                self.PAC = '''\
+function FindProxyForURL(url, host) {
+if (isPlainHostName(host) ||
+    host.indexOf('127.') == 0 ||
+    host.indexOf('192.168.') == 0 ||
+    host.indexOf('10.') == 0 ||
+    shExpMatch(host, 'localhost.*'))
+    {
+        return 'DIRECT';
+    }
+return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
         self.PAC = self.PAC.encode()
 
         if self.userconf.dget('FGFW_Lite', 'logfile', ''):
