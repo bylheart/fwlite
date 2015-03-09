@@ -54,6 +54,7 @@ def resolver(host):
                 raise ValueError('empty iplist')
             return iplist
         except Exception as e:
+            return []
             logger.debug('resolving %s: %r' % (host, e))
             try:
                 record = tcp_dns_record(host, proxy)
@@ -107,7 +108,7 @@ def _udp_dns_record(host, server=('8.8.8.8', 53), qtype='A'):
 @lru_cache(4096, timeout=900)
 def is_poisoned(host):
     try:
-        record = _udp_dns_record(host, 'AAAA')
+        record = _udp_dns_record(host, qtype='AAAA')
         result = bool([r for r in record.rr if r.rtype is dnslib.QTYPE.A])
         return result
     except:
