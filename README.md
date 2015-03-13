@@ -81,7 +81,7 @@ Not applying rules for certain sites. For false positeves in gfwlist.
 
 forcehttps
 
-    |http://zh.wikipedia.com/search forcehttps
+    |http://zh.wikipedia.com/ forcehttps
 
 Block certain sites
 
@@ -94,7 +94,7 @@ Bad 302 Redirect, counteract ISP conducted MITM hijack(GWBN):
 Assign a parent proxy for certain sites
 
     ||bbc.co.uk shadowsocks-uk
-    ||googlevideo.com goagent
+    ||googlevideo.com goagent shadowsocks-us1 shaodwsocks-us2
 
 ##License
 
