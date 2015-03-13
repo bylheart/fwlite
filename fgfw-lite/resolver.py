@@ -32,7 +32,9 @@ def _resolver(host):
         return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
     except Exception as e:
         logger.error(repr(e))
-        return []
+        traceback.print_exc(file=sys.stderr)
+        sys.stderr.flush()
+        raise e
 
 
 def resolver(host):
