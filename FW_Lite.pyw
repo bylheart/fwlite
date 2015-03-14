@@ -51,7 +51,7 @@ try:
 except ImportError:
     pynotify = None
 
-TRAY_ICON = '%s/fgfw-lite/ui/icon.png' % WORKINGDIR
+TRAY_ICON = './fgfw-lite/ui/icon.png'
 
 if not os.path.isfile('./userconf.ini'):
     shutil.copyfile('./userconf.sample.ini', './userconf.ini')
