@@ -1,5 +1,4 @@
 ||fonts.googleapis.com auto
-||feedly.com
 ||google.com
 ||googleapis.com
 ||google.com.hk
