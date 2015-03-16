@@ -1,6 +1,6 @@
 #FWLite
 
-A GoAgent / Shadowsocks client. A HTTP proxy server help get through censorship. It detects blocked sites automatically, and apply parent proxy.
+A GoAgent / Shadowsocks client. A HTTP proxy server help circumvent censorship. It detects blocked sites automatically, and apply parent proxy.
 
 Current Version: 4.7
 
