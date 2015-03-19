@@ -101,7 +101,7 @@ class hxssocket(basesocket):
                     pubk = acipher.get_pub_key()
                     logger.debug('hxsocks send key exchange request')
                     ts = struct.pack('>I', int(time.time()))
-                    data = chr(0) + ts + chr(len(pubk)) + pubk + hashlib.sha256(ts + pubk + usn.encode() + psw.encode()).digest()
+                    data = chr(10) + ts + chr(len(pubk)) + pubk + hashlib.sha256(ts + pubk + usn.encode() + psw.encode()).digest()
                     self._sock.sendall(self.pskcipher.encrypt(data))
                     fp = self._sock.makefile('rb', 0)
                     resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
@@ -206,7 +206,7 @@ class hxssocket(basesocket):
 
             pt = struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data
             ct, mac = self.cipher.encrypt(pt)
-            self._sock.sendall(self.pskcipher.encrypt(chr(1) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
+            self._sock.sendall(self.pskcipher.encrypt(chr(11) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
             if data and self._data_bak is None:
                 self._data_bak = data
             self.connected = 1
