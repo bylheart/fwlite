@@ -1,4 +1,3 @@
-||fonts.googleapis.com auto
 ||google.com
 ||googleapis.com
 ||google.com.hk
