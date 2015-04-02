@@ -25,7 +25,6 @@ import time
 import urlparse
 from threading import Timer
 from collections import defaultdict
-from repoze.lru import lru_cache
 from util import parse_hostport
 
 
@@ -165,7 +164,6 @@ class ap_filter(object):
         if self._listmatch(self.matches, url):
             return True
 
-    @lru_cache(1024, timeout=30)
     def _domainmatch(self, host):
         if host in self.exclude_domains:
             return False
