@@ -10,9 +10,9 @@ Works on Windows, Linux and Mac(untested).
 
 ##Features
 
-- Fast and Reliable (OK, not so reliable sometimes, but that's the goal, right?)
+- Automatic Update
 - Set IE proxy automatically (windows)
-- URL Search
+- URL Search(if your browser doesn't support this well)
 - Detect blocked sites
   - autoproxy-gfwlist
   - user-defined rules
@@ -36,7 +36,6 @@ Works on Windows, Linux and Mac(untested).
   - [Shadowsocks]
 - Use GoAgent for HTTP request only, no worry about certificates
 - Redirector
-- Automatic Update (Yes, you can turn it off easily)
 
 Not all features are covered in GUI.
 
