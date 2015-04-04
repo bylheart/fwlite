@@ -227,7 +227,7 @@ class MainWindow(QtGui.QMainWindow):
             if i < 6:
                 self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=getattr(self, 'set_ie_p%d' % i)))
         self.settingIEproxyMenu.addAction(self.setIENoneAction)
-        if self.conf.dgetbool('FW_Lite', 'setIEProxy', True):
+        if self.conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
             setIEproxy(1, u'127.0.0.1:%d' % self.port)
 
     def set_ie_p0(self):
