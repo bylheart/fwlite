@@ -36,6 +36,7 @@ Works on Windows, Linux and Mac(untested).
   - [Shadowsocks]
 - Use GoAgent for HTTP request only, no worry about certificates
 - Redirector
+- Support PAC for WPAD
 
 Not all features are covered in GUI.
 
