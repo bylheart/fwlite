@@ -215,7 +215,7 @@ class MainWindow(QtGui.QMainWindow):
     def setIEProxyMenu(self):
         self.settingIEproxyMenu.clear()
 
-        profile = [int(x) for x in self.conf.dget('fgfwproxy', 'profile', '134')]
+        profile = [int(x) for x in self.conf.dget('fgfwproxy', 'profile', '13')]
         for i, p in enumerate(profile):
             d = {0: u'直接连接',
                  1: u'智能代理',
