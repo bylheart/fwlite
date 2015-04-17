@@ -1145,6 +1145,9 @@ class parent_proxy(object):
         if level == 0:
             return False
 
+        if self.conf.rproxy:
+            return None
+
         if ip is None:
             return True
 
@@ -1193,7 +1196,7 @@ class parent_proxy(object):
 
         ip = get_ip_address(host)
 
-        ifgfwed = None if self.conf.rproxy else self.ifgfwed(uri, host, port, ip, level)
+        ifgfwed = self.ifgfwed(uri, host, port, ip, level)
 
         if ifgfwed is False:
             if ip.is_private:
@@ -1218,8 +1221,11 @@ class parent_proxy(object):
 
         if len(parentlist) > self.conf.maxretry + 1:
             parentlist = parentlist[:self.conf.maxretry + 1]
-            if self.conf.parentlist.dict.get('goagent') and self.conf.parentlist.dict.get('direct') not in parentlist:
-                parentlist.append(self.conf.parentlist.dict.get('goagent'))
+        if len(parentlist) < self.conf.maxretry:
+            parentlist.extend(parentlist[1:] if ifgfwed else parentlist)
+            parentlist = parentlist[:self.conf.maxretry + 1]
+        if self.conf.parentlist.dict.get('goagent') and ifgfwed:
+            parentlist.append(self.conf.parentlist.dict.get('goagent'))
         return parentlist
 
     def notify(self, command, url, requesthost, success, failed_parents, current_parent):
