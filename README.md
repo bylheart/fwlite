@@ -12,7 +12,7 @@ Works on Windows, Linux and Mac(untested).
 
 - Automatic Update
 - Set IE proxy automatically (windows)
-- URL Search(if your browser doesn't support this well)
+- URL Search (if your browser doesn't support this well)
 - Detect blocked sites
   - autoproxy-gfwlist
   - user-defined rules
@@ -98,6 +98,7 @@ Assign a parent proxy for certain sites
 ##License
 
 GPLv2
+This Software shall be used for Good, Not for Evil.
 
 ##Others
 [COW]
