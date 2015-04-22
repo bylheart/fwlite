@@ -1222,7 +1222,7 @@ class parent_proxy(object):
         if len(parentlist) > self.conf.maxretry + 1:
             parentlist = parentlist[:self.conf.maxretry + 1]
         if len(parentlist) < self.conf.maxretry:
-            parentlist.extend(parentlist[1:] if ifgfwed else parentlist)
+            parentlist.extend(parentlist[1:] if not ifgfwed else parentlist)
             parentlist = parentlist[:self.conf.maxretry + 1]
         if self.conf.parentlist.dict.get('goagent') and ifgfwed:
             parentlist.append(self.conf.parentlist.dict.get('goagent'))
