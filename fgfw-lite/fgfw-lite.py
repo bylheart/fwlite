@@ -1200,32 +1200,28 @@ class parent_proxy(object):
 
         if ifgfwed is False:
             if ip.is_private:
-                return [self.conf.parentlist.dict.get('local') or self.conf.parentlist.dict.get('direct')]
-            return [self.conf.parentlist.dict.get('direct')]
+                return [self.conf.parentlist.local or self.conf.parentlist.direct]
+            return [self.conf.parentlist.direct]
 
         parentlist = list(self.conf.parentlist.httpsparents() if command == 'CONNECT' else self.conf.parentlist.httpparents())
         random.shuffle(parentlist)
         parentlist = sorted(parentlist, key=lambda item: item.httpspriority if command == 'CONNECT' else item.httppriority)
 
-        if self.conf.parentlist.dict.get('local') in parentlist:
-            parentlist.remove(self.conf.parentlist.dict.get('local'))
-
         if nogoagent and self.conf.parentlist.dict.get('goagent') in parentlist:
             parentlist.remove(self.conf.parentlist.dict.get('goagent'))
 
         if ifgfwed:
-            parentlist.remove(self.conf.parentlist.dict.get('direct'))
             if not parentlist:
                 self.logger.warning('No parent proxy available, direct connection is used')
                 return [self.conf.parentlist.dict.get('direct')]
+        else:
+            parentlist.insert(0, self.conf.parentlist.direct)
 
         if len(parentlist) > self.conf.maxretry + 1:
             parentlist = parentlist[:self.conf.maxretry + 1]
         if len(parentlist) < self.conf.maxretry:
             parentlist.extend(parentlist[1:] if not ifgfwed else parentlist)
             parentlist = parentlist[:self.conf.maxretry + 1]
-        if self.conf.parentlist.dict.get('goagent') and ifgfwed:
-            parentlist.append(self.conf.parentlist.dict.get('goagent'))
         return parentlist
 
     def notify(self, command, url, requesthost, success, failed_parents, current_parent):
@@ -1543,7 +1539,7 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
                 continue
             self.addparentproxy(k, v)
 
-        if not self.rproxy and len([k for k in self.parentlist.httpsparents() if k.httpspriority < 100]) <= 1:
+        if not self.rproxy and len([k for k in self.parentlist.httpsparents() if k.httpspriority < 100]) == 0:
             self.addparentproxy('shadowsocks_0', 'ss://aes-128-cfb:6Rc59g0jFlTppvel@155.254.32.50:8000')
 
         self.maxretry = self.userconf.dgetint('fgfwproxy', 'maxretry', 4)

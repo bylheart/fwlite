@@ -68,6 +68,8 @@ class ParentProxy(object):
 class ParentProxyList(object):
     def __init__(self, default_timeout):
         self.default_timeout = default_timeout
+        self.direct = None
+        self.local = None
         self._httpparents = set()
         self._httpsparents = set()
         self.badproxys = set()
@@ -78,18 +80,23 @@ class ParentProxyList(object):
 
     def add(self, parentproxy):
         assert isinstance(parentproxy, ParentProxy)
+        self.dict[parentproxy.name] = parentproxy
+        if parentproxy.name == 'direct':
+            self.direct = parentproxy
+            return
+        if parentproxy.name == 'local':
+            self.local = parentproxy
+            return
         if parentproxy.httppriority >= 0:
             self._httpparents.add(parentproxy)
         if parentproxy.httpspriority >= 0:
             self._httpsparents.add(parentproxy)
-        self.dict[parentproxy.name] = parentproxy
 
     def remove(self, name):
-        a = self.dict.get(name)
-        if not a or name == 'direct':
+        if name == 'direct' or name not in self.dict:
             return 1
-        if name in self.dict:
-            del self.dict[name]
+        a = self.dict.get(name)
+        del self.dict[name]
         self._httpparents.discard(a)
         self._httpsparents.discard(a)
 
