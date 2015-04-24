@@ -1051,6 +1051,22 @@ class ProxyHandler(HTTPRequestHandler):
             return self.write(200, 'Hello World !', 'text/html')
         self.send_error(404)
 
+ASIA = ('AE', 'AF', 'AL', 'AZ', 'BD', 'BH', 'BN', 'BT', 'CN', 'CY', 'HK', 'ID',
+        'IL', 'IN', 'IQ', 'IR', 'JO', 'JP', 'KH', 'KP', 'KR', 'KW', 'KZ', 'LA',
+        'LB', 'LU', 'MN', 'MO', 'MV', 'MY', 'NP', 'OM', 'PH', 'PK', 'QA', 'SA',
+        'SG', 'SY', 'TH', 'TJ', 'TM', 'TW', 'UZ', 'VN', 'YE')
+AFRICA = ('AO', 'BI', 'BJ', 'BW', 'CF', 'CG', 'CM', 'CV', 'DZ', 'EG', 'ET', 'GA', 'GH',
+          'GM', 'GN', 'GQ', 'KE', 'LY', 'MA', 'MG', 'ML', 'MR', 'MU', 'MZ', 'NA', 'NE',
+          'NG', 'RW', 'SD', 'SN', 'SO', 'TN', 'TZ', 'UG', 'ZA', 'ZM', 'ZR', 'ZW')
+NA = ('BM', 'BS', 'CA', 'CR', 'CU', 'GD', 'GT', 'HN', 'HT', 'JM', 'MX', 'NI', 'PA', 'US', 'VE')
+SA = ('AR', 'BO', 'BR', 'CL', 'CO', 'EC', 'GY', 'PE', 'PY', 'UY')
+EU = ('AT', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB',
+      'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LT', 'LV', 'MC', 'MD', 'MT', 'NL',
+      'NO', 'PL', 'PT', 'RO', 'RU', 'SE', 'SK', 'SM', 'UA', 'UK', 'VA', 'YU')
+PACIFIC = ('AU', 'CK', 'FJ', 'GU', 'NZ', 'PG', 'TO')
+
+continent_list = [ASIA, AFRICA, NA, SA, EU, PACIFIC]
+
 
 class parent_proxy(object):
     """docstring for parent_proxy"""
@@ -1204,8 +1220,29 @@ class parent_proxy(object):
             return [self.conf.parentlist.direct]
 
         parentlist = list(self.conf.parentlist.httpsparents() if command == 'CONNECT' else self.conf.parentlist.httpparents())
-        random.shuffle(parentlist)
-        parentlist = sorted(parentlist, key=lambda item: item.httpspriority if command == 'CONNECT' else item.httppriority)
+
+        def key(parent):
+            priority = parent.httpspriority if command == 'CONNECT' else parent.httppriority
+            self.logger.info(repr(ip))
+            if not ip:
+                return priority
+            result = priority
+            parent_cc = parent.country_code
+            dest = ''
+            dest = self.geoip.country_code_by_addr(str(ip))
+            if parent_cc == dest:
+                result = priority - 5
+            else:
+                for continent in continent_list:
+                    if parent_cc in continent and dest in continent:
+                        result = priority - 3
+                        break
+            self.logger.info(repr(parent_cc) + repr(dest) + parent.name + ' ' + str(result))
+            return result
+
+        if len(parentlist) > 1:
+            random.shuffle(parentlist)
+            parentlist = sorted(parentlist, key=key)
 
         if nogoagent and self.conf.parentlist.dict.get('goagent') in parentlist:
             parentlist.remove(self.conf.parentlist.dict.get('goagent'))
@@ -1222,6 +1259,7 @@ class parent_proxy(object):
         if len(parentlist) < self.conf.maxretry:
             parentlist.extend(parentlist[1:] if not ifgfwed else parentlist)
             parentlist = parentlist[:self.conf.maxretry + 1]
+        self.logger.info(str(parentlist))
         return parentlist
 
     def notify(self, command, url, requesthost, success, failed_parents, current_parent):

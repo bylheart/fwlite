@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding:utf-8
+import pygeoip
 from threading import Timer
 try:
     import urllib.parse as urlparse
@@ -10,6 +11,7 @@ except ImportError:
     import urllib2
     urlquote = urllib2.quote
     urlunquote = urllib2.unquote
+geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
 
 
 class ParentProxy(object):
@@ -35,6 +37,10 @@ class ParentProxy(object):
         self.httppriority = int(httppriority)
         self.httpspriority = int(httpspriority)
         self.timeout = int(timeout)
+        try:
+            self.country_code = geoip.country_code_by_name(self.parse.hostname)
+        except:
+            self.country_code = None
         if self.parse.scheme.lower() == 'sni':
             self.httppriority = -1
 
