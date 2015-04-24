@@ -56,7 +56,6 @@ def resolver(host):
                 raise ValueError('empty iplist')
             return iplist
         except Exception as e:
-            return []
             logger.debug('resolving %s: %r' % (host, e))
             try:
                 record = tcp_dns_record(host, proxy)
