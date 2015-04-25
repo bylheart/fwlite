@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding:utf-8
 import sys
+import time
 import traceback
 import pygeoip
 from threading import Timer
@@ -42,10 +43,13 @@ class ParentProxy(object):
         self.httpspriority = int(httpspriority)
         self.timeout = int(timeout)
         self.country_code = None
+        self.last_ckeck = 0
         if self.parse.scheme.lower() == 'sni':
             self.httppriority = -1
 
     def get_location(self):
+        if time.time() - self.last_ckeck < 60:
+            return
         from connection import create_connection
         from httputil import read_reaponse_line, read_headers, read_header_data
         try:
@@ -63,6 +67,7 @@ class ParentProxy(object):
             sys.stderr.write('\n')
             sys.stderr.write(traceback.format_exc())
             sys.stderr.flush()
+        self.last_ckeck = time.time()
 
     @property
     def scheme(self):
