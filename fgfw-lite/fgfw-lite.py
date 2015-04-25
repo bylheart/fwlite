@@ -1572,6 +1572,8 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
         else:
             self.addparentproxy('direct', 'direct 0')
 
+        ParentProxy.set_via(self.parentlist.direct)
+
         for k, v in self.userconf.items('parents'):
             if '6Rc59g0jFlTppvel' in v:
                 self.userconf.remove_option('parents', k)

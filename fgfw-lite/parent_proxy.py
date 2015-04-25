@@ -17,6 +17,8 @@ geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
 
 
 class ParentProxy(object):
+    via = ''
+
     def __init__(self, name, proxy, default_timeout=4):
         '''
         name: str, name of parent proxy
@@ -47,7 +49,7 @@ class ParentProxy(object):
         from connection import create_connection
         from httputil import read_reaponse_line, read_headers, read_header_data
         try:
-            soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=2, rtimeout=2, parentproxy=self)
+            soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=2, rtimeout=2, parentproxy=self, via=self.via)
             soc.sendall(b'GET / HTTP/1.0\r\nHost: bot.whatismyipaddress.com\r\n\r\n')
             f = soc.makefile()
             line, version, status, reason = read_reaponse_line(f)
@@ -81,6 +83,10 @@ class ParentProxy(object):
     @property
     def port(self):
         return self.parse.port
+
+    @classmethod
+    def set_via(cls, proxy):
+        cls.via = proxy
 
     def __str__(self):
         return self.name
