@@ -218,6 +218,9 @@ class hxssocket(basesocket):
                 data += self.pskcipher.encrypt(chr(rint)) + os.urandom(rint)
             self._sock.sendall(data)
 
+    def makefile(self, mode='rb', bufsize=0):
+        return self
+
 if __name__ == '__main__':
     hxs = hxssocket('hxs://user:pass@127.0.0.1:80')
     hxs.connect(('www.baidu.com', 80))

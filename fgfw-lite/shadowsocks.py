@@ -64,3 +64,6 @@ class sssocket(basesocket):
                                                    struct.pack(b">H", port),
                                                    data])))
             self.connected = True
+
+    def makefile(self, mode='rb', bufsize=0):
+        return self

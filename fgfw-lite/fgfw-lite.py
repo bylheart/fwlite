@@ -559,7 +559,7 @@ class ProxyHandler(HTTPRequestHandler):
             data = ''.join(s).encode('latin1')
             self.remotesoc.sendall(data)
             self.traffic_count[0] += len(data)
-            remoterfile = self.remotesoc if hasattr(self.remotesoc, 'readline') else self.remotesoc.makefile('rb', 0)
+            remoterfile = self.remotesoc.makefile('rb', 0)
             # Expect
             skip = False
             if 'Expect' in self.headers:
