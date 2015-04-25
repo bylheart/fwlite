@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # coding:utf-8
+import sys
+import traceback
 import pygeoip
 from threading import Timer
 try:
@@ -37,12 +39,28 @@ class ParentProxy(object):
         self.httppriority = int(httppriority)
         self.httpspriority = int(httpspriority)
         self.timeout = int(timeout)
-        try:
-            self.country_code = geoip.country_code_by_name(self.parse.hostname)
-        except:
-            self.country_code = None
+        self.country_code = None
         if self.parse.scheme.lower() == 'sni':
             self.httppriority = -1
+
+    def get_location(self):
+        from connection import create_connection
+        from httputil import read_reaponse_line, read_headers, read_header_data
+        try:
+            soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=2, rtimeout=2, parentproxy=self)
+            soc.sendall(b'GET / HTTP/1.0\r\nHost: bot.whatismyipaddress.com\r\n\r\n')
+            f = soc.makefile()
+            line, version, status, reason = read_reaponse_line(f)
+            _, headers = read_headers(f)
+            assert status == 200
+            ip = soc.recv(int(headers['Content-Length']))
+            self.country_code = geoip.country_code_by_addr(ip)
+            soc.close()
+        except Exception as e:
+            sys.stderr.write(repr(e))
+            sys.stderr.write('\n')
+            sys.stderr.write(traceback.format_exc())
+            sys.stderr.flush()
 
     @property
     def scheme(self):

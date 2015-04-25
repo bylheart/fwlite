@@ -1227,6 +1227,8 @@ class parent_proxy(object):
             if not ip:
                 return priority
             result = priority
+            if parent.country_code is None:
+                parent.get_location()
             parent_cc = parent.country_code
             dest = ''
             dest = self.geoip.country_code_by_addr(str(ip))
