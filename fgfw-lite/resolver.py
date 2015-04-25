@@ -143,7 +143,7 @@ def get_ip_address(host):
         return ip_address(host)
     except:
         try:
-            return ip_address([result[1] for result in resolver(host) if result[0] == 2][1])
+            return ip_address([result[1] for result in resolver(host) if result[0] == 2][0])
         except:
             return None
 
