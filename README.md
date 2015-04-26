@@ -2,7 +2,7 @@
 
 A GoAgent / Shadowsocks client. A HTTP proxy server help circumvent censorship. It detects blocked sites automatically, apply parent proxy. And a lot more.
 
-Current Version: 4.7
+Current Version: 4.8
 
 Works on Windows, Linux and Mac(untested).
 
