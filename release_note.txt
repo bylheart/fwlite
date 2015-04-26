@@ -1,3 +1,9 @@
+2015.4.26 v4.8
+enhancement: prioritize parent proxies by location
+new: provide a PAC for WPAD users
+allow parent proxy password with special characters(RFC 1738)
+allow multiple parentproxy assigned to one site
+
 2015.2.25 v4.7
 fix issue with ProxyDroid and weixin
 fix compatability problem with CCProxy

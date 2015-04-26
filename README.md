@@ -34,6 +34,7 @@ Works on Windows, Linux and Mac(untested).
   - SNI Proxy
   - [GoAgent]
   - [Shadowsocks]
+- Prioritize parent proxies by location
 - Use GoAgent for HTTP request only, no worry about certificates
 - Redirector
 - Support PAC for WPAD
