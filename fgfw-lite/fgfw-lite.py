@@ -1223,7 +1223,6 @@ class parent_proxy(object):
 
         def key(parent):
             priority = parent.httpspriority if command == 'CONNECT' else parent.httppriority
-            self.logger.info(repr(ip))
             if not ip:
                 return priority
             result = priority
@@ -1241,7 +1240,6 @@ class parent_proxy(object):
                     if parent_cc in continent and dest in continent:
                         result = priority - 3
                         break
-            self.logger.info(repr(parent_cc) + repr(dest) + parent.name + ' ' + str(result))
             return result
 
         if len(parentlist) > 1:
@@ -1263,7 +1261,6 @@ class parent_proxy(object):
         if len(parentlist) < self.conf.maxretry:
             parentlist.extend(parentlist[1:] if not ifgfwed else parentlist)
             parentlist = parentlist[:self.conf.maxretry + 1]
-        self.logger.info(str(parentlist))
         return parentlist
 
     def notify(self, command, url, requesthost, success, failed_parents, current_parent):
