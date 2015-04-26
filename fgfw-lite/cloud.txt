@@ -9,4 +9,4 @@
 @@||weibo.com
 @@||ykimg.com
 @@||qq.com
-/^http://[^/]+\.v2ex.com[\/:]/ forcehttps
+||avira-update.com
