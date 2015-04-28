@@ -1431,7 +1431,7 @@ class goagentHandler(FGFWProxyHandler):
     def config(self):
         self.cwd = '%s/goagent' % WORKINGDIR
         self.cmd = '%s %s/goagent/proxy.py' % (PYTHON2, WORKINGDIR.replace(' ', '\ '))
-        self.enable = self.conf.userconf.dgetbool('goagent', 'enable', True)
+        self.enable = self.conf.userconf.dgetbool('goagent', 'enable', False)
 
         self._config()
 

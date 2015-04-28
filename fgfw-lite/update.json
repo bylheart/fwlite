@@ -9,8 +9,8 @@
     "./fgfw-lite/connection.py": "6ef075438a01a5f445e0b262ee13a4c15d62d40c912a9d22152afe3b7c474bd5",
     "./fgfw-lite/ctypes_libsodium.py": "b0247da98cbfe91e72e2ecac7bf271e524301912e0a5d37e4e5d5b7cd4308286",
     "./fgfw-lite/ecc.py": "3ea32d0a7f7e9eb2f1062d1a0623bb1c3366ac3e5b6954154992807f310a4ad1",
-    "./fgfw-lite/encrypt.py": "b96ef95ad43cad2b2a123b02a219b8b2820388e32d3274206e5878132517938f",
-    "./fgfw-lite/fgfw-lite.py": "d83844d77ee2eb766c9087e5e8d06834dc123c243fa0752886d770990ff50132",
+    "./fgfw-lite/encrypt.py": "3300f303b4d44a0be25ff7e596c0770e1cd2cd56fe17dcd3c4a037aea205efcd",
+    "./fgfw-lite/fgfw-lite.py": "468aa47542584b4e2669b89575e0f697f97f92ef058a24c23e50c26f2660946a",
     "./fgfw-lite/httputil.py": "86e4ccf9ab4054fdb8357d823641ef506c4bff1982e82db35efbc2cf9da2f946",
     "./fgfw-lite/hxsocks.py": "2547ccd809e7d86472433e1e199aab3f7328888793f1f210ca0b670e40eca438",
     "./fgfw-lite/parent_proxy.py": "e5cbb46dd5544cb14ffa1061be620d8608c6e8814715d1e73a51b1089e02f650",
@@ -32,5 +32,5 @@
     "./goagent/proxy.sample.ini": "a4b9ccc07977362a7b969c3ed9aa434beb11fb2378b1aaf6453159c6f0f6517a",
     "./goagent/proxylib.py": "77c56458782790913084930a012620dca28021d826f87a59d88b090b51964fe7",
     "./release_note.txt": "7483eb02ffe268af7413e234ffaf1a63732911056cf93568cbd70d19711445e7",
-    "./userconf.sample.ini": "a627b979753ce95ff73f039741f764d629398f96bbe8ccc768e25a8293d080d9"
+    "./userconf.sample.ini": "873a71f36b064d5a992ea0cb077228e4b30fc1153f183ea8b9ec3e904a11a06f"
 }
