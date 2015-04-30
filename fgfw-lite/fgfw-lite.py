@@ -524,6 +524,7 @@ class ProxyHandler(HTTPRequestHandler):
             if self.pproxy.name == 'direct' and self.requesthost[0] in self.conf.HOSTS and not self.failed_parents:
                 iplist = self.conf.HOSTS.get(self.requesthost[0])
                 self._proxylist.insert(0, self.pproxy)
+            self.set_timeout()
             self.phase = 'http_connect_via_proxy'
             self.remotesoc = self._http_connect_via_proxy(self.requesthost, iplist)
             self.wbuffer = deque()
@@ -757,6 +758,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.pproxy.name == 'direct' and self.requesthost[0] in self.conf.HOSTS and not self.failed_parents:
             iplist = self.conf.HOSTS.get(self.requesthost[0])
             self._proxylist.insert(0, self.pproxy)
+        self.set_timeout()
         self.phase = 'connect'
         try:
             self.remotesoc = self._connect_via_proxy(self.requesthost, iplist, tunnel=True)
@@ -862,6 +864,17 @@ class ProxyHandler(HTTPRequestHandler):
             if data:
                 self._wfile_write(data)
 
+    def set_timeout(self):
+        if self._proxylist:
+            if self.ppname == 'direct':
+                self.rtimeout = self.conf.timeout
+                self.ctimeout = self.conf.timeout
+            else:
+                self.rtimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 10)
+                self.ctimeout = len(self.failed_parents) + self.conf.timeout
+        else:
+            self.ctimeout = self.rtimeout = 10
+
     def _http_connect_via_proxy(self, netloc, iplist):
         if not self.failed_parents:
             res = self.conf.HTTPCONN_POOL.get(self.upstream_name)
@@ -873,17 +886,8 @@ class ProxyHandler(HTTPRequestHandler):
         return self._connect_via_proxy(netloc, iplist)
 
     def _connect_via_proxy(self, netloc, iplist=None, tunnel=False):
-        if self._proxylist:
-            if self.ppname == 'direct':
-                self.rtimeout = self.conf.timeout
-                ctimeout = self.conf.timeout
-            else:
-                self.rtimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 10)
-                ctimeout = len(self.failed_parents) + self.conf.timeout
-        else:
-            ctimeout = self.rtimeout = 10
         self.on_conn_log()
-        return create_connection(netloc, ctimeout=ctimeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.dict.get('direct'), tunnel=tunnel)
+        return create_connection(netloc, ctimeout=self.ctimeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.dict.get('direct'), tunnel=tunnel)
 
     def do_FTP(self):
         self.logger.info('{} {}'.format(self.command, self.path))
