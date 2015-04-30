@@ -120,7 +120,7 @@ def is_poisoned(host):
 def tcp_dns_record(host, proxy, server=('8.8.8.8', 53), qtype='ANY'):
     for _ in range(2):
         try:
-            sock = create_connection(server, ctimeout=5, rtimeout=5, parentproxy=proxy, tunnel=True)
+            sock = create_connection(server, ctimeout=5, parentproxy=proxy, tunnel=True)
             query = dnslib.DNSRecord.question(host, qtype)
             query_data = query.pack()
             sock.send(struct.pack('>h', len(query_data)) + query_data)

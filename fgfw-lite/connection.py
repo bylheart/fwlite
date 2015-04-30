@@ -52,13 +52,12 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
         raise socket.error("getaddrinfo returns an empty list")
 
 
-def do_tunnel(soc, netloc, pp, timeout):
+def do_tunnel(soc, netloc, pp):
     s = ['CONNECT %s:%s HTTP/1.1\r\n' % (netloc[0], netloc[1]), ]
     if pp.username:
         a = '%s:%s' % (pp.username, pp.password)
         s.append('Proxy-Authorization: Basic %s\r\n' % base64.b64encode(a.encode()))
     s.append('Host: %s:%s\r\n\r\n' % (netloc[0], netloc[1]))
-    soc.settimeout(timeout)
     soc.sendall(''.join(s).encode())
     remoterfile = soc.makefile('rb', 0)
     line, version, status, reason = read_reaponse_line(remoterfile)
@@ -67,29 +66,26 @@ def do_tunnel(soc, netloc, pp, timeout):
     read_header_data(remoterfile)
 
 
-def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None, iplist=None, parentproxy='direct', via='', tunnel=False):
+def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, parentproxy='direct', via='', tunnel=False):
     logger.debug('connection.create_connection: %r %r %r %r' % (netloc, parentproxy, via, tunnel))
     if not isinstance(parentproxy, ParentProxy):
         parentproxy = ParentProxy(parentproxy, parentproxy)
     if via and not isinstance(via, ParentProxy):
         via = ParentProxy('Via', via)
-    ctimeout = ctimeout or 1
-    rtimeout = rtimeout or parentproxy.timeout
-    if parentproxy.timeout > rtimeout:
-        rtimeout = parentproxy.timeout
+    ctimeout = ctimeout or parentproxy.timeout
     s = None
     if not parentproxy or not parentproxy.proxy:
         s = _create_connection(netloc, ctimeout, iplist=iplist)
     elif parentproxy.scheme == 'http':
         s = _create_connection((parentproxy.hostname, parentproxy.port or 80), ctimeout)
         if tunnel:
-            do_tunnel(s, netloc, parentproxy, rtimeout)
+            do_tunnel(s, netloc, parentproxy)
     elif parentproxy.scheme == 'https':
         s = _create_connection((parentproxy.hostname, parentproxy.port or 443), ctimeout)
         s = ssl.wrap_socket(s)
         s.do_handshake()
         if tunnel:
-            do_tunnel(s, netloc, parentproxy, rtimeout)
+            do_tunnel(s, netloc, parentproxy)
     elif parentproxy.scheme == 'ss':
         s = sssocket(parentproxy, ctimeout, via, iplist=iplist)
         s.connect(netloc)
@@ -100,7 +96,6 @@ def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None,
         s = _create_connection((parentproxy.hostname, parentproxy.port or 443), ctimeout)
     elif parentproxy.scheme == 'socks5':
         s = _create_connection((parentproxy.hostname, parentproxy.port or 1080), ctimeout)
-        s.settimeout(rtimeout)
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         s.sendall(b"\x05\x02\x00\x02" if parentproxy.username else b"\x05\x01\x00")
         data = s.recv(2)
@@ -129,6 +124,5 @@ def create_connection(netloc, ctimeout=None, rtimeout=None, source_address=None,
     else:
         raise IOError(0, 'parentproxy %s not supported!' % parentproxy.name)
     if s:
-        s.settimeout(rtimeout)
         return s
     raise IOError(0, 'create_connection failed!')

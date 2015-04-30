@@ -53,7 +53,7 @@ class ParentProxy(object):
         from connection import create_connection
         from httputil import read_reaponse_line, read_headers, read_header_data
         try:
-            soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=2, rtimeout=2, parentproxy=self, via=self.via)
+            soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=None, parentproxy=self, via=self.via)
             soc.sendall(b'GET / HTTP/1.0\r\nHost: bot.whatismyipaddress.com\r\n\r\n')
             f = soc.makefile()
             line, version, status, reason = read_reaponse_line(f)

@@ -560,6 +560,8 @@ class ProxyHandler(HTTPRequestHandler):
             data = ''.join(s).encode('latin1')
             self.remotesoc.sendall(data)
             self.traffic_count[0] += len(data)
+            # Now remotesoc is connected, set read timeout
+            self.remotesoc.settimeout(self.rtimeout)
             remoterfile = self.remotesoc.makefile('rb', 0)
             # Expect
             skip = False
@@ -780,8 +782,9 @@ class ProxyHandler(HTTPRequestHandler):
                     if not data:
                         reason = 'client closed'
                         break
-
                     self.remotesoc.sendall(data)
+                    # Now remotesoc is connected, set read timeout
+                    self.remotesoc.settimeout(self.rtimeout)
                     count += 1
                     if self.retryable:
                         self.rbuffer.append(data)
@@ -872,15 +875,15 @@ class ProxyHandler(HTTPRequestHandler):
     def _connect_via_proxy(self, netloc, iplist=None, tunnel=False):
         if self._proxylist:
             if self.ppname == 'direct':
-                rtimeout = self.conf.timeout
+                self.rtimeout = self.conf.timeout
                 ctimeout = self.conf.timeout
             else:
-                rtimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 10)
+                self.rtimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 10)
                 ctimeout = len(self.failed_parents) + self.conf.timeout
         else:
-            ctimeout = rtimeout = 10
+            ctimeout = self.rtimeout = 10
         self.on_conn_log()
-        return create_connection(netloc, ctimeout=ctimeout, rtimeout=rtimeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.dict.get('direct'), tunnel=tunnel)
+        return create_connection(netloc, ctimeout=ctimeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.dict.get('direct'), tunnel=tunnel)
 
     def do_FTP(self):
         self.logger.info('{} {}'.format(self.command, self.path))

@@ -53,7 +53,7 @@ for fname in os.listdir('./.hxs_known_hosts'):
 class hxssocket(basesocket):
     bufsize = 32768
 
-    def __init__(self, hxsServer=None, ctimeout=1, parentproxy=None, iplist=None):
+    def __init__(self, hxsServer=None, ctimeout=4, parentproxy=None, iplist=None):
         basesocket.__init__(self)
         if hxsServer and not isinstance(hxsServer, ParentProxy):
             hxsServer = ParentProxy(hxsServer, hxsServer)
@@ -83,7 +83,7 @@ class hxssocket(basesocket):
         if self._sock is None:
             from connection import create_connection
             host, port = self.hxsServer.hostname, self.hxsServer.port
-            self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
+            self._sock = create_connection((host, port), self.timeout, parentproxy=self.parentproxy, tunnel=True)
             self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
 
     def getKey(self):
@@ -95,7 +95,7 @@ class hxssocket(basesocket):
                     if self._sock is None:
                         logger.debug('hxsocks connect')
                         from connection import create_connection
-                        self._sock = create_connection((host, port), self.timeout, self.timeout + 2, parentproxy=self.parentproxy, tunnel=True)
+                        self._sock = create_connection((host, port), self.timeout, parentproxy=self.parentproxy, tunnel=True)
                         self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
                     acipher = ECC(self.pskcipher.key_len)
                     pubk = acipher.get_pub_key()
