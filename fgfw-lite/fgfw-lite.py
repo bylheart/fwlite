@@ -418,6 +418,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def getparent(self):
         if self._proxylist is None:
+            # goagent does not support big POST
             nogoagent = True if self.headers.get("Transfer-Encoding") or int(self.headers.get('Content-Length', 0)) > 1024 * 1024 else False
             self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level, nogoagent)
             self.logger.debug(repr(self._proxylist))
@@ -1220,6 +1221,9 @@ class parent_proxy(object):
             return [self.conf.parentlist.direct]
 
         parentlist = list(self.conf.parentlist.httpsparents() if command == 'CONNECT' else self.conf.parentlist.httpparents())
+        if len(parentlist) < self.conf.maxretry:
+            parentlist.extend(parentlist[1:] if not ifgfwed else parentlist)
+            parentlist = parentlist[:self.conf.maxretry]
 
         def key(parent):
             priority = parent.httpspriority if command == 'CONNECT' else parent.httppriority
@@ -1256,11 +1260,9 @@ class parent_proxy(object):
         else:
             parentlist.insert(0, self.conf.parentlist.direct)
 
-        if len(parentlist) > self.conf.maxretry + 1:
-            parentlist = parentlist[:self.conf.maxretry + 1]
-        if len(parentlist) < self.conf.maxretry:
-            parentlist.extend(parentlist[1:] if not ifgfwed else parentlist)
-            parentlist = parentlist[:self.conf.maxretry + 1]
+        if len(parentlist) > self.conf.maxretry:
+            parentlist = parentlist[:self.conf.maxretry]
+        self.logger.info(repr(parentlist))
         return parentlist
 
     def notify(self, command, url, requesthost, success, failed_parents, current_parent):
