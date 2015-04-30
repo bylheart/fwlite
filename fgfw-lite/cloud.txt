@@ -1,9 +1,5 @@
 ||google.com
-||googleapis.com
 ||google.com.hk
-||ggpht.com
-||google-analytics.com
-||googleusercontent.com
 |https://www.mozilla.org
 @@||cn.bing.com
 @@||weibo.com
