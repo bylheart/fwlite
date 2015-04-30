@@ -119,7 +119,7 @@ FAKEGIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\
 
 
 def prestart():
-    s = 'FGFW_Lite ' + __version__
+    s = 'FW_Lite ' + __version__
     if gevent:
         s += ' with gevent %s' % gevent.__version__
     logging.info(s)
