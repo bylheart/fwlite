@@ -68,10 +68,10 @@ class hxssocket(basesocket):
             self.serverid = (self.hxsServer.username, self.hxsServer.hostname)
         self.cipher = None
         self.connected = 0
-        self._data_bak = None
         # value: 0: request not sent
         #        1: request sent, no server response received
         #        2: server response received
+        self._data_bak = None
 
     def connect(self, address):
         self._address = ('%s:%s' % address).encode()
