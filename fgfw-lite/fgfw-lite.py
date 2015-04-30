@@ -30,7 +30,7 @@ sys.dont_write_bytecode = True
 WORKINGDIR = '/'.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')).split('/')[:-1])
 os.chdir(WORKINGDIR)
 sys.path.append(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')))
-sys.path += glob.glob('%s/goagent/*.egg' % WORKINGDIR)
+sys.path += glob.glob('%s/Python27/*.egg' % WORKINGDIR)
 gevent = None
 try:
     import gevent

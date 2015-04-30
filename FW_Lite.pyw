@@ -7,7 +7,7 @@ import glob
 sys.dont_write_bytecode = True
 WORKINGDIR = os.path.dirname(os.path.abspath(__file__).replace('\\', '/'))
 os.chdir(WORKINGDIR)
-sys.path += glob.glob('%s/goagent/*.egg' % WORKINGDIR)
+sys.path += glob.glob('%s/Python27/*.egg' % WORKINGDIR)
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 import copy
 import datetime

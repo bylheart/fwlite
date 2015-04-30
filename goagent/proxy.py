@@ -62,7 +62,7 @@ reload(sys).setdefaultencoding('UTF-8')
 sys.dont_write_bytecode = True
 import glob
 sys.path.append(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')))
-sys.path += glob.glob('%s/*.egg' % os.path.dirname(os.path.abspath(__file__)))
+sys.path += glob.glob('../Python27/*.egg')
 
 try:
     __import__('gevent.monkey', fromlist=['.']).patch_all()
