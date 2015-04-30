@@ -14,7 +14,7 @@ except ImportError:
     import urllib2
     urlquote = urllib2.quote
     urlunquote = urllib2.unquote
-geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
+geoip = pygeoip.GeoIP('./fgfw-lite/GeoIP.dat')
 
 
 class ParentProxy(object):

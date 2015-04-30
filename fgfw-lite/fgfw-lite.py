@@ -1118,7 +1118,7 @@ class parent_proxy(object):
             except TypeError:
                 self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
 
-        self.geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
+        self.geoip = pygeoip.GeoIP('./fgfw-lite/GeoIP.dat')
 
     def redirect(self, hdlr):
         return self.conf.REDIRECTOR.redirect(hdlr)

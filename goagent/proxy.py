@@ -185,7 +185,6 @@ from proxylib import CertUtil
 from proxylib import CipherFileObject
 from proxylib import deflate
 from proxylib import DirectFetchPlugin
-from proxylib import DirectRegionFilter
 from proxylib import dnslib_record2iplist
 from proxylib import dnslib_resolve_over_tcp
 from proxylib import dnslib_resolve_over_udp
@@ -1586,8 +1585,6 @@ def pre_start():
     RangeFetch.waitsize = common.AUTORANGE_WAITSIZE
     if True:
         GAEProxyHandler.handler_filters.insert(0, AutoRangeFilter(common.AUTORANGE_HOSTS, common.AUTORANGE_ENDSWITH, common.AUTORANGE_NOENDSWITH, common.AUTORANGE_MAXSIZE))
-    if common.GAE_REGIONS:
-        GAEProxyHandler.handler_filters.insert(0, DirectRegionFilter(common.GAE_REGIONS))
     if common.CRLF_SITES:
         GAEProxyHandler.handler_filters.insert(0, CRLFSitesFilter(common.CRLF_SITES, common.NOCRLF_SITES))
     if common.URLREWRITE_MAP:

@@ -1189,48 +1189,6 @@ class MIMTProxyHandlerFilter(BaseProxyHandlerFilter):
             return 'direct', {}
 
 
-class DirectRegionFilter(BaseProxyHandlerFilter):
-    """direct region filter"""
-    region_cache = LRUCache(16*1024)
-
-    def __init__(self, regions):
-        self.regions = set(regions)
-        try:
-            import pygeoip
-            self.geoip = pygeoip.GeoIP(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'GeoIP.dat'))
-        except StandardError as e:
-            logging.error('DirectRegionFilter init pygeoip failed: %r', e)
-            sys.exit(-1)
-
-    def get_country_code(self, hostname, dnsservers):
-        """http://dev.maxmind.com/geoip/legacy/codes/iso3166/"""
-        try:
-            return self.region_cache[hostname]
-        except KeyError:
-            pass
-        try:
-            if re.match(r'^\d+\.\d+\.\d+\.\d+$', hostname) or ':' in hostname:
-                iplist = [hostname]
-            elif dnsservers:
-                iplist = dnslib_record2iplist(dnslib_resolve_over_udp(hostname, dnsservers, timeout=2))
-            else:
-                iplist = socket.gethostbyname_ex(hostname)[-1]
-            if iplist[0].startswith(('127.', '192.168.', '10.')):
-                country_code = 'LOCAL'
-            else:
-                country_code = self.geoip.country_code_by_addr(iplist[0])
-        except StandardError as e:
-            logging.warning('DirectRegionFilter cannot determine region for hostname=%r %r', hostname, e)
-            country_code = ''
-        self.region_cache[hostname] = country_code
-        return country_code
-
-    def filter(self, handler):
-        country_code = self.get_country_code(handler.host, handler.dns_servers)
-        if country_code in self.regions:
-            return 'direct', {}
-
-
 class AuthFilter(BaseProxyHandlerFilter):
     """authorization filter"""
     auth_info = "Proxy authentication required"""
