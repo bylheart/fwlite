@@ -1265,7 +1265,6 @@ class parent_proxy(object):
 
         if len(parentlist) > self.conf.maxretry:
             parentlist = parentlist[:self.conf.maxretry]
-        self.logger.info(repr(parentlist))
         return parentlist
 
     def notify(self, command, url, requesthost, success, failed_parents, current_parent):
@@ -1515,7 +1514,8 @@ class Config(object):
         self.reload()
         self.UPDATE_INTV = 6
         self.timeout = self.userconf.dgetint('fgfwproxy', 'timeout', 4)
-        self.parentlist = ParentProxyList(self.timeout)
+        ParentProxy.DEFAULT_TIMEOUT = self.timeout
+        self.parentlist = ParentProxyList()
         self.HOSTS = defaultdict(list)
         self.GUI = '-GUI' in sys.argv
         self.rproxy = self.userconf.dgetbool('fgfwproxy', 'rproxy', False)

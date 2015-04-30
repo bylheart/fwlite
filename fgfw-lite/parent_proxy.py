@@ -19,8 +19,9 @@ geoip = pygeoip.GeoIP('./goagent/GeoIP.dat')
 
 class ParentProxy(object):
     via = ''
+    DEFAULT_TIMEOUT = 4
 
-    def __init__(self, name, proxy, default_timeout=4):
+    def __init__(self, name, proxy):
         '''
         name: str, name of parent proxy
         proxy: "http://127.0.0.1:8087 <optional int: httppriority> <optional int: httpspriority>"
@@ -30,7 +31,7 @@ class ParentProxy(object):
         httpspriority, _, timeout = httpspriority.partition(' ')
         httppriority = httppriority or 99
         httpspriority = httpspriority or httppriority
-        timeout = timeout or default_timeout
+        timeout = timeout or self.DEFAULT_TIMEOUT
 
         if proxy == 'direct':
             proxy = ''
@@ -101,8 +102,7 @@ class ParentProxy(object):
 
 
 class ParentProxyList(object):
-    def __init__(self, default_timeout):
-        self.default_timeout = default_timeout
+    def __init__(self):
         self.direct = None
         self.local = None
         self._httpparents = set()
@@ -111,7 +111,7 @@ class ParentProxyList(object):
         self.dict = {}
 
     def addstr(self, name, proxy):
-        self.add(ParentProxy(name, proxy, self.default_timeout))
+        self.add(ParentProxy(name, proxy))
 
     def add(self, parentproxy):
         assert isinstance(parentproxy, ParentProxy)
