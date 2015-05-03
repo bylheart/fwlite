@@ -147,3 +147,6 @@ class ParentProxyList(object):
         if ppname in self.dict:
             self.badproxys.add(self.dict[ppname])
             Timer(600, self.badproxys.discard, (self.dict[ppname], )).start()
+
+    def get(self, key):
+        return self.dict.get(key)

@@ -1469,6 +1469,7 @@ class goagentHandler(FGFWProxyHandler):
             goagent.set('iplist', 'google_hk', self.conf.userconf.dget('goagent', 'google_hk', ''))
         if self.enable:
             self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20 200 8')
+            self.conf.parentlist.get('goagent').country_code = 'US'
 
         if self.conf.userconf.dget('goagent', 'vps'):
             goagent.set('vps', 'enable', '1')
