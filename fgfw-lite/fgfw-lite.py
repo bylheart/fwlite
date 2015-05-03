@@ -1331,9 +1331,9 @@ def update(conf, auto=False):
             r = urllib2.urlopen(req)
         except Exception as e:
             if isinstance(e, urllib2.HTTPError):
-                conf.logger.info('%s NOT updated. Reason: %s' % (path, e.reason))
+                conf.logger.info('%s NOT updated: %s' % (path, e.reason))
             else:
-                conf.logger.info('%s NOT updated. Reason: %r' % (path, e))
+                conf.logger.info('%s NOT updated: %r' % (path, e))
         else:
             data = r.read()
             if r.getcode() == 200 and data:
@@ -1343,7 +1343,7 @@ def update(conf, auto=False):
                 conf.confsave()
                 conf.logger.info('%s Updated.' % path)
             else:
-                conf.logger.info('{} NOT updated. Reason: {}'.format(path, str(r.getcode())))
+                conf.logger.info('{} NOT updated: {}'.format(path, str(r.getcode())))
     branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
     try:
         s = urllib2.urlopen('http://fwlite.tk/ver').read()
@@ -1353,11 +1353,11 @@ def update(conf, auto=False):
         else:
             conf.version.set('Update', 'ver', s)
     except Exception as e:
-        conf.logger.info('read server ver failed. Reason: %r' % e)
+        conf.logger.info('read server ver failed: %r' % e)
     try:
         r = json.loads(urllib2.urlopen('https://github.com/v3aqb/fwlite/raw/%s/fgfw-lite/update.json' % branch).read())
     except Exception as e:
-        conf.logger.info('read update.json failed. Reason: %r' % e)
+        conf.logger.info('read update.json failed: %r' % e)
     else:
         import hashlib
         for path, v, in r.items():
@@ -1368,7 +1368,7 @@ def update(conf, auto=False):
                 fdata = urllib2.urlopen('https://github.com/v3aqb/fwlite/raw/%s%s' % (branch, path[1:])).read()
                 h = hashlib.new("sha256", fdata).hexdigest()
                 if h != v:
-                    conf.logger.warning('{} NOT updated. hash mismatch.'.format(path))
+                    conf.logger.warning('{} NOT updated: hash mismatch.'.format(path))
                     continue
                 if not os.path.isdir(os.path.dirname(path)):
                     os.mkdir(os.path.dirname(path))
