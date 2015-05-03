@@ -63,11 +63,9 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          './fgfw-lite/util.py',
          './fgfw-lite/cloud.txt',
          './fgfw-lite/singleton.py',
-         './fgfw-lite/GeoIP.dat',
+         './fgfw-lite/GeoLite2-Country.mmdb',
          './userconf.sample.ini',
          './Python27/python27.zip',
-         './Python27/dnslib.egg',
-         './Python27/pygeoip.egg',
          './README.md',
          './FW_Lite.exe',
          './FW_Lite.pyw',
@@ -79,6 +77,9 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          ]
 
 for p in glob.glob('./fgfw-lite/ui_*.py'):
+    flist.append(p.replace('\\', '/'))
+
+for p in glob.glob('./Python27/*.egg'):
     flist.append(p.replace('\\', '/'))
 
 version = configparser.ConfigParser()
