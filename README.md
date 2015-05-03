@@ -99,6 +99,7 @@ Assign a parent proxy for certain sites
 ##License
 
 GPLv2
+
 This Software shall be used for Good, Not for Evil.
 
 ##Others
