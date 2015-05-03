@@ -1322,7 +1322,6 @@ def update(conf, auto=False):
     if auto and not conf.userconf.dgetbool('FGFW_Lite', 'autoupdate'):
         return
     filelist = [('https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt', './fgfw-lite/gfwlist.txt'), ]
-    count = 0
     for url, path in filelist:
         etag = conf.version.dget('Update', path.replace('./', '').replace('/', '-'), '')
         req = urllib2.Request(url)
@@ -1345,6 +1344,7 @@ def update(conf, auto=False):
             else:
                 conf.logger.info('{} NOT updated: {}'.format(path, str(r.getcode())))
     branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
+    count = 0
     try:
         s = urllib2.urlopen('http://fwlite.tk/ver').read()
         if int(s) < conf.version.dgetint('Update', 'ver', 0):
@@ -1360,16 +1360,29 @@ def update(conf, auto=False):
         conf.logger.info('read update.json failed: %r' % e)
     else:
         import hashlib
+        update = {}
+        success = 1
         for path, v, in r.items():
             try:
                 if v == conf.version.dget('Update', path.replace('./', '').replace('/', '-'), ''):
                     conf.logger.debug('{} Not Modified'.format(path))
                     continue
+                conf.logger.info('Update: Downloading %s' % path)
                 fdata = urllib2.urlopen('https://github.com/v3aqb/fwlite/raw/%s%s' % (branch, path[1:])).read()
                 h = hashlib.new("sha256", fdata).hexdigest()
                 if h != v:
-                    conf.logger.warning('{} NOT updated: hash mismatch.'.format(path))
-                    continue
+                    conf.logger.warning('%s NOT updated: hash mismatch. %s %s' % (path, h, v))
+                    success = 0
+                    break
+                update[path] = (fdata, h)
+                conf.logger.info('%s Downloaded.' % path)
+            except Exception as e:
+                success = 0
+                conf.logger.error('update failed: %r\n%s' % (e, traceback.format_exc()))
+                break
+        if success:
+            for path, v in update.items():
+                fdata, h = v
                 if not os.path.isdir(os.path.dirname(path)):
                     os.mkdir(os.path.dirname(path))
                 with open(path, 'wb') as localfile:
@@ -1378,8 +1391,8 @@ def update(conf, auto=False):
                 conf.version.set('Update', path.replace('./', '').replace('/', '-'), h)
                 if not path.endswith(('txt', 'ini')):
                     count += 1
-            except Exception as e:
-                conf.logger.error('update failed! %r\n%s' % (e, traceback.format_exc()))
+        else:
+            conf.logger.error('update failed!')
         conf.version.set('Update', 'LastUpdate', str(time.time()))
     conf.confsave()
     if not conf.GUI:
