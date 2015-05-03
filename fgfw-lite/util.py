@@ -100,3 +100,11 @@ def sizeof_fmt(num):
             return "%.1f%s" % (num, x)
         num /= 1024.0
     return "%.1f%s" % (num, 'TB')
+
+import geoip2.database
+GeoIP2 = geoip2.database.Reader('./fgfw-lite/GeoLite2-Country.mmdb')
+
+
+def ip_to_country(ip):
+    resp = GeoIP2.country(str(ip))
+    return resp.country.iso_code
