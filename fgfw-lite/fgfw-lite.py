@@ -63,7 +63,6 @@ import shutil
 import socket
 import sqlite3
 import traceback
-import pygeoip
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -79,7 +78,7 @@ import logging.handlers
 logging.basicConfig(level=logging.INFO,
                     format='FW-Lite %(asctime)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S', filemode='a+')
-from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt
+from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt, ip_to_country_code
 from apfilter import ap_rule, ap_filter, ExpiredError
 from parent_proxy import ParentProxyList, ParentProxy
 from connection import create_connection
@@ -1118,8 +1117,6 @@ class parent_proxy(object):
             except TypeError:
                 self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
 
-        self.geoip = pygeoip.GeoIP('./fgfw-lite/GeoIP.dat')
-
     def redirect(self, hdlr):
         return self.conf.REDIRECTOR.redirect(hdlr)
 
@@ -1146,7 +1143,7 @@ class parent_proxy(object):
     @lru_cache(256, timeout=120)
     def ifhost_in_region(self, host, ip):
         try:
-            code = self.geoip.country_code_by_addr(ip)
+            code = ip_to_country_code(ip)
             if code in self.conf.region:
                 self.logger.info('%s in %s' % (host, code))
                 return True
@@ -1243,7 +1240,7 @@ class parent_proxy(object):
                 result = priority + 5
             parent_cc = parent.country_code
             dest = ''
-            dest = self.geoip.country_code_by_addr(str(ip))
+            dest = ip_to_country_code(ip)
             if parent_cc == dest:
                 result = priority - 5
             else:

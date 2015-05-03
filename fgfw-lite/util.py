@@ -105,6 +105,6 @@ import geoip2.database
 GeoIP2 = geoip2.database.Reader('./fgfw-lite/GeoLite2-Country.mmdb')
 
 
-def ip_to_country(ip):
+def ip_to_country_code(ip):
     resp = GeoIP2.country(str(ip))
     return resp.country.iso_code
