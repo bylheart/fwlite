@@ -469,7 +469,7 @@ class ProxyHandler(HTTPRequestHandler):
             elif new_url.lower() == 'adblock':
                 return self.write(msg=FAKEGIF, ctype='image/gif')
             elif all(u in self.conf.parentlist.dict.keys() for u in new_url.split()):
-                self._proxylist = [self.conf.parentlist.dict.get(u) for u in new_url.split()]
+                self._proxylist = [self.conf.parentlist.get(u) for u in new_url.split()]
                 random.shuffle(self._proxylist)
             else:
                 return self.redirect(new_url)
@@ -733,7 +733,7 @@ class ProxyHandler(HTTPRequestHandler):
             elif new_url.lower() in ('reset', 'adblock'):
                 return
             elif all(u in self.conf.parentlist.dict.keys() for u in new_url.split()):
-                self._proxylist = [self.conf.parentlist.dict.get(u) for u in new_url.split()]
+                self._proxylist = [self.conf.parentlist.get(u) for u in new_url.split()]
                 random.shuffle(self._proxylist)
 
         if self._request_is_loopback(self.requesthost) or self.ssclient:
@@ -879,7 +879,7 @@ class ProxyHandler(HTTPRequestHandler):
         if not self.failed_parents:
             res = self.conf.HTTPCONN_POOL.get(self.upstream_name)
             if res:
-                self._proxylist.insert(0, self.conf.parentlist.dict.get(self.ppname))
+                self._proxylist.insert(0, self.conf.parentlist.get(self.ppname))
                 sock, self.ppname = res
                 self.on_conn_log()
                 return sock
@@ -887,7 +887,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _connect_via_proxy(self, netloc, iplist=None, tunnel=False):
         self.on_conn_log()
-        return create_connection(netloc, ctimeout=self.ctimeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.dict.get('direct'), tunnel=tunnel)
+        return create_connection(netloc, ctimeout=self.ctimeout, iplist=iplist, parentproxy=self.pproxy, via=self.conf.parentlist.get('direct'), tunnel=tunnel)
 
     def do_FTP(self):
         self.logger.info('{} {}'.format(self.command, self.path))
@@ -1257,13 +1257,13 @@ class parent_proxy(object):
             random.shuffle(parentlist)
             parentlist = sorted(parentlist, key=key)
 
-        if nogoagent and self.conf.parentlist.dict.get('goagent') in parentlist:
-            parentlist.remove(self.conf.parentlist.dict.get('goagent'))
+        if nogoagent and self.conf.parentlist.get('goagent') in parentlist:
+            parentlist.remove(self.conf.parentlist.get('goagent'))
 
         if ifgfwed:
             if not parentlist:
                 self.logger.warning('No parent proxy available, direct connection is used')
-                return [self.conf.parentlist.dict.get('direct')]
+                return [self.conf.parentlist.get('direct')]
         else:
             parentlist.insert(0, self.conf.parentlist.direct)
 
@@ -1481,8 +1481,8 @@ class goagentHandler(FGFWProxyHandler):
         goagent.set('pac', 'enable', '0')
 
         goagent.set('proxy', 'autodetect', '0')
-        if self.conf.parentlist.dict.get('direct') and self.conf.parentlist.dict.get('direct').scheme == 'http':
-            p = self.conf.parentlist.dict.get('direct').parse
+        if self.conf.parentlist.get('direct') and self.conf.parentlist.get('direct').scheme == 'http':
+            p = self.conf.parentlist.get('direct').parse
             goagent.set('proxy', 'enable', '1')
             goagent.set('proxy', 'host', p.hostname)
             goagent.set('proxy', 'port', p.port)
