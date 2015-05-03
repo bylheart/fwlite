@@ -52,7 +52,7 @@ class ParentProxy(object):
         if time.time() - self.last_ckeck < 60:
             return
         from connection import create_connection
-        from httputil import read_reaponse_line, read_headers, read_header_data
+        from httputil import read_reaponse_line, read_headers
         try:
             soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=None, parentproxy=self, via=self.via)
             soc.sendall(b'GET / HTTP/1.0\r\nHost: bot.whatismyipaddress.com\r\n\r\n')
@@ -61,13 +61,15 @@ class ParentProxy(object):
             _, headers = read_headers(f)
             assert status == 200
             ip = soc.recv(int(headers['Content-Length']))
+            if not ip:
+                soc.close()
+                raise ValueError('%s: ip address is empty' % self.name)
             self.country_code = geoip.country_code_by_addr(ip)
             soc.close()
         except Exception as e:
-            sys.stderr.write(repr(e))
-            sys.stderr.write('\n')
             sys.stderr.write(traceback.format_exc())
             sys.stderr.flush()
+            self.country_code = None
         self.last_ckeck = time.time()
 
     @property
