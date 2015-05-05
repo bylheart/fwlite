@@ -3,7 +3,6 @@
 import sys
 import time
 import traceback
-import pygeoip
 from threading import Timer
 try:
     import urllib.parse as urlparse
@@ -14,7 +13,7 @@ except ImportError:
     import urllib2
     urlquote = urllib2.quote
     urlunquote = urllib2.unquote
-geoip = pygeoip.GeoIP('./fgfw-lite/GeoIP.dat')
+from util import ip_to_country_code
 
 
 class ParentProxy(object):
@@ -64,7 +63,7 @@ class ParentProxy(object):
             if not ip:
                 soc.close()
                 raise ValueError('%s: ip address is empty' % self.name)
-            self.country_code = geoip.country_code_by_addr(ip)
+            self.country_code = ip_to_country_code(ip)
             soc.close()
         except Exception as e:
             sys.stderr.write(traceback.format_exc())
