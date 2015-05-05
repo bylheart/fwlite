@@ -5,6 +5,7 @@ import ssl
 import base64
 import struct
 import logging
+import random
 from shadowsocks import sssocket
 from hxsocks import hxssocket
 from parent_proxy import ParentProxy
@@ -29,6 +30,9 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
     err = None
     if not iplist:
         iplist = resolver.resolver(host)
+    if len(iplist) > 1:
+        random.shuffle(iplist)
+        iplist = sorted(iplist, key=lambda item: item[0])
     for res in iplist:
         af, addr = res
         sock = None
