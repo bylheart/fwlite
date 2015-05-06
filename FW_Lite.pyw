@@ -165,8 +165,6 @@ class MainWindow(QtGui.QMainWindow):
             self.reload(clear=False)
 
     def newStdoutInfo(self):
-        sys.stderr.write('stdout: %r\r\n' % str(self.runner.readAllStandardOutput()))
-        sys.stderr.flush()
         self.LocalRules.ref.emit()
         self.RedirRules.ref.emit()
         self.Settings.ref.emit()
