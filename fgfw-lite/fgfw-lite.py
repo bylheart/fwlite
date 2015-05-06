@@ -1379,15 +1379,19 @@ def update(conf, auto=False):
                 break
         if success:
             for path, v in update.items():
-                fdata, h = v
-                if not os.path.isdir(os.path.dirname(path)):
-                    os.mkdir(os.path.dirname(path))
-                with open(path, 'wb') as localfile:
-                    localfile.write(fdata)
-                conf.logger.info('%s Updated.' % path)
-                conf.version.set('Update', path.replace('./', '').replace('/', '-'), h)
-                if not path.endswith(('txt', 'ini')):
-                    count += 1
+                try:
+                    fdata, h = v
+                    if not os.path.isdir(os.path.dirname(path)):
+                        os.mkdir(os.path.dirname(path))
+                    with open(path, 'wb') as localfile:
+                        localfile.write(fdata)
+                    conf.logger.info('%s Updated.' % path)
+                    conf.version.set('Update', path.replace('./', '').replace('/', '-'), h)
+                    if not path.endswith(('txt', 'ini')):
+                        count += 1
+                except:
+                    sys.stderr.write(traceback.format_exc() + '\n')
+                    sys.stderr.flush()
         else:
             conf.logger.error('update failed!')
         conf.version.set('Update', 'LastUpdate', str(time.time()))
@@ -1430,6 +1434,7 @@ class FGFWProxyHandler(object):
                 self.pid = self.subpobj.pid
         except Exception:
             sys.stderr.write(traceback.format_exc() + '\n')
+            sys.stderr.flush()
 
     def restart(self):
         self.stop()
