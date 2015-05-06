@@ -278,6 +278,7 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
+    timeout = 60
     ssrealip = None
     ssclient = ''
     shortpath = ''
