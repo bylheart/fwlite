@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # coding: UTF-8
-import os
 import re
 try:
     import urllib.parse as urlparse
@@ -11,19 +10,12 @@ except ImportError:
     urlquote = urllib2.quote
     urlunquote = urllib2.unquote
 
-if not os.path.isfile('./fgfw-lite/_redirector.py'):
-    with open('./fgfw-lite/_redirector.py', 'w') as f:
-        f.write('''\
-#!/usr/bin/env python
-# coding: UTF-8
-# This file is designed for expirenced user to edit
-
-
-def redirector(handler):
-    pass
-''')
 from apfilter import ap_rule, ap_filter
-from _redirector import redirector as uredirector
+try:
+    from _redirector import redirector as uredirector
+except ImportError:
+    def uredirector(hdlr):
+        pass
 
 
 class redirector(object):
