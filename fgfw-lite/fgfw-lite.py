@@ -355,7 +355,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             self.traffic_count[0] += len(data)
             return data
         except NetWorkIOError as e:
-            raise ClientError(e[0], e[1])
+            raise ClientError(e.errno, e.strerror)
 
     def rfile_read(self, size=-1):
         try:
@@ -363,7 +363,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             self.traffic_count[0] += len(data)
             return data
         except NetWorkIOError as e:
-            raise ClientError(e[0], e[1])
+            raise ClientError(e.errno, e.strerror)
 
     def rfile_readline(self, size=-1):
         try:
@@ -371,7 +371,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             self.traffic_count[0] += len(data)
             return data
         except NetWorkIOError as e:
-            raise ClientError(e[0], e[1])
+            raise ClientError(e.errno, e.strerror)
 
     def _wfile_write(self, data):
         self.retryable = False
@@ -379,7 +379,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             self.traffic_count[1] += len(data)
             return self.wfile.write(data)
         except NetWorkIOError as e:
-            raise ClientError(e[0], e[1])
+            raise ClientError(e.errno, e.strerror)
 
 
 class ProxyHandler(HTTPRequestHandler):
