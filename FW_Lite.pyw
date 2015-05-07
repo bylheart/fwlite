@@ -127,14 +127,17 @@ class MainWindow(QtGui.QMainWindow):
 
     def killProcess(self):
         if self.runner.state() == QtCore.QProcess.ProcessState.Running:
-            a = urllib2.urlopen('http://127.0.0.1:8118/api/goagent/pid').read()
-            if a.isdigit():
-                try:
-                    os.kill(int(a), signal.SIGTERM)
-                except Exception as e:
-                    print(repr(e))
-            self.runner.kill()
-            self.runner.waitForFinished(100)
+            try:
+                a = urllib2.urlopen('http://127.0.0.1:8118/api/goagent/pid').read()
+                if a.isdigit():
+                    try:
+                        os.kill(int(a), signal.SIGTERM)
+                    except Exception as e:
+                        print(repr(e))
+                self.runner.kill()
+                self.runner.waitForFinished(100)
+            except:
+                pass
 
     def createProcess(self):
         self.killProcess()
@@ -325,22 +328,25 @@ class LocalRules(QtGui.QWidget):
         self.widgetlist = []
 
     def refresh(self):
-        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=1).read().decode())
-        lst = []
-        self.ui.LocalRulesLayout.removeItem(self.spacer)
-        for rid, rule, exp in data:
-            if self.widgetlist:
-                w = self.widgetlist.pop(0)
-                w.updaterule(rid, rule, exp)
-                w.setVisible(True)
-            else:
-                w = LocalRule(rid, rule, exp, self.port)
-                self.ui.LocalRulesLayout.addWidget(w)
-            lst.append(w)
-        for w in self.widgetlist:
-            w.setVisible(False)
-        self.ui.LocalRulesLayout.addItem(self.spacer)
-        self.widgetlist = lst
+        try:
+            data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=1).read().decode())
+            lst = []
+            self.ui.LocalRulesLayout.removeItem(self.spacer)
+            for rid, rule, exp in data:
+                if self.widgetlist:
+                    w = self.widgetlist.pop(0)
+                    w.updaterule(rid, rule, exp)
+                    w.setVisible(True)
+                else:
+                    w = LocalRule(rid, rule, exp, self.port)
+                    self.ui.LocalRulesLayout.addWidget(w)
+                lst.append(w)
+            for w in self.widgetlist:
+                w.setVisible(False)
+            self.ui.LocalRulesLayout.addItem(self.spacer)
+            self.widgetlist = lst
+        except:
+            pass
 
     def addLocalRule(self):
         exp = int(self.ui.ExpireEdit.text()) if self.ui.ExpireEdit.text().isdigit() and int(self.ui.ExpireEdit.text()) > 0 else None
@@ -403,22 +409,25 @@ class RedirectorRules(QtGui.QWidget):
         self.widgetlist = []
 
     def refresh(self):
-        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, timeout=1).read().decode())
-        lst = []
-        self.ui.RedirectorRulesLayout.removeItem(self.spacer)
-        for rid, rule, exp in data:
-            if self.widgetlist:
-                w = self.widgetlist.pop(0)
-                w.updaterule(rid, rule, exp)
-                w.setVisible(True)
-            else:
-                w = RedirRule(rid, rule, exp, self.port)
-                self.ui.RedirectorRulesLayout.addWidget(w)
-            lst.append(w)
-        for w in self.widgetlist:
-            w.setVisible(False)
-        self.ui.RedirectorRulesLayout.addItem(self.spacer)
-        self.widgetlist = lst
+        try:
+            data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, timeout=1).read().decode())
+            lst = []
+            self.ui.RedirectorRulesLayout.removeItem(self.spacer)
+            for rid, rule, exp in data:
+                if self.widgetlist:
+                    w = self.widgetlist.pop(0)
+                    w.updaterule(rid, rule, exp)
+                    w.setVisible(True)
+                else:
+                    w = RedirRule(rid, rule, exp, self.port)
+                    self.ui.RedirectorRulesLayout.addWidget(w)
+                lst.append(w)
+            for w in self.widgetlist:
+                w.setVisible(False)
+            self.ui.RedirectorRulesLayout.addItem(self.spacer)
+            self.widgetlist = lst
+        except:
+            pass
 
     def addRedirRule(self):
         rule = self.ui.RuleEdit.text()
@@ -525,13 +534,16 @@ class Settings(QtGui.QWidget):
         self.ui.ssMethodBox.addItems(l)
 
     def refresh(self):
-        data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, timeout=1).read().decode())
-        self.table_model.update(data)
-        self.ui.tableView.resizeRowsToContents()
-        self.ui.tableView.resizeColumnsToContents()
-        self.ui.gfwlistToggle.setCheckState(QtCore.Qt.CheckState.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/gfwlist' % self.port, timeout=1).read().decode()) else QtCore.Qt.CheckState.Unchecked)
-        self.ui.updateToggle.setCheckState(QtCore.Qt.CheckState.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/autoupdate' % self.port, timeout=1).read().decode()) else QtCore.Qt.CheckState.Unchecked)
-        self.loadgoagent()
+        try:
+            data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, timeout=1).read().decode())
+            self.table_model.update(data)
+            self.ui.tableView.resizeRowsToContents()
+            self.ui.tableView.resizeColumnsToContents()
+            self.ui.gfwlistToggle.setCheckState(QtCore.Qt.CheckState.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/gfwlist' % self.port, timeout=1).read().decode()) else QtCore.Qt.CheckState.Unchecked)
+            self.ui.updateToggle.setCheckState(QtCore.Qt.CheckState.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/autoupdate' % self.port, timeout=1).read().decode()) else QtCore.Qt.CheckState.Unchecked)
+            self.loadgoagent()
+        except:
+            pass
 
     def addSS(self):
         sName = self.ui.ssNameEdit.text()
