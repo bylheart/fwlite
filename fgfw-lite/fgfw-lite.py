@@ -857,6 +857,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.wbuffer_size += len(data)
             if self.wbuffer_size > 102400:
                 self.retryable = False
+                self.remotesoc.settimeout(10)
         else:
             if self.wbuffer:
                 self._wfile_write(b''.join(self.wbuffer))
