@@ -278,7 +278,6 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
-    timeout = 60
     ssrealip = None
     ssclient = ''
     shortpath = ''
@@ -387,7 +386,7 @@ class ProxyHandler(HTTPRequestHandler):
     server_version = "FW-Lite/" + __version__
     protocol_version = "HTTP/1.1"
     bufsize = 32 * 1024
-    timeout = 10
+    timeout = 60
 
     def handle_one_request(self):
         self._proxylist = None
@@ -1313,7 +1312,10 @@ class parent_proxy(object):
 def updater(conf):
     lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
     if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
-        update(conf, auto=True)
+        try:
+            update(conf, auto=True)
+        except:
+            conf.logger.error(traceback.format_exc())
     Timer(random.randint(600, 3600), updater, (conf, )).start()
 
 
