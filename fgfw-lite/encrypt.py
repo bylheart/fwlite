@@ -179,11 +179,18 @@ def hkdf(key, salt, ctx, key_len):
     return sek, sak, cek, cak
 
 
+key_len_to_hash = {
+    16: hashlib.md5,
+    24: hashlib.sha1,
+    32: hashlib.sha256,
+}
+
+
 class AEncryptor(object):
     '''
     Provide Authenticated Encryption
     '''
-    def __init__(self, key, method, salt, ctx, servermode, hfunc=hashlib.md5):
+    def __init__(self, key, method, salt, ctx, servermode):
         if method not in method_supported:
             raise ValueError('method not supported')
         self.method = method
@@ -193,6 +200,7 @@ class AEncryptor(object):
             self.encrypt_key, self.auth_key, self.decrypt_key, self.de_auth_key = hkdf(key, salt, ctx, self.key_len)
         else:
             self.decrypt_key, self.de_auth_key, self.encrypt_key, self.auth_key = hkdf(key, salt, ctx, self.key_len)
+        hfunc = key_len_to_hash[self.key_len]
         self.iv_sent = False
         self.cipher_iv = random_string(self.iv_len)
         self.cipher = get_cipher(self.encrypt_key, method, 1, self.cipher_iv)
