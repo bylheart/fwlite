@@ -18,7 +18,6 @@
 
 import os
 import struct
-import encrypt
 import io
 import time
 import random
@@ -34,7 +33,8 @@ except ImportError:
     import urlparse
 from basesocket import basesocket
 from parent_proxy import ParentProxy
-from ecc import ECC
+import encrypt
+from encrypt import ECC
 
 default_method = 'rc4-md5'
 keys = {}
