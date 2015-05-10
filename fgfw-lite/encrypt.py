@@ -21,7 +21,6 @@ import os
 import hashlib
 import hmac
 import string
-import struct
 from collections import defaultdict, deque
 from repoze.lru import lru_cache
 from ctypes_libsodium import Salsa20Crypto
@@ -55,24 +54,6 @@ except ImportError:
             return result == 0
 
 
-def get_table(key):
-    m = hashlib.md5()
-    m.update(key)
-    s = m.digest()
-    (a, b) = struct.unpack('<QQ', s)
-    table = [c for c in string.maketrans('', '')]
-    for i in range(1, 1024):
-        table.sort(lambda x, y: int(a % (ord(x) + i) - a % (ord(y) + i)))
-    return table
-
-
-@lru_cache(128)
-def init_table(key):
-    encrypt_table = ''.join(get_table(key))
-    decrypt_table = string.maketrans(encrypt_table, string.maketrans('', ''))
-    return (encrypt_table, decrypt_table)
-
-
 @lru_cache(128)
 def EVP_BytesToKey(password, key_len):
     # equivalent to OpenSSL's EVP_BytesToKey() with count 1
@@ -92,10 +73,7 @@ def EVP_BytesToKey(password, key_len):
 
 
 def check(key, method):
-    if method.lower() == 'table':
-        init_table(key)
-    else:
-        Encryptor(key, method)  # test if the settings if OK
+    Encryptor(key, method)  # test if the settings if OK
 
 method_supported = {
     'aes-128-cfb': (16, 16),
@@ -104,7 +82,6 @@ method_supported = {
     'aes-128-ofb': (16, 16),
     'aes-192-ofb': (24, 16),
     'aes-256-ofb': (32, 16),
-    'rc4': (16, 0),
     'rc4-md5': (16, 16),
     'salsa20': (32, 8),
     'chacha20': (32, 8),
@@ -156,9 +133,7 @@ class Encryptor(object):
             self.cipher_iv = random_string(self.iv_len)
             self.cipher = get_cipher(self.key, method, 1, self.cipher_iv)
         else:
-            self.cipher = None
-            self.decipher = 0
-            self.encrypt_table, self.decrypt_table = init_table(password)
+            raise ValueError('"table" encryption is no longer supported!')
 
     def encrypt(self, buf):
         if len(buf) == 0:
