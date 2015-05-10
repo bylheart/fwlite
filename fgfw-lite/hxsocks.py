@@ -23,6 +23,7 @@ import io
 import time
 import random
 import hashlib
+import hmac
 import logging
 logger = logging.getLogger('FW_Lite')
 from collections import defaultdict
@@ -101,7 +102,7 @@ class hxssocket(basesocket):
                     pubk = acipher.get_pub_key()
                     logger.debug('hxsocks send key exchange request')
                     ts = struct.pack('>I', int(time.time()))
-                    data = chr(10) + ts + chr(len(pubk)) + pubk + hashlib.sha256(ts + pubk + usn.encode() + psw.encode()).digest()
+                    data = chr(10) + ts + chr(len(pubk)) + pubk + hmac.new(psw.encode(), ts + pubk + usn.encode(), hashlib.sha256).digest()
                     self._sock.sendall(self.pskcipher.encrypt(data))
                     fp = self._sock.makefile('rb', 0)
                     resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
@@ -125,7 +126,7 @@ class hxssocket(basesocket):
                         elif known_hosts[host] != server_cert:
                             logger.error('hxs: server %s certificate mismatch! PLEASE CHECK!')
                             raise OSError(0, 'hxs: bad certificate')
-                        if auth == hashlib.sha256(pubk + server_key + usn + psw).digest():
+                        if auth == hmac.new(psw.encode(), pubk + server_key + usn.encode(), hashlib.sha256).digest():
                             if ECC.verify_with_pub_key(server_cert, auth, r, s):
                                 shared_secret = acipher.get_dh_key(server_key)
                                 keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
