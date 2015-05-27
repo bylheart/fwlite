@@ -109,3 +109,6 @@ class basesocket(object):
 
     def fileno(self):
         return self._sock.fileno()
+
+    def shutdown(self, how):
+        return self._sock.shutdown(how)

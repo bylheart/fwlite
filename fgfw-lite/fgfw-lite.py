@@ -782,6 +782,7 @@ class ProxyHandler(HTTPRequestHandler):
                     data = self.connection_recv(self.bufsize)
                     if not data:
                         reason = 'client closed'
+                        self.remotesoc.shutdown(socket.SHUT_WR)
                         break
                     self.remotesoc.sendall(data)
                     # Now remotesoc is connected, set read timeout
@@ -814,20 +815,25 @@ class ProxyHandler(HTTPRequestHandler):
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
         """forward socket"""
         try:
-            while 1:
-                ins, _, _ = select.select([self.connection, self.remotesoc], [], [], 60)
+            fd = [self.connection, self.remotesoc]
+            while fd:
+                ins, _, _ = select.select(fd, [], [], 60)
                 if not ins:
                     break
                 if self.connection in ins:
                     data = self.connection_recv(self.bufsize)
-                    if not data:
-                        break
-                    self.remotesoc.sendall(data)
+                    if data:
+                        self.remotesoc.sendall(data)
+                    else:
+                        fd.remove(self.connection)
+                        self.remotesoc.shutdown(socket.SHUT_WR)
                 if self.remotesoc in ins:
                     data = self.remotesoc.recv(self.bufsize)
-                    if not data:
-                        break
-                    self._wfile_write(data)
+                    if data:
+                        self._wfile_write(data)
+                    else:
+                        fd.remove(self.remotesoc)
+                        self.connection.shutdown(socket.SHUT_WR)
         except socket.timeout:
             pass
         except NetWorkIOError as e:
