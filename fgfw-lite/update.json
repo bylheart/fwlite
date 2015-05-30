@@ -28,7 +28,7 @@
     "./fgfw-lite/ui_redirectorrules.py": "b1fe3ce85f0893b2ea520325e3e257f5bfba60b1f1268a0a06235efc04a345ac",
     "./fgfw-lite/ui_remoteresolver.py": "fae3796bef697490fccb9664542e43d369411bfbaa9bf94a73161ef8965d9ef3",
     "./fgfw-lite/ui_settings.py": "8b6d859aa54444e34646d90d529759f71d2488d9bc03941b2b417121cb4c30ec",
-    "./fgfw-lite/util.py": "bb5744877d1a63364f3d18c5772273a5b1a0fed100928e6b1706d046bccffed0",
+    "./fgfw-lite/util.py": "543f256a3f07753530a6d19c77195b7e01435961502b72db9b6615f83811fd63",
     "./goagent/cacert.pem": "eb1288b800cb2fdf7c5d8d14fb79a5c00a8b05722c7f2a08763919ef6df11dc3",
     "./goagent/proxy.py": "62b5efdab6c630340dc0b89e9648fdbe4f501234c75825508f1286f2d0c49f58",
     "./goagent/proxy.sample.ini": "a4b9ccc07977362a7b969c3ed9aa434beb11fb2378b1aaf6453159c6f0f6517a",
