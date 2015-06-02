@@ -50,25 +50,30 @@ class ParentProxy(object):
     def get_location(self):
         if time.time() - self.last_ckeck < 60:
             return
-        from connection import create_connection
-        from httputil import read_reaponse_line, read_headers
-        try:
-            soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=None, parentproxy=self, via=self.via)
-            soc.sendall(b'GET / HTTP/1.0\r\nHost: bot.whatismyipaddress.com\r\n\r\n')
-            f = soc.makefile()
-            line, version, status, reason = read_reaponse_line(f)
-            _, headers = read_headers(f)
-            assert status == 200
-            ip = soc.recv(int(headers['Content-Length']))
-            if not ip:
+        from resolver import get_ip_address
+        ip = get_ip_address(self.parse.hostname)
+        if ip.is_loopback or ip.is_private:
+            from connection import create_connection
+            from httputil import read_reaponse_line, read_headers
+            try:
+                soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=None, parentproxy=self, via=self.via)
+                soc.sendall(b'GET / HTTP/1.1\r\nConnection: close\r\nHost: bot.whatismyipaddress.com\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0\r\n\r\n')
+                f = soc.makefile()
+                line, version, status, reason = read_reaponse_line(f)
+                _, headers = read_headers(f)
+                assert status == 200
+                ip = soc.recv(int(headers['Content-Length']))
+                if not ip:
+                    soc.close()
+                    raise ValueError('%s: ip address is empty' % self.name)
+                self.country_code = ip_to_country_code(ip)
                 soc.close()
-                raise ValueError('%s: ip address is empty' % self.name)
+            except Exception:
+                sys.stderr.write(traceback.format_exc())
+                sys.stderr.flush()
+                self.country_code = None
+        else:
             self.country_code = ip_to_country_code(ip)
-            soc.close()
-        except Exception as e:
-            sys.stderr.write(traceback.format_exc())
-            sys.stderr.flush()
-            self.country_code = None
         self.last_ckeck = time.time()
 
     @property
