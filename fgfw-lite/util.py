@@ -88,7 +88,7 @@ def is_connection_dropped(lst):  # modified from urllib3
     """
     try:
         return select.select(lst, [], [], 0.0)[0]
-    except IOError:
+    except:
         return lst
 
 
