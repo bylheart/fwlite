@@ -184,6 +184,9 @@ class hxssocket(basesocket):
             if not ctlen:
                 return b''
             ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
+            if ctlen == 0:
+                fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
+                return b''
             ct = fp.read(ctlen)
             mac = fp.read(mac_len)
             if ctlen < 512:
