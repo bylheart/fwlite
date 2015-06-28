@@ -102,7 +102,10 @@ def sizeof_fmt(num):
     return "%.1f%s" % (num, 'TB')
 
 import geoip2.database
-GeoIP2 = geoip2.database.Reader('./fgfw-lite/GeoLite2-Country.mmdb', mode=geoip2.database.MODE_MEMORY)
+try:
+    GeoIP2 = geoip2.database.Reader('./fgfw-lite/GeoLite2-Country.mmdb', mode=geoip2.database.MODE_MEMORY)
+except:
+    GeoIP2 = geoip2.database.Reader('./GeoLite2-Country.mmdb', mode=geoip2.database.MODE_MEMORY)
 
 
 def ip_to_country_code(ip):
