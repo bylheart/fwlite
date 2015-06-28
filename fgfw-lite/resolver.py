@@ -31,9 +31,6 @@ def _resolver(host):
     try:
         return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
     except Exception as e:
-        logger.error(repr(e))
-        traceback.print_exc(file=sys.stderr)
-        sys.stderr.flush()
         raise e
 
 
