@@ -40,7 +40,7 @@ try:
     import gevent.monkey
     gevent.monkey.patch_all(subprocess=True)
 except ImportError:
-    pass
+    sys.stderr.write('Warning: gevent not found! Using thread instead...\n')
 except TypeError:
     gevent.monkey.patch_all()
     sys.stderr.write('Warning: Please update gevent to the latest 1.0 version!\n')
