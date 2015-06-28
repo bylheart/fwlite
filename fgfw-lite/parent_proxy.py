@@ -56,8 +56,8 @@ class ParentProxy(object):
             from connection import create_connection
             from httputil import read_reaponse_line, read_headers
             try:
-                soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=None, parentproxy=self, via=self.via)
-                soc.sendall(b'GET / HTTP/1.1\r\nConnection: close\r\nHost: bot.whatismyipaddress.com\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0\r\n\r\n')
+                soc = create_connection(('fwlite.tk', 80), ctimeout=None, parentproxy=self, via=self.via)
+                soc.sendall(b'GET /ip HTTP/1.1\r\nConnection: close\r\nHost: fwlite.tk\r\nUser-Agent: fwlite\r\n\r\n')
                 f = soc.makefile()
                 line, version, status, reason = read_reaponse_line(f)
                 _, headers = read_headers(f)
