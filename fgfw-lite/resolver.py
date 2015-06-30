@@ -4,10 +4,12 @@ import socket
 import logging
 import dnslib
 import struct
+import select
 import traceback
+import time
 import sys
 from collections import defaultdict
-from threading import RLock
+from threading import RLock, Event, Thread
 from repoze.lru import lru_cache
 from connection import create_connection
 logger = logging.getLogger('FW_Lite')
@@ -92,15 +94,70 @@ def udp_dns_records(host, qtype='A', dnsserver='8.8.8.8'):
     return record_list
 
 
+class MEvent(object):
+    def __init__(self):
+        self.__event = Event()
+        self.msg = None
+        self.time = time.time()
+
+    def is_set(self):
+        return self.__event.is_set()
+
+    def set(self, msg):
+        self.msg = msg
+        self.__event.set()
+
+    def clear(self, msg):
+        self.__event.clear()
+        self.msg = None
+
+    def wait(self, timeout=None):
+        self.__event.wait(timeout)
+        msg, self.msg = self.msg, None
+        return msg
+
+
+class UDP_DNS_Resolver(object):
+    def __init__(self, timeout=1):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.timeout = timeout
+        self.event_dict = defaultdict(MEvent)
+        t = Thread(target=self.daemon)
+        t.daemon = True
+        t.start()
+
+    def resolve(self, domain, qtype, server):
+        request = dnslib.DNSRecord(q=dnslib.DNSQuestion(domain, qtype))
+        request_id = request.header.id
+        assert (server, request_id) not in self.event_dict
+        data = request.pack()
+        self.sock.sendto(data, server)
+        try:
+            result = self.event_dict[(server, request_id)].wait(self.timeout)
+            assert isinstance(result, dnslib.DNSRecord)
+        except Exception as e:
+            del self.event_dict[(server, request_id)]
+            raise e
+        del self.event_dict[(server, request_id)]
+        return result
+
+    def daemon(self):
+        while 1:
+            try:
+                (ins, _, _) = select.select([self.sock], [], [])
+                reply_data, reply_address = self.sock.recvfrom(8192)
+                record = dnslib.DNSRecord.parse(reply_data)
+                if (reply_address, record.header.id) not in self.event_dict:
+                    logger.warning('unexpected dns record:\n%s' % record)
+                self.event_dict[(reply_address, record.header.id)].set(record)
+            except:
+                pass
+
+udp_resolver = UDP_DNS_Resolver()
+
+
 def _udp_dns_record(host, server=('8.8.8.8', 53), qtype='A'):
-    query = dnslib.DNSRecord.question(host, qtype=qtype)
-    query_data = query.pack()
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(0.5)
-    sock.sendto(query_data, server)
-    reply_data, reply_address = sock.recvfrom(8192)
-    record = dnslib.DNSRecord.parse(reply_data)
-    return record
+    return udp_resolver.resolve(host, getattr(dnslib.QTYPE, qtype), server)
 
 
 @lru_cache(4096, timeout=900)
