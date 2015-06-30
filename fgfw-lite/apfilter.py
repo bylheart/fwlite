@@ -264,7 +264,10 @@ if __name__ == "__main__":
             data = base64.b64decode(data).decode()
             for line in data.splitlines():
                 # if line.startswith('||'):
-                gfwlist.add(line)
+                try:
+                    gfwlist.add(line)
+                except:
+                    pass
             del data
     print('loading: %fs' % (time.time() - t))
     print('result for inxian: %r' % gfwlist.match('http://www.inxian.com', 'www.inxian.com'))
