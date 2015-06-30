@@ -1687,6 +1687,21 @@ def main():
         #     resolver.proxy = '127.0.0.1:%d' % (conf.listen[1] + i)
     if not resolver.proxy:
         resolver.proxy = ParentProxy('localhost', '127.0.0.1:%d' % conf.listen[1])
+    if conf.userconf.dgetbool('dns', 'enable', False):
+        ls = conf.userconf.dget('dns', 'localserver', '114.114.114.114:53')
+        ls = (ls.rsplit(':', 1)[0], int(ls.rsplit(':', 1)[1]))
+        rs = conf.userconf.dget('dns', 'remoteserver', '8.8.8.8:53')
+        rs = (rs.rsplit(':', 1)[0], int(rs.rsplit(':', 1)[1]))
+        listen = conf.userconf.dget('dns', 'listen', '127.0.0.1:53')
+        listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
+        from dnsserver import Resolver, UDPDNSServer, DNSHandler, TCPDNSServer
+        r = Resolver(ls, rs, 'http://127.0.0.1:%d' % conf.listen[1])
+        server = UDPDNSServer(listen, DNSHandler, r)
+        t = Thread(target=server.serve_forever)
+        t.start()
+        server = TCPDNSServer(listen, DNSHandler, r)
+        t = Thread(target=server.serve_forever)
+        t.start()
     conf.stdout()
     t.join()
 
