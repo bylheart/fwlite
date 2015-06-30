@@ -18,7 +18,7 @@ from util import ip_to_country_code
 
 class ParentProxy(object):
     via = ''
-    DEFAULT_TIMEOUT = 4
+    DEFAULT_TIMEOUT = 8
 
     def __init__(self, name, proxy):
         '''
