@@ -486,11 +486,11 @@ class RemoteResolve(QtGui.QWidget):
             # result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host.encode()).decode().strip('='), server), timeout=1).read().decode())
             proxy = 'http://127.0.0.1:%d' % self.port
             server = parse_hostport(server, 53)
-            record = tcp_dns_record(host, proxy, server)
+            record = tcp_dns_record(host, proxy, 'ANY', server)
             if record is None:
                 return []
             while len(record.rr) == 1 and record.rr[0].rtype == 5:
-                record = tcp_dns_record(str(record.rr[0].rdata), proxy)
+                record = tcp_dns_record(str(record.rr[0].rdata), proxy, 'ANY', server)
             result = [str(x.rdata) for x in record.rr if x.rtype in (1, 28)]
         except Exception as e:
             result = [repr(e)]
