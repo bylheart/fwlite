@@ -1271,6 +1271,9 @@ class parent_proxy(object):
         else:
             parentlist.insert(0, self.conf.parentlist.direct)
 
+        if len(parentlist) == 1 and parentlist[0] is self.conf.parentlist.get('direct'):
+            return parentlist
+
         if len(parentlist) > self.conf.maxretry:
             parentlist = parentlist[:self.conf.maxretry]
         return parentlist
