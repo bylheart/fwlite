@@ -60,7 +60,7 @@ def resolver(host):
 
 
 @lru_cache(1048, timeout=30)
-def udp_dns_records(host, qtype, server):
+def _udp_dns_records(host, qtype, server):
     if isinstance(qtype, str):
         query = dnslib.DNSRecord.question(host, qtype=qtype)
     else:
@@ -79,6 +79,13 @@ def udp_dns_records(host, qtype, server):
         except:
             break
     return record_list
+
+
+def udp_dns_records(host, qtype, server):
+    result = _udp_dns_records(host, qtype, server)
+    if result:
+        return result
+    raise IOError(0, 'UDP resolve failed!')
 
 
 @lru_cache(4096, timeout=900)
@@ -145,14 +152,20 @@ def get_record(host, qtype, localserver, remoteserver, proxy, recursive=False):
             record = tcp_dns_record(str(record.rr[0].rdata), proxy, qtype, remoteserver)
     return record
 
+is_poisoned_cache = {}
 
-@lru_cache(4096, timeout=3600)
+
 def is_poisoned(host):
     if apfilter and apfilter.match(host, host, domain_only=True):
         return True
-    if len(udp_dns_records(host, 'A', ('8.8.8.8', 53))) > 1:
-        logger.warning('%s is DNS poisoned!' % host)
-        return True
+    if host in is_poisoned_cache:
+        return is_poisoned_cache[host]
+    try:
+        result = udp_dns_records(host, 'A', ('8.8.8.8', 53))
+        is_poisoned_cache[host] = len(result) > 1
+        return len(result) > 1
+    except:
+        pass
 
 
 @lru_cache(1024, timeout=7200)
