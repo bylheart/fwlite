@@ -877,7 +877,7 @@ class ProxyHandler(HTTPRequestHandler):
                 self.ctimeout = self.conf.timeout
             else:
                 self.rtimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 10)
-                self.ctimeout = len(self.failed_parents) + self.conf.timeout
+                self.ctimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 10)
         else:
             self.ctimeout = self.rtimeout = 10
 
