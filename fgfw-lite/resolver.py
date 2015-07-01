@@ -127,13 +127,21 @@ def tcp_dns_record(host, proxy, qtype, server):
 def get_record(host, qtype, localserver, remoteserver, proxy, recursive=False):
     if not is_poisoned(host):
         return _udp_dns_record(host, qtype, localserver)
-    record = udp_dns_record(host, qtype, remoteserver)
-    if record.header.tc == 1:
+    try:
+        record = udp_dns_record(host, qtype, remoteserver)
+        if record.header.tc == 1:
+            raise ValueError('tc == 1')
+    except Exception as e:
+        logger.info('resolve %s via UDP failed! %r Try with TCP...' % (host, e))
         record = tcp_dns_record(host, proxy, qtype, remoteserver)
     while recursive and len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
         logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
-        record = udp_dns_record(str(record.rr[0].rdata), qtype, remoteserver)
-        if record.header.tc == 1:
+        try:
+            record = udp_dns_record(str(record.rr[0].rdata), qtype, remoteserver)
+            if record.header.tc == 1:
+                raise ValueError('tc == 1')
+        except:
+            logger.info('resolve %s via UDP failed! %r Try with TCP...' % (host, e))
             record = tcp_dns_record(str(record.rr[0].rdata), proxy, qtype, remoteserver)
     return record
 
