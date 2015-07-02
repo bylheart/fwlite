@@ -17,6 +17,7 @@ try:
 except ImportError:
     from ipaddr import IPAddress as _ip_address
 apfilter = None
+
 proxy = ''
 
 host_lock_map = defaultdict(RLock)
@@ -96,6 +97,7 @@ def _udp_dns_record(host, qtype, server):
         query = dnslib.DNSRecord(q=dnslib.DNSQuestion(host, qtype))
     query_data = query.pack()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(1)
     sock.sendto(query_data, server)
     reply_data, reply_address = sock.recvfrom(8192)
     record = dnslib.DNSRecord.parse(reply_data)
