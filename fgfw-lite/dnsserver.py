@@ -113,7 +113,7 @@ class Resolver(BaseResolver):
         # return a record
         domain = str(request.questions[0].qname)[:-1]
         qtype = request.questions[0].qtype
-        record = self._get_record(domain, qtype)
+        record = get_record(domain, qtype, self.localserver, self.remoteserver, self.proxy)
         reply = request.reply()
         reply.header.rcode = record.header.rcode
         reply.header.bitmap = record.header.bitmap
@@ -121,10 +121,6 @@ class Resolver(BaseResolver):
             random.shuffle(l)
         reply.rr, reply.auth, reply.ar = record.rr, record.auth, record.ar
         return reply
-
-    def _get_record(self, domain, qtype):
-        # return a record
-        return get_record(domain, qtype, self.localserver, self.remoteserver, self.proxy)
 
 
 def start_dns_server(server_address, localserver=('114.114.114.114', 53), remoteserver=('8.8.8.8', 53), proxy=None):
