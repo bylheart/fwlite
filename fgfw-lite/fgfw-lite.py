@@ -1095,7 +1095,6 @@ class parent_proxy(object):
         self.temp = []
         self.temp_rules = set()
         self.ignore = []
-        resolver.apfilter = self.force
 
         for line in open('./fgfw-lite/local.txt'):
             rule, _, dest = line.strip().partition(' ')

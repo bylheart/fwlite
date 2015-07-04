@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: UTF-8
 import socket
+import base64
 import logging
 import dnslib
 import struct
@@ -11,14 +12,37 @@ from collections import defaultdict
 from threading import RLock
 from repoze.lru import lru_cache
 from connection import create_connection
+from apfilter import ap_filter
 logger = logging.getLogger('FW_Lite')
 try:
     from ipaddress import ip_address as _ip_address
 except ImportError:
     from ipaddr import IPAddress as _ip_address
-apfilter = None
 
-proxy = ''
+apfilter = ap_filter()
+try:
+    for path in ('./fgfw-lite/gfwlist.txt', 'gfwlist.txt'):
+        try:
+            f = open(path)
+        except Exception as e:
+            print(repr(e))
+        else:
+            print('file opened')
+            break
+    else:
+        raise
+    data = f.read()
+    if '!' not in data:
+        data = ''.join(data.split())
+        data = base64.b64decode(data).decode()
+    for line in data.splitlines():
+        if '||' in line:
+            apfilter.add(line)
+except:
+    print('gfwlist not found')
+    pass
+
+proxy = '127.0.0.1:8118'
 
 host_lock_map = defaultdict(RLock)
 
@@ -82,8 +106,27 @@ def _udp_dns_records(host, qtype, server):
     return record_list
 
 
+@lru_cache(1, timeout=30)
+def is_udp_usable():
+    query = dnslib.DNSRecord.question('twitter.com', qtype='A')
+    query_data = query.pack()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(query_data, ('8.8.8.8', 53))
+    record_list = []
+    while 1:
+        try:
+            (ins, _, _) = select.select([sock], [], [], 1)
+            if not ins:
+                break
+            reply_data, reply_address = sock.recvfrom(8192)
+            record_list.append(dnslib.DNSRecord.parse(reply_data))
+        except:
+            break
+    return len(record_list) > 1
+
+
 def udp_dns_records(host, qtype, server):
-    result = _udp_dns_records(host, qtype, server)
+    result = _udp_dns_records(host, qtype, server) if is_udp_usable() else None
     if result:
         return result
     raise IOError(0, 'UDP resolve failed!')
@@ -134,6 +177,7 @@ def tcp_dns_record(host, proxy, qtype, server):
 
 
 def get_record(host, qtype, localserver, remoteserver, proxy, recursive=False):
+    '''used by resolver and dnsserver'''
     if not is_poisoned(host):
         return _udp_dns_record(host, qtype, localserver)
     try:
@@ -141,7 +185,7 @@ def get_record(host, qtype, localserver, remoteserver, proxy, recursive=False):
         if record.header.tc == 1:
             raise ValueError('tc == 1')
     except Exception as e:
-        logger.info('resolve %s via UDP failed! %r Try with TCP...' % (host, e))
+        logger.debug('resolve %s via UDP failed! %r Try with TCP...' % (host, e))
         record = tcp_dns_record(host, proxy, qtype, remoteserver)
     while recursive and len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
         logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
@@ -150,7 +194,7 @@ def get_record(host, qtype, localserver, remoteserver, proxy, recursive=False):
             if record.header.tc == 1:
                 raise ValueError('tc == 1')
         except:
-            logger.info('resolve %s via UDP failed! %r Try with TCP...' % (host, e))
+            logger.debug('resolve %s via UDP failed! %r Try with TCP...' % (host, e))
             record = tcp_dns_record(str(record.rr[0].rdata), proxy, qtype, remoteserver)
     return record
 
@@ -165,6 +209,8 @@ def is_poisoned(host):
     try:
         result = udp_dns_records(host, 'A', ('8.8.8.8', 53))
         is_poisoned_cache[host] = len(result) > 1
+        if len(result) > 1:
+            logger.warning('%s is DNS poisoned!' % host)
         return len(result) > 1
     except:
         pass
@@ -185,3 +231,4 @@ if __name__ == '__main__':
     print(resolver('www.youtube.com'))
     print(resolver('www.baidu.com'))
     print(is_poisoned('twitter.com'))
+    print(is_udp_usable())
