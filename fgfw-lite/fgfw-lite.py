@@ -50,7 +50,6 @@ import shlex
 import time
 import re
 import io
-import datetime
 import errno
 import atexit
 import base64
@@ -61,7 +60,6 @@ import random
 import select
 import shutil
 import socket
-import sqlite3
 import traceback
 try:
     from cStringIO import StringIO
@@ -71,20 +69,18 @@ except ImportError:
     except ImportError:
         from io import BytesIO as StringIO
 from threading import Thread, RLock, Timer
-from repoze.lru import lru_cache
 import logging
-import logging.handlers
 
 logging.basicConfig(level=logging.INFO,
                     format='FW-Lite %(asctime)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S', filemode='a+')
-from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt, ip_to_country_code
-from apfilter import ap_rule, ap_filter, ExpiredError
-from parent_proxy import ParentProxyList, ParentProxy
+
+import config
+from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt
+from parent_proxy import ParentProxy
 from connection import create_connection
 import resolver
 from resolver import get_ip_address
-from redirector import redirector
 from httputil import read_reaponse_line, read_headers, read_header_data
 try:
     import urllib.request as urllib2
@@ -93,7 +89,7 @@ try:
     urlunquote = urlparse.unquote
     from socketserver import ThreadingMixIn
     from http.server import BaseHTTPRequestHandler, HTTPServer
-    from ipaddress import ip_address, IPv4Address
+    from ipaddress import ip_address
 except ImportError:
     import urllib2
     import urlparse
@@ -102,7 +98,7 @@ except ImportError:
     from SocketServer import ThreadingMixIn
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
     from ipaddr import IPAddress as ip_address
-    from ipaddr import IPv4Address
+
 
 if sys.platform.startswith('win'):
     PYTHON2 = '"%s/Python27/python27.exe"' % WORKINGDIR
@@ -115,6 +111,7 @@ else:
 NetWorkIOError = (IOError, OSError)
 DEFAULT_TIMEOUT = 5
 FAKEGIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x01D\x00;'
+goagent = None
 
 
 def prestart():
@@ -135,81 +132,6 @@ def prestart():
 ''')
 
 prestart()
-
-
-class stats(object):
-    con = sqlite3.connect(":memory:", check_same_thread=False)
-    con.execute("create table log (ts real, date text, command text, hostname text, url text, ppname text, success integer)")
-    logger = logging.getLogger('FW_Lite')
-
-    def __init__(self, conf):
-        self.conf = conf
-        Timer(3600, self._purge, ()).start()
-
-    def log(self, command, hostname, url, ppname, success):
-        with self.con:
-            self.con.execute('INSERT into log values (?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success))
-        if not success:
-            if self.is_bad_pp('direct') is False:  # if internet connection is good
-                if self.is_bad_pp(ppname):
-                    self.logger.info('Probable bad parent: %s, remove.' % ppname)
-                    self.conf.parentlist.report_bad(ppname)
-
-    def srbh(self, hostname, sincetime=None):
-        '''success rate by hostname'''
-        if sincetime is None:
-            sincetime = time.time() - 10 * 60
-        r = next(self.con.execute('SELECT count(*), sum(success) from log where hostname = (?) and ts >= (?)', (hostname, sincetime)))
-        if r[0] == 0:
-            return(1, 0)
-        return (r[1] / r[0], r[0])
-
-    def srbp(self, ppname, sincetime=None):
-        '''success rate by ppname'''
-        if sincetime is None:
-            sincetime = time.time() - 10 * 60
-        r = next(self.con.execute('SELECT count(*), sum(success) from log where ppname = (?) and ts >= (?)', (ppname, sincetime)))
-        if r[0] == 0:
-            return(1, 0)
-        return (r[1] / r[0], r[0])
-
-    def srbhp(self, hostname, ppname, sincetime=None):
-        '''success rate by hostname and ppname'''
-        if sincetime is None:
-            sincetime = time.time() - 30 * 60
-        r = next(self.con.execute('SELECT count(*), sum(success) from log where hostname = (?) and ppname = (?) and ts >= (?)', (hostname, ppname, sincetime)))
-        if r[0] == 0:
-            return(1, 0)
-        return (r[1] / r[0], r[0])
-
-    def srbhwp(self, hostname, sincetime=None):
-        '''success rate by hostname with a parentproxy'''
-        if sincetime is None:
-            sincetime = time.time() - 30 * 60
-        r = next(self.con.execute("SELECT count(*), sum(success) from log where hostname = (?) and ppname <> 'direct' and ts >= (?)", (hostname, sincetime)))
-        if r[0] == 0:
-            return(1, 0)
-        return (r[1] / r[0], r[0])
-
-    def is_bad_pp(self, ppname):
-        '''if a given ppname is unavailable'''
-        sincetime = time.time() - 10 * 60
-        result = self.con.execute('SELECT success from log where ppname = (?) and ts >= (?) order by ts desc LIMIT 5', (ppname, sincetime))
-        rsum = count = 0
-        for s in result:
-            rsum += s[0]
-            count += 1
-        self.logger.debug('%s %s %s %r' % (ppname, count, rsum, not rsum if count >= 5 else None))
-        if count >= 5:
-            return not rsum
-        return None
-
-    def _purge(self, befortime=None):
-        if not befortime:
-            befortime = time.time() - 24 * 60 * 60
-        with self.con:
-            self.con.execute('DELETE from log where ts < (?)', (befortime, ))
-        Timer(3600, self._purge, ()).start()
 
 
 class httpconn_pool(object):
@@ -1014,13 +936,13 @@ class ProxyHandler(HTTPRequestHandler):
             except Exception as e:
                 return self.send_error(404, repr(e))
         elif parse.path == '/api/goagent/pid' and self.command == 'GET':
-            data = json.dumps(self.conf.goagent.pid)
+            data = json.dumps(goagent.pid)
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/goagent/setting' and self.command == 'GET':
-            data = json.dumps(self.conf.goagent.setting())
+            data = json.dumps(goagent.setting())
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/goagent/setting' and self.command == 'POST':
-            self.conf.goagent.setting(json.loads(body))
+            goagent.setting(json.loads(body))
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/parent' and self.command == 'GET':
             data = [(p.name, ('%s://%s:%s' % (p.scheme, p.hostname, p.port)) if p.proxy else '', p.httppriority) for k, p in self.conf.parentlist.dict.items()]
@@ -1065,258 +987,6 @@ class ProxyHandler(HTTPRequestHandler):
         elif parse.path == '/' and self.command == 'GET':
             return self.write(200, 'Hello World !', 'text/html')
         self.send_error(404)
-
-ASIA = ('AE', 'AF', 'AL', 'AZ', 'BD', 'BH', 'BN', 'BT', 'CN', 'CY', 'HK', 'ID',
-        'IL', 'IN', 'IQ', 'IR', 'JO', 'JP', 'KH', 'KP', 'KR', 'KW', 'KZ', 'LA',
-        'LB', 'LU', 'MN', 'MO', 'MV', 'MY', 'NP', 'OM', 'PH', 'PK', 'QA', 'SA',
-        'SG', 'SY', 'TH', 'TJ', 'TM', 'TW', 'UZ', 'VN', 'YE')
-AFRICA = ('AO', 'BI', 'BJ', 'BW', 'CF', 'CG', 'CM', 'CV', 'DZ', 'EG', 'ET', 'GA', 'GH',
-          'GM', 'GN', 'GQ', 'KE', 'LY', 'MA', 'MG', 'ML', 'MR', 'MU', 'MZ', 'NA', 'NE',
-          'NG', 'RW', 'SD', 'SN', 'SO', 'TN', 'TZ', 'UG', 'ZA', 'ZM', 'ZR', 'ZW')
-NA = ('BM', 'BS', 'CA', 'CR', 'CU', 'GD', 'GT', 'HN', 'HT', 'JM', 'MX', 'NI', 'PA', 'US', 'VE')
-SA = ('AR', 'BO', 'BR', 'CL', 'CO', 'EC', 'GY', 'PE', 'PY', 'UY')
-EU = ('AT', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB',
-      'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LT', 'LV', 'MC', 'MD', 'MT', 'NL',
-      'NO', 'PL', 'PT', 'RO', 'RU', 'SE', 'SK', 'SM', 'UA', 'UK', 'VA', 'YU')
-PACIFIC = ('AU', 'CK', 'FJ', 'GU', 'NZ', 'PG', 'TO')
-
-continent_list = [ASIA, AFRICA, NA, SA, EU, PACIFIC]
-
-
-class parent_proxy(object):
-    """docstring for parent_proxy"""
-    def __init__(self, conf):
-        self.conf = conf
-        self.logger = self.conf.logger
-        self.config()
-        self.STATS = stats(self.conf)
-
-    def config(self):
-        self.gfwlist = ap_filter()
-        self.force = ap_filter()
-        self.temp = []
-        self.temp_rules = set()
-        self.ignore = []
-
-        for line in open('./fgfw-lite/local.txt'):
-            rule, _, dest = line.strip().partition(' ')
-            if dest:  # |http://www.google.com/url forcehttps
-                self.add_redirect(rule, dest)
-            else:
-                self.add_temp(line, quiet=True)
-
-        if self.conf.rproxy is False:
-            for line in open('./fgfw-lite/cloud.txt'):
-                rule, _, dest = line.strip().partition(' ')
-                if dest:  # |http://www.google.com/url forcehttps
-                    self.add_redirect(rule, dest)
-                else:
-                    self.add_rule(line, force=True)
-
-            self.logger.info('loading  gfwlist...')
-            try:
-                with open('./fgfw-lite/gfwlist.txt') as f:
-                    data = f.read()
-                    if '!' not in data:
-                        data = ''.join(data.split())
-                        data = base64.b64decode(data).decode()
-                    for line in data.splitlines():
-                        self.add_rule(line)
-            except TypeError:
-                self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
-
-    def redirect(self, hdlr):
-        return self.conf.REDIRECTOR.redirect(hdlr)
-
-    def add_redirect(self, rule, dest):
-        return self.conf.REDIRECTOR.add_redirect(rule, dest, self)
-
-    def bad302(self, uri):
-        return self.conf.REDIRECTOR.bad302(uri)
-
-    def add_ignore(self, rule):
-        self.ignore.append(ap_rule(rule))
-
-    def add_rule(self, line, force=False):
-        try:
-            if '||' in line:
-                self.force.add(line)
-            elif force:
-                self.force.add(line)
-            else:
-                self.gfwlist.add(line)
-        except ValueError as e:
-            self.logger.debug('create autoproxy rule failed: %s' % e)
-
-    @lru_cache(256, timeout=120)
-    def ifhost_in_region(self, host, ip):
-        try:
-            code = ip_to_country_code(ip)
-            if code in self.conf.region:
-                self.logger.info('%s in %s' % (host, code))
-                return True
-            return False
-        except:
-            pass
-
-    def if_temp(self, uri):
-        for rule in self.temp:
-            try:
-                if rule.match(uri):
-                    return not rule.override
-            except ExpiredError:
-                self.logger.info('%s expired' % rule.rule)
-                self.conf.stdout()
-                self.temp.remove(rule)
-                self.temp_rules.discard(rule.rule)
-
-    def ifgfwed(self, uri, host, port, ip, level=1):
-        if level == 0:
-            return False
-
-        if self.conf.rproxy:
-            return None
-
-        if ip is None:
-            return True
-
-        if any((ip.is_loopback, ip.is_private)):
-            return False
-
-        if level == 4:
-            return True
-
-        a = self.if_temp(uri)
-        if a is not None:
-            return a
-
-        a = self.force.match(uri, host)
-        if a is not None:
-            return a
-
-        if any(rule.match(uri) for rule in self.ignore):
-            return None
-
-        if level == 2 and uri.startswith('http://'):
-            return True
-
-        if self.conf.HOSTS.get(host) or self.ifhost_in_region(host, str(ip)):
-            return None
-
-        if level == 3:
-            return True
-
-        if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True) and self.gfwlist.match(uri):
-            return True
-
-    def parentproxy(self, uri, host, command, level=1, nogoagent=False):
-        '''
-            decide which parentproxy to use.
-            url:  'www.google.com:443'
-                  'http://www.inxian.com'
-            host: ('www.google.com', 443) (no port number is allowed)
-            level: 0 -- direct
-                   1 -- auto:        proxy if force, direct if ip in region or override, proxy if gfwlist
-                   2 -- encrypt all: proxy if force or not https, direct if ip in region or override, proxy if gfwlist
-                   3 -- chnroute:    proxy if force, direct if ip in region or override, proxy if all
-                   4 -- global:      proxy if not local
-        '''
-        host, port = host
-
-        ip = get_ip_address(host)
-
-        ifgfwed = self.ifgfwed(uri, host, port, ip, level)
-
-        if ifgfwed is False:
-            if ip.is_private:
-                return [self.conf.parentlist.local or self.conf.parentlist.direct]
-            return [self.conf.parentlist.direct]
-
-        parentlist = list(self.conf.parentlist.httpsparents() if command == 'CONNECT' else self.conf.parentlist.httpparents())
-        if len(parentlist) < self.conf.maxretry:
-            parentlist.extend(parentlist[1:] if not ifgfwed else parentlist)
-            parentlist = parentlist[:self.conf.maxretry]
-
-        def key(parent):
-            priority = parent.httpspriority if command == 'CONNECT' else parent.httppriority
-            if not ip:
-                return priority
-            result = priority
-            if parent.country_code is None:
-                parent.get_location()
-            if parent.country_code is None:
-                result = priority + 5
-            parent_cc = parent.country_code
-            dest = ''
-            dest = ip_to_country_code(ip)
-            if parent_cc == dest:
-                result = priority - 5
-            else:
-                for continent in continent_list:
-                    if parent_cc in continent and dest in continent:
-                        result = priority - 3
-                        break
-            return result
-
-        if len(parentlist) > 1:
-            random.shuffle(parentlist)
-            parentlist = sorted(parentlist, key=key)
-
-        if nogoagent and self.conf.parentlist.get('goagent') in parentlist:
-            parentlist.remove(self.conf.parentlist.get('goagent'))
-
-        if ifgfwed:
-            if not parentlist:
-                self.logger.warning('No parent proxy available, direct connection is used')
-                return [self.conf.parentlist.get('direct')]
-        else:
-            parentlist.insert(0, self.conf.parentlist.direct)
-
-        if len(parentlist) == 1 and parentlist[0] is self.conf.parentlist.get('direct'):
-            return parentlist
-
-        if len(parentlist) > self.conf.maxretry:
-            parentlist = parentlist[:self.conf.maxretry]
-        return parentlist
-
-    def notify(self, command, url, requesthost, success, failed_parents, current_parent):
-        self.logger.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (command, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
-        failed_parents = [k for k in failed_parents if 'pooled' not in k]
-        if success:
-            for fpp in failed_parents:
-                self.STATS.log(command, requesthost[0], url, fpp, 0)
-            if current_parent:
-                self.STATS.log(command, requesthost[0], url, current_parent, success)
-            if 'direct' in failed_parents:
-                if command == 'CONNECT':
-                    rule = '|https://%s' % requesthost[0]
-                else:
-                    rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
-                if rule not in self.temp_rules:
-                    direct_sr = self.STATS.srbhp(requesthost[0], 'direct')
-                    if direct_sr[1] < 2:
-                        exp = 1
-                    elif direct_sr[0] < 0.1:
-                        exp = min(pow(direct_sr[1], 1.5), 60)
-                    elif direct_sr[0] < 0.5:
-                        exp = min(direct_sr[1], 10)
-                    else:
-                        exp = 1
-                    self.add_temp(rule, exp)
-                    self.conf.stdout()
-
-    def add_temp(self, rule, exp=None, quiet=False):
-        rule = rule.strip()
-        if rule not in self.temp_rules:
-            try:
-                if not quiet:
-                    self.logger.info('add autoproxy rule: %s%s' % (rule, (' expire in %.1f min' % exp) if exp else ''))
-                self.temp.append(ap_rule(rule, expire=None if not exp else (time.time() + 60 * exp)))
-                self.temp_rules.add(rule)
-            except ValueError:
-                pass
-        else:
-            return 'already in there'
 
 
 def updater(conf):
@@ -1538,138 +1208,6 @@ class goagentHandler(FGFWProxyHandler):
             self.conf.stdout()
 
 
-class Config(object):
-    def __init__(self):
-        self.logger = logging.getLogger('FW_Lite')
-        self.version = SConfigParser()
-        self.userconf = SConfigParser()
-        self.reload()
-        self.UPDATE_INTV = 6
-        self.timeout = self.userconf.dgetint('fgfwproxy', 'timeout', 4)
-        ParentProxy.DEFAULT_TIMEOUT = self.timeout
-        self.parentlist = ParentProxyList()
-        self.HOSTS = defaultdict(list)
-        self.GUI = '-GUI' in sys.argv
-        self.rproxy = self.userconf.dgetbool('fgfwproxy', 'rproxy', False)
-
-        listen = self.userconf.dget('fgfwproxy', 'listen', '8118')
-        if listen.isdigit():
-            self.listen = ('127.0.0.1', int(listen))
-        else:
-            self.listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
-
-        self.local_ip = set(socket.gethostbyname_ex(socket.gethostname())[2])
-
-        self.PAC = '''\
-function FindProxyForURL(url, host) {
-if (isPlainHostName(host) ||
-    host.indexOf('127.') == 0 ||
-    host.indexOf('192.168.') == 0 ||
-    host.indexOf('10.') == 0 ||
-    shExpMatch(host, 'localhost.*'))
-    {
-        return 'DIRECT';
-    }
-return "PROXY %s:%s; DIRECT";}''' % (socket.gethostbyname(socket.gethostname()), self.listen[1])
-        if self.userconf.dget('fgfwproxy', 'pac', ''):
-            if os.path.isfile(self.userconf.dget('fgfwproxy', 'pac', '')):
-                self.PAC = open(self.userconf.dget('fgfwproxy', 'pac', '')).read()
-            else:
-                self.PAC = '''\
-function FindProxyForURL(url, host) {
-if (isPlainHostName(host) ||
-    host.indexOf('127.') == 0 ||
-    host.indexOf('192.168.') == 0 ||
-    host.indexOf('10.') == 0 ||
-    shExpMatch(host, 'localhost.*'))
-    {
-        return 'DIRECT';
-    }
-return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
-        self.PAC = self.PAC.encode()
-
-        if self.userconf.dget('FGFW_Lite', 'logfile', ''):
-            path = self.userconf.dget('FGFW_Lite', 'logfile', '')
-            dirname = os.path.dirname(path)
-            if dirname and not os.path.exists(dirname):
-                os.makedirs(dirname)
-            formatter = logging.Formatter('FW-Lite %(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-            hdlr = logging.handlers.RotatingFileHandler(path, maxBytes=1048576, backupCount=5)
-            hdlr.setFormatter(formatter)
-            self.logger.addHandler(hdlr)
-
-        self.region = set(x.upper() for x in self.userconf.dget('fgfwproxy', 'region', '').split('|') if x.strip())
-        self.profiles = len(self.userconf.dget('fgfwproxy', 'profile', '13'))
-        self.xheaders = self.userconf.dgetbool('fgfwproxy', 'xheaders', False)
-
-        if self.userconf.dget('fgfwproxy', 'parentproxy', ''):
-            self.addparentproxy('direct', '%s 0' % self.userconf.dget('fgfwproxy', 'parentproxy', ''))
-            self.addparentproxy('local', 'direct 100')
-        else:
-            self.addparentproxy('direct', 'direct 0')
-
-        ParentProxy.set_via(self.parentlist.direct)
-
-        for k, v in self.userconf.items('parents'):
-            if '6Rc59g0jFlTppvel' in v:
-                self.userconf.remove_option('parents', k)
-                self.confsave()
-                continue
-            self.addparentproxy(k, v)
-
-        if not self.rproxy and len([k for k in self.parentlist.httpsparents() if k.httpspriority < 100]) == 0:
-            self.addparentproxy('shadowsocks_0', 'ss://aes-128-cfb:6Rc59g0jFlTppvel@155.254.32.50:8000')
-
-        self.maxretry = self.userconf.dgetint('fgfwproxy', 'maxretry', 4)
-
-        self.goagent = goagentHandler(self)
-
-        def addhost(host, ip):
-            try:
-                ipo = get_ip_address(ip)
-                if isinstance(ipo, IPv4Address):
-                    self.HOSTS[host].append((2, ip))
-                else:
-                    self.HOSTS[host].append((10, ip))
-            except Exception:
-                self.logging.warning('unsupported host: %s' % ip)
-
-        for host, ip in self.userconf.items('hosts'):
-            addhost(host, ip)
-
-        if os.path.isfile('./fgfw-lite/hosts'):
-            for line in open('./fgfw-lite/hosts'):
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    try:
-                        ip, host = line.split()
-                        addhost(host, ip)
-                    except Exception as e:
-                        self.logger.warning('%s %s' % (e, line))
-
-        self.REDIRECTOR = redirector(self)
-        self.PARENT_PROXY = parent_proxy(self)
-
-    def reload(self):
-        self.version.read('version.ini')
-        self.userconf.read('userconf.ini')
-
-    def confsave(self):
-        with open('version.ini', 'w') as f:
-            self.version.write(f)
-        with open('userconf.ini', 'w') as f:
-            self.userconf.write(f)
-
-    def addparentproxy(self, name, proxy):
-        self.parentlist.addstr(name, proxy)
-        self.logger.info('add parent: %s: %s' % (name, proxy))
-
-    def stdout(self, text=b''):
-        if self.GUI:
-            sys.stdout.write(text + b'\n')
-            sys.stdout.flush()
-
-
 @atexit.register
 def atexit_do():
     for item in FGFWProxyHandler.ITEMS:
@@ -1677,7 +1215,7 @@ def atexit_do():
 
 
 def main():
-    conf = Config()
+    conf = config.conf
     Timer(10, updater, (conf, )).start()
     d = {'http': '127.0.0.1:%d' % conf.listen[1], 'https': '127.0.0.1:%d' % conf.listen[1]}
     urllib2.install_opener(urllib2.build_opener(urllib2.ProxyHandler(d)))

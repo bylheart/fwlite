@@ -13,6 +13,7 @@ except ImportError:
     import urllib2
     urlquote = urllib2.quote
     urlunquote = urllib2.unquote
+
 from util import ip_to_country_code
 
 

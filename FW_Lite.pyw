@@ -134,10 +134,11 @@ class MainWindow(QtGui.QMainWindow):
                         os.kill(int(a), signal.SIGTERM)
                     except Exception as e:
                         print(repr(e))
-                self.runner.kill()
-                self.runner.waitForFinished(100)
             except:
                 pass
+            finally:
+                self.runner.kill()
+                self.runner.waitForFinished(100)
 
     def createProcess(self):
         self.killProcess()
