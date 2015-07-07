@@ -19,7 +19,7 @@
     "./fgfw-lite/hxsocks.py": "949729338a379e68ceb256bf1018380d4dd09204aae24e862acc5cc883c1a24d",
     "./fgfw-lite/parent_proxy.py": "5452ee2af4be4bee80fc4da20aa924972c71ae6da13063b048c420926207fa0f",
     "./fgfw-lite/redirector.py": "945637e9f3e4a238a697e17160c06d9c01b3c89d9ae2ab2fcd783e88b61fb30c",
-    "./fgfw-lite/resolver.py": "586b37f8c041d8c7c24981d2647a09274c268fc11816bd6ced8573918ae0c4f1",
+    "./fgfw-lite/resolver.py": "9fefdeec4d28c474de360109a9389de0b47080b4857b17c1755c340f4683b126",
     "./fgfw-lite/shadowsocks.py": "ec0fddc012682bab803d18672258501e79cb0c97447421c07861ec1582097211",
     "./fgfw-lite/singleton.py": "2fc7ed8cfc47b001053a257f9e8ad521edcef446776adaee022122eb6dbda152",
     "./fgfw-lite/streamcipher.py": "1a455f5c2806de4dbf788689259a3301ea3a91879027ba9b388c2ad8645cf05c",
