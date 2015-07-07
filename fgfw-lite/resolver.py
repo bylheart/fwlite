@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # coding: UTF-8
+import os
+import sys
 import socket
 import base64
 import logging
@@ -7,7 +9,6 @@ import dnslib
 import struct
 import select
 import traceback
-import sys
 from collections import defaultdict
 from threading import RLock
 from repoze.lru import lru_cache
@@ -22,12 +23,8 @@ except ImportError:
 apfilter = ap_filter()
 try:
     for path in ('./fgfw-lite/gfwlist.txt', 'gfwlist.txt'):
-        try:
+        if os.path.isfile(path):
             f = open(path)
-        except Exception as e:
-            print(repr(e))
-        else:
-            print('file opened')
             break
     else:
         raise
@@ -39,7 +36,7 @@ try:
         if '||' in line:
             apfilter.add(line)
 except:
-    print('gfwlist not found')
+    sys.stderr.write('resolver.py: gfwlist not found!\n')
     pass
 
 proxy = '127.0.0.1:8118'
@@ -180,22 +177,24 @@ def get_record(host, qtype, localserver, remoteserver, proxy, recursive=False):
     '''used by resolver and dnsserver'''
     if not is_poisoned(host):
         return _udp_dns_record(host, qtype, localserver)
-    try:
-        record = udp_dns_record(host, qtype, remoteserver)
-        if record.header.tc == 1:
-            raise ValueError('tc == 1')
-    except Exception as e:
-        logger.debug('resolve %s via UDP failed! %r Try with TCP...' % (host, e))
-        record = tcp_dns_record(host, proxy, qtype, remoteserver)
+    # try:
+    #     record = udp_dns_record(host, qtype, remoteserver)
+    #     if record.header.tc == 1:
+    #         raise ValueError('tc == 1')
+    # except Exception as e:
+    #     logger.debug('resolve %s via UDP failed! %r Try with TCP...' % (host, e))
+    #     record = tcp_dns_record(host, proxy, qtype, remoteserver)
+    record = tcp_dns_record(host, proxy, qtype, remoteserver)
     while recursive and len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
-        logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
-        try:
-            record = udp_dns_record(str(record.rr[0].rdata), qtype, remoteserver)
-            if record.header.tc == 1:
-                raise ValueError('tc == 1')
-        except:
-            logger.debug('resolve %s via UDP failed! %r Try with TCP...' % (host, e))
-            record = tcp_dns_record(str(record.rr[0].rdata), proxy, qtype, remoteserver)
+        # logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
+        # try:
+        #     record = udp_dns_record(str(record.rr[0].rdata), qtype, remoteserver)
+        #     if record.header.tc == 1:
+        #         raise ValueError('tc == 1')
+        # except:
+        #     logger.debug('resolve %s via UDP failed! %r Try with TCP...' % (host, e))
+        #     record = tcp_dns_record(str(record.rr[0].rdata), proxy, qtype, remoteserver)
+        record = tcp_dns_record(str(record.rr[0].rdata), proxy, qtype, remoteserver)
     return record
 
 is_poisoned_cache = {}
@@ -204,16 +203,16 @@ is_poisoned_cache = {}
 def is_poisoned(host):
     if apfilter and apfilter.match(host, host, domain_only=True):
         return True
-    if host in is_poisoned_cache:
-        return is_poisoned_cache[host]
-    try:
-        result = udp_dns_records(host, 'A', ('8.8.8.8', 53))
-        is_poisoned_cache[host] = len(result) > 1
-        if len(result) > 1:
-            logger.warning('%s is DNS poisoned!' % host)
-        return len(result) > 1
-    except:
-        pass
+    # if host in is_poisoned_cache:
+    #     return is_poisoned_cache[host]
+    # try:
+    #     result = udp_dns_records(host, 'A', ('8.8.8.8', 53))
+    #     is_poisoned_cache[host] = len(result) > 1
+    #     if len(result) > 1:
+    #         logger.warning('%s is DNS poisoned!' % host)
+    #     return len(result) > 1
+    # except:
+    #     pass
 
 
 @lru_cache(1024, timeout=7200)
