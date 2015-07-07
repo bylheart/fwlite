@@ -283,6 +283,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     shortpath = ''
     ppname = ''
     retryable = True
+    HTTPCONN_POOL = httpconn_pool()
 
     def __init__(self, request, client_address, server):
         self.conf = server.conf
@@ -698,7 +699,7 @@ class ProxyHandler(HTTPRequestHandler):
             if remote_close or is_connection_dropped([self.remotesoc]):
                 self.remotesoc.close()
             else:
-                self.conf.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
+                self.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
             self.remotesoc = None
         except ClientError as e:
             raise
@@ -883,7 +884,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _http_connect_via_proxy(self, netloc, iplist):
         if not self.failed_parents:
-            res = self.conf.HTTPCONN_POOL.get(self.upstream_name)
+            res = self.HTTPCONN_POOL.get(self.upstream_name)
             if res:
                 self._proxylist.insert(0, self.conf.parentlist.get(self.ppname))
                 sock, self.ppname = res
@@ -1088,6 +1089,7 @@ class parent_proxy(object):
         self.conf = conf
         self.logger = self.conf.logger
         self.config()
+        self.STATS = stats(self.conf)
 
     def config(self):
         self.gfwlist = ap_filter()
@@ -1282,16 +1284,16 @@ class parent_proxy(object):
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
         if success:
             for fpp in failed_parents:
-                self.conf.STATS.log(command, requesthost[0], url, fpp, 0)
+                self.STATS.log(command, requesthost[0], url, fpp, 0)
             if current_parent:
-                self.conf.STATS.log(command, requesthost[0], url, current_parent, success)
+                self.STATS.log(command, requesthost[0], url, current_parent, success)
             if 'direct' in failed_parents:
                 if command == 'CONNECT':
                     rule = '|https://%s' % requesthost[0]
                 else:
                     rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
                 if rule not in self.temp_rules:
-                    direct_sr = self.conf.STATS.srbhp(requesthost[0], 'direct')
+                    direct_sr = self.STATS.srbhp(requesthost[0], 'direct')
                     if direct_sr[1] < 2:
                         exp = 1
                     elif direct_sr[0] < 0.1:
@@ -1539,8 +1541,6 @@ class goagentHandler(FGFWProxyHandler):
 class Config(object):
     def __init__(self):
         self.logger = logging.getLogger('FW_Lite')
-        self.STATS = stats(self)
-        self.HTTPCONN_POOL = httpconn_pool()
         self.version = SConfigParser()
         self.userconf = SConfigParser()
         self.reload()
