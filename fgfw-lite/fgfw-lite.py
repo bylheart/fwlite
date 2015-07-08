@@ -1217,6 +1217,8 @@ def atexit_do():
 def main():
     conf = config.conf
     Timer(10, updater, (conf, )).start()
+    global goagent
+    goagent = goagentHandler(conf)
     d = {'http': '127.0.0.1:%d' % conf.listen[1], 'https': '127.0.0.1:%d' % conf.listen[1]}
     urllib2.install_opener(urllib2.build_opener(urllib2.ProxyHandler(d)))
     for i, level in enumerate(list(conf.userconf.dget('fgfwproxy', 'profile', '13'))):
