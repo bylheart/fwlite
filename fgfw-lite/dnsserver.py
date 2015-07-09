@@ -61,34 +61,34 @@ class DNSHandler(BaseRequestHandler):
             self.protocol = 'udp'
             data, connection = self.request
 
-        try:
-            rdata = self.get_reply(data)
+        rdata = self.get_reply(data)
 
-            if self.protocol == 'tcp':
-                rdata = struct.pack("!H", len(rdata)) + rdata
-                self.request.sendall(rdata)
-            else:
-                connection.sendto(rdata, self.client_address)
-
-        except dnslib.DNSError as e:
-            logger.error(repr(e))
-            traceback.print_exc(file=sys.stderr)
+        if self.protocol == 'tcp':
+            rdata = struct.pack("!H", len(rdata)) + rdata
+            self.request.sendall(rdata)
+        else:
+            connection.sendto(rdata, self.client_address)
 
     def get_reply(self, data):
-        request = dnslib.DNSRecord.parse(data)
+        try:
+            request = dnslib.DNSRecord.parse(data)
 
-        resolver = self.server.resolver
-        reply = resolver.resolve(request, self)
+            resolver = self.server.resolver
+            reply = resolver.resolve(request, self)
 
-        if self.protocol == 'udp':
-            rdata = reply.pack()
-            if self.udplen and len(rdata) > self.udplen:
-                truncated_reply = reply.truncate()
-                rdata = truncated_reply.pack()
-        else:
-            rdata = reply.pack()
+            if self.protocol == 'udp':
+                rdata = reply.pack()
+                if self.udplen and len(rdata) > self.udplen:
+                    truncated_reply = reply.truncate()
+                    rdata = truncated_reply.pack()
+            else:
+                rdata = reply.pack()
 
-        return rdata
+            return rdata
+        except Exception as e:
+            logging.error(repr(e))
+            sys.stderr.write(repr(request) + '\n')
+            traceback.print_exc(file=sys.stderr)
 
 
 class Resolver(BaseResolver):
