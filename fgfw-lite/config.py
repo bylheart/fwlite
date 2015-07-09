@@ -7,15 +7,15 @@ import logging
 from collections import defaultdict
 
 try:
-    from ipaddress import IPv4Address
+    from ipaddress import IPv4Address, ip_address
 except:
     from ipaddr import IPv4Address
+    from ipaddr import IPAddress as ip_address
 
 from parent_proxy import ParentProxyList, ParentProxy
 from get_proxy import get_proxy
 from redirector import redirector
-from resolver import get_ip_address
-from util import SConfigParser
+from util import SConfigParser, parse_hostport
 
 
 class Config(object):
@@ -104,7 +104,7 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
 
         def addhost(host, ip):
             try:
-                ipo = get_ip_address(ip)
+                ipo = ip_address(ip)
                 if isinstance(ipo, IPv4Address):
                     self.HOSTS[host].append((2, ip))
                 else:
@@ -124,7 +124,8 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
                         addhost(host, ip)
                     except Exception as e:
                         self.logger.warning('%s %s' % (e, line))
-
+        self.localdns = parse_hostport(self.userconf.dget('dns', 'localdns', '114.114.114.114:53'))
+        self.remotedns = parse_hostport(self.userconf.dget('dns', 'remotedns', '8.8.8.8:53'))
         self.REDIRECTOR = redirector(self)
         self.PARENT_PROXY = get_proxy(self)
 

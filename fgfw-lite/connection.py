@@ -25,11 +25,10 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
     for the socket to bind as a source address before making the connection.
     An host of '' or port 0 tells the OS to use the default.
     """
-    import resolver
     host, port = address
     err = None
     if not iplist:
-        iplist = resolver.resolver(host)
+        iplist = [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
     if len(iplist) > 1:
         random.shuffle(iplist)
         iplist = sorted(iplist, key=lambda item: item[0])

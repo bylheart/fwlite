@@ -4,9 +4,11 @@
 # dnsserver.py   A anti-GFW DNS server
 # by v3aqb
 
+import sys
 import random
 import socket
 import struct
+import traceback
 import dnslib
 from dnslib.server import BaseResolver
 try:
@@ -70,6 +72,7 @@ class DNSHandler(BaseRequestHandler):
 
         except dnslib.DNSError as e:
             logger.error(repr(e))
+            traceback.print_exc(file=sys.stderr)
 
     def get_reply(self, data):
         request = dnslib.DNSRecord.parse(data)
