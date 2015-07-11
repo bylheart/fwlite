@@ -16,6 +16,7 @@ from parent_proxy import ParentProxyList, ParentProxy
 from get_proxy import get_proxy
 from redirector import redirector
 from util import SConfigParser, parse_hostport
+import resolver
 
 
 class Config(object):
@@ -128,6 +129,9 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
         self.remotedns = parse_hostport(self.userconf.dget('dns', 'remotedns', '8.8.8.8:53'))
         self.REDIRECTOR = redirector(self)
         self.PARENT_PROXY = get_proxy(self)
+        self.resolver = resolver.get_resolver(self.localdns, self.remotedns,
+                                              'http://127.0.0.1:%d' % self.listen[1],
+                                              self.PARENT_PROXY.force)
 
     def reload(self):
         self.version.read('version.ini')

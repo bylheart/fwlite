@@ -3,17 +3,19 @@
 import sys
 import time
 import traceback
+import socket
 from threading import Timer
 try:
     import urllib.parse as urlparse
     urlquote = urlparse.quote
     urlunquote = urlparse.unquote
+    from ipaddress import ip_address
 except ImportError:
     import urlparse
     import urllib2
     urlquote = urllib2.quote
     urlunquote = urllib2.unquote
-
+    from ipaddr import IPAddress as ip_address
 from util import ip_to_country_code
 
 
@@ -51,8 +53,8 @@ class ParentProxy(object):
     def get_location(self):
         if time.time() - self.last_ckeck < 60:
             return
-        from resolver import get_ip_address
-        ip = get_ip_address(self.parse.hostname)
+        ip = ip_address(socket.getaddrinfo(self.parse.hostname, 0)[0][4][0])
+
         if ip.is_loopback or ip.is_private:
             from connection import create_connection
             from httputil import read_reaponse_line, read_headers

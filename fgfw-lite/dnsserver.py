@@ -87,8 +87,6 @@ class DNSHandler(BaseRequestHandler):
             return rdata
         except Exception as e:
             logging.error(repr(e))
-            sys.stderr.write(repr(request) + '\n')
-            traceback.print_exc(file=sys.stderr)
 
 
 class Resolver(BaseResolver):
@@ -107,6 +105,7 @@ class Resolver(BaseResolver):
         try:
             return self.get_record(request)
         except Exception as e:
+            sys.stderr.write(repr(request) + '\n')
             logger.error('resolve %s failed. %s' % (request.header.qname, repr(e)))
             reply = request.reply()
             reply.header.rcode = getattr(dnslib.RCODE, 'NXDOMAIN')
