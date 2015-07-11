@@ -177,7 +177,7 @@ def tcp_dns_record(host, proxy, qtype, server):
 
 def get_record(host, qtype, localserver, remoteserver, proxy, recursive=False):
     '''used by resolver and dnsserver'''
-    if localserver == remoteserver or not is_poisoned(host):
+    if not is_poisoned(host):
         return _udp_dns_record(host, qtype, localserver)
     # try:
     #     record = udp_dns_record(host, qtype, remoteserver)
@@ -203,6 +203,8 @@ is_poisoned_cache = {}
 
 
 def is_poisoned(host):
+    if local == remote:
+        return False
     if apfilter and apfilter.match(host, host, domain_only=True):
         return True
     # if host in is_poisoned_cache:
@@ -225,7 +227,7 @@ def get_ip_address(host):
         try:
             return ip_address(resolver(host)[0][1])
         except:
-            return None
+            return ip_address('8.8.8.8')
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
