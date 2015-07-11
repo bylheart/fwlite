@@ -40,6 +40,8 @@ except:
     pass
 
 proxy = '127.0.0.1:8118'
+local = ('114.114.114.114', 53)
+remote = ('8.8.8.8', 53)
 
 host_lock_map = defaultdict(RLock)
 
@@ -73,7 +75,7 @@ def resolver(host):
         except Exception as e:
             logger.debug('resolving %s: %r' % (host, e))
         try:
-            record = get_record(host, 'ANY', ('114.114.114.114', 53), ('8.8.8.8', 53), proxy, recursive=True)
+            record = get_record(host, 'ANY', local, remote, proxy, recursive=True)
             return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
         except Exception as e:
             logger.debug('resolving %s: %r' % (host, e))
@@ -175,7 +177,7 @@ def tcp_dns_record(host, proxy, qtype, server):
 
 def get_record(host, qtype, localserver, remoteserver, proxy, recursive=False):
     '''used by resolver and dnsserver'''
-    if not is_poisoned(host):
+    if localserver == remoteserver or not is_poisoned(host):
         return _udp_dns_record(host, qtype, localserver)
     # try:
     #     record = udp_dns_record(host, qtype, remoteserver)
