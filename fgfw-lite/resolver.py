@@ -68,19 +68,22 @@ def resolver(host):
         except:
             pass
         try:
-            if not is_poisoned(host):
-                iplist = _resolver(host)
-                if iplist:
-                    return iplist
+            if apfilter and apfilter.match(host, host, domain_only=True):
+                raise ValueError('in domain rules')
+            iplist = _resolver(host)
+            if not iplist:
+                raise ValueError('empty iplist')
+            return iplist
         except Exception as e:
             logger.debug('resolving %s: %r' % (host, e))
-        try:
-            record = get_record(host, 'ANY', local, remote, proxy, recursive=True)
-            return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
-        except Exception as e:
-            logger.debug('resolving %s: %r' % (host, e))
-            traceback.print_exc(file=sys.stderr)
-            return []
+            try:
+                record = tcp_dns_record(host, proxy, 'ANY', remote)
+                while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
+                    logger.debug('resolve %s CNAME: %s' % (host, record.rr[0].rdata))
+                    record = tcp_dns_record(str(record.rr[0].rdata), proxy, 'ANY', remote)
+                return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
+            except:
+                return []
 
 
 @lru_cache(1048, timeout=30)
