@@ -11,7 +11,6 @@ from threading import Timer
 from repoze.lru import lru_cache
 
 from apfilter import ap_rule, ap_filter, ExpiredError
-from resolver import get_ip_address
 from util import ip_to_country_code
 
 
@@ -233,7 +232,7 @@ class get_proxy(object):
         if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True) and self.gfwlist.match(uri):
             return True
 
-    def parentproxy(self, uri, host, command, level=1, nogoagent=False):
+    def parentproxy(self, uri, host, command, ip, level=1, nogoagent=False):
         '''
             decide which parentproxy to use.
             url:  'www.google.com:443'
@@ -246,8 +245,6 @@ class get_proxy(object):
                    4 -- global:      proxy if not local
         '''
         host, port = host
-
-        ip = get_ip_address(host)
 
         ifgfwed = self.ifgfwed(uri, host, port, ip, level)
 

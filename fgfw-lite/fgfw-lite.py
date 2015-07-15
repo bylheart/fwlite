@@ -77,10 +77,7 @@ logging.basicConfig(level=logging.INFO,
 
 import config
 from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt
-from parent_proxy import ParentProxy
 from connection import create_connection
-import resolver
-from resolver import get_ip_address
 from httputil import read_reaponse_line, read_headers, read_header_data
 try:
     import urllib.request as urllib2
@@ -266,12 +263,6 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
             self._wfile_write(msg)
 
-    def _request_is_loopback(self, req):
-        try:
-            return get_ip_address(req[0]).is_loopback
-        except Exception:
-            pass
-
     def connection_recv(self, size):
         try:
             data = self.connection.recv(size)
@@ -342,7 +333,8 @@ class ProxyHandler(HTTPRequestHandler):
         if self._proxylist is None:
             # goagent does not support big POST
             nogoagent = True if self.headers.get("Transfer-Encoding") or int(self.headers.get('Content-Length', 0)) > 1024 * 1024 else False
-            self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.server.proxy_level, nogoagent)
+            ip = self.conf.resolver.get_ip_address(self.requesthost[0])
+            self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, ip, self.server.proxy_level, nogoagent)
             self.logger.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
@@ -396,21 +388,23 @@ class ProxyHandler(HTTPRequestHandler):
             else:
                 return self.redirect(new_url)
 
-        if self._request_is_loopback(self.requesthost) or self.ssclient:
+        ip = self.conf.resolver.get_ip_address(self.requesthost[0])
+
+        if ip.is_loopback or self.ssclient:
             if ip_address(self.client_address[0]).is_loopback:
                 if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
                     return self.api(parse)
             else:
                 return self.send_error(403, 'Go fuck yourself!')
 
-        if str(get_ip_address(self.requesthost[0])) == self.connection.getsockname()[0]:
+        if str(ip) == self.connection.getsockname()[0]:
             if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + len(self.conf.userconf.dget('fgfwproxy', 'profile', '134'))):
                 if self.conf.userconf.dgetbool('fgfwproxy', 'remoteapi', False):
                     return self.api(parse)
                 return self.send_error(403)
 
         if not self.ssclient and self.conf.xheaders:
-            ipl = [ip.strip() for ip in self.headers.get('X-Forwarded-For', '').split(',') if ip.strip()]
+            ipl = [client_ip.strip() for client_ip in self.headers.get('X-Forwarded-For', '').split(',') if client_ip.strip()]
             ipl.append(self.client_address[0])
             self.headers['X-Forwarded-For'] = ', '.join(ipl)
 
@@ -658,7 +652,9 @@ class ProxyHandler(HTTPRequestHandler):
                 self._proxylist = [self.conf.parentlist.get(u) for u in new_url.split()]
                 random.shuffle(self._proxylist)
 
-        if self._request_is_loopback(self.requesthost) or self.ssclient:
+        ip = self.conf.resolver.get_ip_address(self.requesthost[0])
+
+        if ip.is_loopback or self.ssclient:
             if ip_address(self.client_address[0]).is_loopback:
                 if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
                     # prevent loop
@@ -1225,24 +1221,21 @@ def main():
         server = ThreadingHTTPServer((conf.listen[0], conf.listen[1] + i), ProxyHandler, conf=conf, level=int(level))
         t = Thread(target=server.serve_forever)
         t.start()
-        # if not resolver.proxy and level >= 3:
-        #     resolver.proxy = '127.0.0.1:%d' % (conf.listen[1] + i)
-    if not resolver.proxy:
-        resolver.proxy = ParentProxy('localhost', '127.0.0.1:%d' % conf.listen[1])
 
     if conf.userconf.dgetbool('dns', 'enable', False):
-        resolver.local = parse_hostport(conf.userconf.dget('dns', 'localserver', '114.114.114.114:53'))
-        resolver.remote = parse_hostport(conf.userconf.dget('dns', 'remoteserver', '8.8.8.8:53'))
-        listen = conf.userconf.dget('dns', 'listen', '127.0.0.1:53')
-        listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
-        from dnsserver import Resolver, UDPDNSServer, DNSHandler, TCPDNSServer
-        r = Resolver(resolver.local, resolver.remote, 'http://127.0.0.1:%d' % conf.listen[1])
-        server = UDPDNSServer(listen, DNSHandler, r)
-        t = Thread(target=server.serve_forever)
-        t.start()
-        server = TCPDNSServer(listen, DNSHandler, r)
-        t = Thread(target=server.serve_forever)
-        t.start()
+        try:
+            listen = parse_hostport(conf.userconf.dget('dns', 'listen', '127.0.0.1:53'))
+            from dnsserver import Resolver, UDPDNSServer, DNSHandler, TCPDNSServer
+            r = Resolver(conf.localdns, conf.remotedns, 'http://127.0.0.1:%d' % conf.listen[1])
+            server = UDPDNSServer(listen, DNSHandler, r)
+            t = Thread(target=server.serve_forever)
+            t.start()
+            server = TCPDNSServer(listen, DNSHandler, r)
+            t = Thread(target=server.serve_forever)
+            t.start()
+        except Exception as e:
+            logging.error(repr(e))
+            logging.error(traceback.format_exc() + '\n')
     conf.stdout()
     t.join()
 

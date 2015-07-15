@@ -6,6 +6,7 @@ import base64
 import struct
 import logging
 import random
+
 from shadowsocks import sssocket
 from hxsocks import hxssocket
 from parent_proxy import ParentProxy
@@ -25,11 +26,11 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
     for the socket to bind as a source address before making the connection.
     An host of '' or port 0 tells the OS to use the default.
     """
-    import resolver
+    from resolver import _resolver
     host, port = address
     err = None
     if not iplist:
-        iplist = resolver._resolver(host)
+        iplist = _resolver(host)
     if len(iplist) > 1:
         random.shuffle(iplist)
         # ipv4 goes first
@@ -71,8 +72,10 @@ def do_tunnel(soc, netloc, pp):
     read_header_data(remoterfile)
 
 
-def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, parentproxy='direct', via='', tunnel=False):
+def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, parentproxy=None, via=None, tunnel=False):
     logger.debug('connection.create_connection: %r %r %r %r' % (netloc, parentproxy, via, tunnel))
+    parentproxy = parentproxy or ''
+    via = via or ''
     if not isinstance(parentproxy, ParentProxy):
         parentproxy = ParentProxy(parentproxy, parentproxy)
     if via and not isinstance(via, ParentProxy):
