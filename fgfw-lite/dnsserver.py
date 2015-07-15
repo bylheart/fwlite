@@ -8,14 +8,12 @@ import sys
 import random
 import socket
 import struct
-import traceback
 import dnslib
 from dnslib.server import BaseResolver
 try:
     from socketserver import ThreadingMixIn, UDPServer, TCPServer, BaseRequestHandler
 except ImportError:
     from SocketServer import ThreadingMixIn, UDPServer, TCPServer, BaseRequestHandler
-from resolver import get_record
 import logging
 
 logging.basicConfig(level=logging.INFO,
@@ -90,10 +88,9 @@ class DNSHandler(BaseRequestHandler):
 
 
 class Resolver(BaseResolver):
-    def __init__(self, localserver=('114.114.114.114', 53), remoteserver=('8.8.8.8', 53), proxy=None):
-        self.localserver = localserver
-        self.remoteserver = remoteserver
-        self.proxy = proxy
+    def __init__(self, resolver):
+        # resolver: from resolver.py
+        self.resolver = resolver
 
     def resolve(self, request, handler):
         if len(request.questions) != 1:
@@ -115,7 +112,7 @@ class Resolver(BaseResolver):
         # return a record
         domain = str(request.questions[0].qname)[:-1]
         qtype = request.questions[0].qtype
-        record = get_record(domain, qtype, self.localserver, self.remoteserver, self.proxy)
+        record = self.resolver.record(domain, qtype)
         reply = request.reply()
         reply.header.rcode = record.header.rcode
         reply.header.bitmap = record.header.bitmap

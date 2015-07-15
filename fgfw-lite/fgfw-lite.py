@@ -1226,7 +1226,7 @@ def main():
         try:
             listen = parse_hostport(conf.userconf.dget('dns', 'listen', '127.0.0.1:53'))
             from dnsserver import Resolver, UDPDNSServer, DNSHandler, TCPDNSServer
-            r = Resolver(conf.localdns, conf.remotedns, 'http://127.0.0.1:%d' % conf.listen[1])
+            r = Resolver(conf.resolver)
             server = UDPDNSServer(listen, DNSHandler, r)
             t = Thread(target=server.serve_forever)
             t.start()
