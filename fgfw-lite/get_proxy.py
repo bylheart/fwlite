@@ -204,7 +204,7 @@ class get_proxy(object):
         if ip is None:
             return True
 
-        if any((ip.is_loopback, ip.is_private)):
+        if ip and any((ip.is_loopback, ip.is_private)):
             return False
 
         if level == 4:
@@ -252,7 +252,7 @@ class get_proxy(object):
         ifgfwed = self.ifgfwed(uri, host, port, ip, level)
 
         if ifgfwed is False:
-            if ip.is_private:
+            if ip and ip.is_private:
                 return [self.conf.parentlist.local or self.conf.parentlist.direct]
             return [self.conf.parentlist.direct]
 
