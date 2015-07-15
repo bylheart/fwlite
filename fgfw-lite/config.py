@@ -125,8 +125,8 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
                         addhost(host, ip)
                     except Exception as e:
                         self.logger.warning('%s %s' % (e, line))
-        self.localdns = parse_hostport(self.userconf.dget('dns', 'localdns', '114.114.114.114:53'))
-        self.remotedns = parse_hostport(self.userconf.dget('dns', 'remotedns', '8.8.8.8:53'))
+        self.localdns = parse_hostport(self.userconf.dget('dns', 'localdns', '8.8.8.8:53' if self.rproxy else '114.114.114.114:53'))
+        self.remotedns = self.localdns if self.rproxy else parse_hostport(self.userconf.dget('dns', 'remotedns', '8.8.8.8:53'))
         self.REDIRECTOR = redirector(self)
         self.PARENT_PROXY = get_proxy(self)
         self.resolver = resolver.get_resolver(self.localdns, self.remotedns,
