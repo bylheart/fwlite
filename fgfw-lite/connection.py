@@ -29,9 +29,10 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
     host, port = address
     err = None
     if not iplist:
-        iplist = resolver.resolver(host)
+        iplist = resolver._resolver(host)
     if len(iplist) > 1:
         random.shuffle(iplist)
+        # ipv4 goes first
         iplist = sorted(iplist, key=lambda item: item[0])
     for res in iplist:
         af, addr = res
