@@ -20,7 +20,7 @@
 
 from __future__ import print_function, division
 
-__version__ = '4.8'
+__version__ = '4.9'
 
 import sys
 import os

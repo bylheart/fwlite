@@ -1,3 +1,11 @@
+2015.7.18 v4.9
+new resolver, now object oriented
+add: a simple anti-gfw dns server
+remove weak encryption method
+update pygeoip to geoip2
+full integrity check on update
+a lot of bug fix and improvement
+
 2015.4.26 v4.8
 enhancement: prioritize parent proxies by location
 new: provide a PAC for WPAD users
