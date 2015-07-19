@@ -109,5 +109,9 @@ except:
 
 
 def ip_to_country_code(ip):
-    resp = GeoIP2.country(str(ip))
-    return resp.country.iso_code
+    try:
+        resp = GeoIP2.country(str(ip))
+        return resp.country.iso_code
+    except Exception as e:
+        logging.error(repr(e))
+        return u''
