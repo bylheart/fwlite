@@ -313,7 +313,7 @@ if __name__ == '__main__':
             if '||' in line:
                 apfilter.add(line)
     print(apfilter.match('twitter.com', 'twitter.com', True))
-    resolver = get_resolver(('114.114.114.114', 53), ('8.8.8.8', 53), 'http://127.0.0.1:8119', apfilter)
+    resolver = get_resolver(('223.5.5.5', 53), ('8.8.8.8', 53), 'http://127.0.0.1:8119', apfilter)
     print(resolver.record('twitter.com', 'ANY'))
     print(resolver.resolve('twitter.com'))
     print(resolver.get_ip_address('twitter.com'))
