@@ -258,7 +258,7 @@ class get_proxy(object):
             parentlist.extend(parentlist[1:] if not ifgfwed else parentlist)
             parentlist = parentlist[:self.conf.maxretry]
 
-        def key(parent):
+        def priority(parent):
             priority = parent.httpspriority if command == 'CONNECT' else parent.httppriority
             if not ip:
                 return priority
@@ -281,7 +281,7 @@ class get_proxy(object):
 
         if len(parentlist) > 1:
             random.shuffle(parentlist)
-            parentlist = sorted(parentlist, key=key)
+            parentlist = sorted(parentlist, key=priority)
 
         if nogoagent and self.conf.parentlist.get('goagent') in parentlist:
             parentlist.remove(self.conf.parentlist.get('goagent'))
