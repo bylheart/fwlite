@@ -535,8 +535,10 @@ class ProxyHandler(HTTPRequestHandler):
                             self.rbuffer.append(data)
                         self.remotesoc.sendall(data)
                 # read response line
+                timelog = time.time()
                 self.phase = 'reading response_line'
                 response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
+                rtime = time.time() - timelog
             # read response headers
             while response_status == 100:
                 hdata = read_header_data(remoterfile)
@@ -611,7 +613,7 @@ class ProxyHandler(HTTPRequestHandler):
                         break
             self.wfile_write()
             self.phase = 'request finish'
-            self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname)
+            self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname, rtime)
             if remote_close or is_connection_dropped([self.remotesoc]):
                 self.remotesoc.close()
             else:
@@ -688,7 +690,9 @@ class ProxyHandler(HTTPRequestHandler):
         if self.rbuffer:
             self.logger.debug('remote write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))
-            count += 1
+            count = 1
+            timelog = time.time()
+        rtime = 0
         while 1:
             try:
                 reason = ''
@@ -707,17 +711,16 @@ class ProxyHandler(HTTPRequestHandler):
                     # Now remotesoc is connected, set read timeout
                     self.remotesoc.settimeout(self.rtimeout)
                     count += 1
+                    timelog = time.time()
                     if self.retryable:
                         self.rbuffer.append(data)
-                    elif count > 1:
-                        self.phase = 'client key exchange sent'
-                        break
                 if self.remotesoc in ins:
                     self.phase = 'read from remote'
                     data = self.remotesoc.recv(self.bufsize)
                     if not data:  # remote connection closed
                         reason = 'remote closed'
                         break
+                    rtime = time.time() - timelog
                     self._wfile_write(data)
             except NetWorkIOError as e:
                 self.logger.warning('do_CONNECT error: %r on %s %s' % (e, self.phase, count))
@@ -731,7 +734,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.warning('%s %s via %s failed on %s! %s' % (self.command, self.path, self.ppname, self.phase, reason))
             return self._do_CONNECT(True)
         self.rbuffer = deque()
-        self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname)
+        self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
         """forward socket"""
         try:
             fd = [self.connection, self.remotesoc]

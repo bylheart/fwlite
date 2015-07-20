@@ -16,16 +16,16 @@ from util import ip_to_country_code
 
 class stats(object):
     con = sqlite3.connect(":memory:", check_same_thread=False)
-    con.execute("create table log (ts real, date text, command text, hostname text, url text, ppname text, success integer)")
+    con.execute("create table log (ts real, date text, command text, hostname text, url text, ppname text, success integer, time real)")
     logger = logging.getLogger('FW_Lite')
 
     def __init__(self, conf):
         self.conf = conf
         Timer(3600, self._purge, ()).start()
 
-    def log(self, command, hostname, url, ppname, success):
+    def log(self, command, hostname, url, ppname, success, rtime):
         with self.con:
-            self.con.execute('INSERT into log values (?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success))
+            self.con.execute('INSERT into log values (?,?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success, rtime))
         if not success:
             if self.is_bad_pp('direct') is False:  # if internet connection is good
                 if self.is_bad_pp(ppname):
@@ -67,6 +67,14 @@ class stats(object):
         if r[0] == 0:
             return(1, 0)
         return (r[1] / r[0], r[0])
+
+    def avg_timing(self, ppname, hostname):
+        sincetime = time.time() - 10 * 60
+        r = next(self.con.execute("SELECT count(*), sum(time) from log where hostname = (?) and ppname = (?) and ts >= (?) and success = 1 order by ts desc LIMIT 10", (hostname, ppname, sincetime)))
+        if r[0] == 0:
+            return 0
+        logging.debug('avg time %s via %s: %.3f' % (hostname, ppname, r[1] / r[0]))
+        return r[1] / r[0]
 
     def is_bad_pp(self, ppname):
         '''if a given ppname is unavailable'''
@@ -260,24 +268,25 @@ class get_proxy(object):
 
         def priority(parent):
             priority = parent.httpspriority if command == 'CONNECT' else parent.httppriority
+            avg_timing = self.STATS.avg_timing(parent.name, host)
             if not ip:
-                return priority
+                return priority + avg_timing * 10
             result = priority
             if parent.country_code is None:
                 parent.get_location()
             if parent.country_code is None:
-                result = priority + 5
+                result = priority + 3
             parent_cc = parent.country_code
             dest = ''
             dest = ip_to_country_code(ip)
             if parent_cc == dest:
-                result = priority - 5
+                result = priority - 3
             else:
                 for continent in continent_list:
                     if parent_cc in continent and dest in continent:
-                        result = priority - 3
+                        result = priority - 1
                         break
-            return result
+            return result + avg_timing * 10
 
         if len(parentlist) > 1:
             random.shuffle(parentlist)
@@ -300,14 +309,14 @@ class get_proxy(object):
             parentlist = parentlist[:self.conf.maxretry]
         return parentlist
 
-    def notify(self, command, url, requesthost, success, failed_parents, current_parent):
+    def notify(self, command, url, requesthost, success, failed_parents, current_parent, time=0):
         self.logger.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (command, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
         if success:
             for fpp in failed_parents:
-                self.STATS.log(command, requesthost[0], url, fpp, 0)
+                self.STATS.log(command, requesthost[0], url, fpp, 0, 0)
             if current_parent:
-                self.STATS.log(command, requesthost[0], url, current_parent, success)
+                self.STATS.log(command, requesthost[0], url, current_parent, success, time)
             if 'direct' in failed_parents:
                 if command == 'CONNECT':
                     rule = '|https://%s' % requesthost[0]
