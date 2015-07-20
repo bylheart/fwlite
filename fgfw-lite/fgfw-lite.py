@@ -1228,11 +1228,11 @@ def main():
             from dnsserver import Resolver, UDPDNSServer, DNSHandler, TCPDNSServer
             r = Resolver(conf.resolver)
             server = UDPDNSServer(listen, DNSHandler, r)
-            t = Thread(target=server.serve_forever)
-            t.start()
+            t2 = Thread(target=server.serve_forever)
+            t2.start()
             server = TCPDNSServer(listen, DNSHandler, r)
-            t = Thread(target=server.serve_forever)
-            t.start()
+            t2 = Thread(target=server.serve_forever)
+            t2.start()
         except Exception as e:
             logging.error(repr(e))
             logging.error(traceback.format_exc() + '\n')
