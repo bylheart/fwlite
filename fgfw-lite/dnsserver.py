@@ -122,8 +122,24 @@ class Resolver(BaseResolver):
         return reply
 
 
-def start_dns_server(server_address, localserver=('114.114.114.114', 53), remoteserver=('8.8.8.8', 53), proxy=None):
-    resolver = Resolver(localserver, remoteserver, proxy)
+def start_dns_server(server_address, localserver=('223.5.5.5', 53), remoteserver=('8.8.8.8', 53), proxy=None):
+    from resolver import get_resolver
+    from apfilter import ap_filter
+    import base64
+    af = ap_filter()
+    with open('gfwlist.txt') as f:
+        data = f.read()
+        if '!' not in data:
+            data = ''.join(data.split())
+            data = base64.b64decode(data).decode()
+        for line in data.splitlines():
+            if '||' in line:
+                try:
+                    af.add(line)
+                except:
+                    pass
+    r = get_resolver(localserver, remoteserver, proxy, af)
+    resolver = Resolver(r)
     server = UDPDNSServer(server_address, DNSHandler, resolver)
     server.serve_forever()
 
