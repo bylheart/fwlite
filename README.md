@@ -1,10 +1,10 @@
 #FWLite
 
-A GoAgent / Shadowsocks client. A HTTP proxy server help circumvent censorship. It detects blocked sites automatically, apply parent proxy. And a lot more.
+A powerful HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects blocked sites automatically, apply parent proxy. And a lot more.
 
 Current Version: 4.8
 
-Works on Windows, Linux and Mac(untested).
+Tested on Windows and Linux.
 
 [Download](http://fwlite.tk/fwlite.zip)
 
@@ -34,10 +34,11 @@ Works on Windows, Linux and Mac(untested).
   - SNI Proxy
   - [GoAgent]
   - [Shadowsocks]
-- Prioritize parent proxies by location
+- Prioritize parent proxies by location and response time(per hostname)
 - Use GoAgent for HTTP request only, no worry about certificates
 - Redirector
 - Support PAC for WPAD
+- A simple anti-poison DNS server
 
 Not all features are covered in GUI.
 
