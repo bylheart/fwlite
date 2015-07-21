@@ -48,7 +48,7 @@ class ap_rule(object):
     def _parse(self):
         def parse(rule):
             if rule.startswith('||'):
-                regex = rule.replace('.', r'\.').replace('?', r'\?').replace('/', '').replace('*', '[^/]*').replace('^', r'[\/:]').replace('||', '^(?:https?://)?(?:[^/]+\.)?') + r'(?:[:/]|$)'
+                regex = rule.replace('.', r'\.').replace('?', r'\?').replace('/', '').replace('*', '[^/]*').replace('^', '').replace('||', '^(?:https?://)?(?:[^/]+\.)?') + r'(?:[:/]|$)'
                 return re.compile(regex)
             elif rule.startswith('/') and rule.endswith('/'):
                 return re.compile(rule[1:-1])
