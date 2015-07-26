@@ -68,9 +68,12 @@ class stats(object):
             return(1, 0)
         return (r[1] / r[0], r[0])
 
-    def avg_timing(self, ppname, hostname):
+    def avg_time(self, ppname, hostname=None):
         sincetime = time.time() - 10 * 60
-        r = next(self.con.execute("SELECT count(*), sum(time) from log where hostname = (?) and ppname = (?) and ts >= (?) and success = 1 order by ts desc LIMIT 10", (hostname, ppname, sincetime)))
+        if hostname:
+            r = next(self.con.execute("SELECT count(*), sum(time) from log where hostname = (?) and ppname = (?) and ts >= (?) and success = 1 order by ts desc LIMIT 10", (hostname, ppname, sincetime)))
+        else:
+            r = next(self.con.execute("SELECT count(*), sum(time) from log where ppname = (?) and ts >= (?) and success = 1 order by ts desc LIMIT 50", (ppname, sincetime)))
         if r[0] == 0:
             return 0
         logging.debug('avg time %s via %s: %.3f' % (hostname, ppname, r[1] / r[0]))
@@ -268,9 +271,9 @@ class get_proxy(object):
 
         def priority(parent):
             priority = parent.httpspriority if command == 'CONNECT' else parent.httppriority
-            avg_timing = self.STATS.avg_timing(parent.name, host)
+            avg_time = self.STATS.avg_time(parent.name, host)
             if not ip:
-                return priority + avg_timing * 10
+                return priority + avg_time * 10
             result = priority
             if parent.country_code is None:
                 parent.get_location()
@@ -286,7 +289,7 @@ class get_proxy(object):
                     if parent_cc in continent and dest in continent:
                         result = priority - 1
                         break
-            return result + avg_timing * 10
+            return result + avg_time * 10
 
         if len(parentlist) > 1:
             random.shuffle(parentlist)
