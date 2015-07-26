@@ -156,8 +156,19 @@ class get_proxy(object):
                         data = base64.b64decode(data).decode()
                     for line in data.splitlines():
                         self.add_rule(line)
-            except TypeError:
+            except:
                 self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
+
+            if self.conf.userconf.dgetbool('fgfwproxy', 'adblock', False):
+                self.logger.info('loading adblock...')
+                try:
+                    with open('./fgfw-lite/adblock.txt') as f:
+                        data = f.read()
+                        for line in data.splitlines():
+                            if line.startswith('||') and line.endswith('^'):
+                                self.add_redirect(line, 'adblock')
+                except:
+                    self.logger.warning('./fgfw-lite/adblock.txt is corrupted!')
 
     def redirect(self, hdlr):
         return self.conf.REDIRECTOR.redirect(hdlr)
