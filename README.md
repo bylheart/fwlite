@@ -1,6 +1,6 @@
 #FWLite
 
-A powerful HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects blocked sites automatically, apply parent proxy. And a lot more.
+A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects blocked sites automatically, apply parent proxy. And a lot more.
 
 Current Version: 4.8
 
@@ -18,7 +18,7 @@ Tested on Windows and Linux.
   - user-defined rules
   - connect timeout
   - read timeout
-  - connect reset
+  - connection reset
 - Multiple work mode
   - gfwlist + auto
   - encrypt-all
@@ -27,6 +27,7 @@ Tested on Windows and Linux.
 - Support Network which require a Proxy ([issue #39](https://github.com/v3aqb/fwlite/issues/39))
 - Support HOSTS
 - Support FTP LIST/RETR
+- Simple Adblock
 - Supported parent proxy
   - HTTP Proxy
   - HTTPS Proxy (HTTP Proxy over TLS)
