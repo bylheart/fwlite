@@ -68,9 +68,12 @@ class stats(object):
             return(1, 0)
         return (r[1] / r[0], r[0])
 
-    def avg_timing(self, ppname, hostname):
+    def avg_time(self, ppname, hostname=None):
         sincetime = time.time() - 10 * 60
-        r = next(self.con.execute("SELECT count(*), sum(time) from log where hostname = (?) and ppname = (?) and ts >= (?) and success = 1 order by ts desc LIMIT 10", (hostname, ppname, sincetime)))
+        if hostname:
+            r = next(self.con.execute("SELECT count(*), sum(time) from log where hostname = (?) and ppname = (?) and ts >= (?) and success = 1 order by ts desc LIMIT 10", (hostname, ppname, sincetime)))
+        else:
+            r = next(self.con.execute("SELECT count(*), sum(time) from log where ppname = (?) and ts >= (?) and success = 1 order by ts desc LIMIT 50", (ppname, sincetime)))
         if r[0] == 0:
             return 0
         logging.debug('avg time %s via %s: %.3f' % (hostname, ppname, r[1] / r[0]))
@@ -153,8 +156,19 @@ class get_proxy(object):
                         data = base64.b64decode(data).decode()
                     for line in data.splitlines():
                         self.add_rule(line)
-            except TypeError:
+            except:
                 self.logger.warning('./fgfw-lite/gfwlist.txt is corrupted!')
+
+            if self.conf.userconf.dgetbool('fgfwproxy', 'adblock', False):
+                self.logger.info('loading adblock...')
+                try:
+                    with open('./fgfw-lite/adblock.txt') as f:
+                        data = f.read()
+                        for line in data.splitlines():
+                            if line.startswith('||') and line.endswith('^'):
+                                self.add_redirect(line, 'adblock')
+                except:
+                    self.logger.warning('./fgfw-lite/adblock.txt is corrupted!')
 
     def redirect(self, hdlr):
         return self.conf.REDIRECTOR.redirect(hdlr)
@@ -268,9 +282,9 @@ class get_proxy(object):
 
         def priority(parent):
             priority = parent.httpspriority if command == 'CONNECT' else parent.httppriority
-            avg_timing = self.STATS.avg_timing(parent.name, host)
+            avg_time = self.STATS.avg_time(parent.name, host)
             if not ip:
-                return priority + avg_timing * 10
+                return priority + avg_time * 10
             result = priority
             if parent.country_code is None:
                 parent.get_location()
@@ -286,7 +300,7 @@ class get_proxy(object):
                     if parent_cc in continent and dest in continent:
                         result = priority - 1
                         break
-            return result + avg_timing * 10
+            return result + avg_time * 10
 
         if len(parentlist) > 1:
             random.shuffle(parentlist)

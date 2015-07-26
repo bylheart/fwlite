@@ -1001,7 +1001,14 @@ def updater(conf):
 def update(conf, auto=False):
     if auto and not conf.userconf.dgetbool('FGFW_Lite', 'autoupdate'):
         return
-    filelist = [('https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt', './fgfw-lite/gfwlist.txt'), ]
+    gfwlist = conf.userconf.dget('fgfwproxy', 'gfwlist_url', 'https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt')
+
+    filelist = [(gfwlist, './fgfw-lite/gfwlist.txt'), ]
+
+    adblock = conf.userconf.dget('fgfwproxy', 'adblock_url', '')
+    if adblock:
+        filelist.append((adblock, './fgfw-lite/adblock.txt'))
+
     for url, path in filelist:
         etag = conf.version.dget('Update', path.replace('./', '').replace('/', '-'), '')
         req = urllib2.Request(url)
