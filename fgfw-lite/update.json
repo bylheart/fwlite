@@ -5,7 +5,7 @@
     "./Python27/geoip2.egg": "13cec5effa861725524c02342b476095b1475c55c6bd109ab9df930f39242d0f",
     "./Python27/maxminddb.egg": "94908e0f4b75f402bcb304f5da8e4bf46423800c87bc86b471c93eeaed853969",
     "./Python27/python27.zip": "2486aa94d624a05b1f372221a7bcc780caae40c5a4eaa92ae9d4826f772c5196",
-    "./README.md": "8573fae296572cf047fa2800a99ad1c72063f6d61cebaa1df7926bd686aad3a6",
+    "./README.md": "84d3180d4f1c73f5453c536ff13f6864376ab2d34cd34332c9cfd7cfc547bbd8",
     "./fgfw-lite/GeoLite2-Country.mmdb": "a3ed4dea23e887d844460e939b3244427ec2a256e37130ccadbcb3c31ff86fe9",
     "./fgfw-lite/apfilter.py": "0d2da52c1099bc2a911aebcd629aa33dc9b23b52dc12c177f72994daf51d731e",
     "./fgfw-lite/basesocket.py": "88488603eadd9ec117ce9f1fe87c196b1c91cbdc519aba426040e4504946f9a0",
@@ -15,8 +15,8 @@
     "./fgfw-lite/ctypes_libsodium.py": "b0247da98cbfe91e72e2ecac7bf271e524301912e0a5d37e4e5d5b7cd4308286",
     "./fgfw-lite/dnsserver.py": "fa318de4e07ef4acf0c45295b28690a0eee97d42fa2c76023c65bfd84da40812",
     "./fgfw-lite/encrypt.py": "3d242947e9f89df8fcd43223354bab60cdf13d5e31b6a1b99c0d7238b44e28c8",
-    "./fgfw-lite/fgfw-lite.py": "edafd5d35f9e1ac247deb71e465a91dceb6bac58ab6b8f3a1f57bd7a09342a1a",
-    "./fgfw-lite/get_proxy.py": "5dfdd8ea73047390d396b6b679749bad0ab732825f098ea649e1038f556bc1ec",
+    "./fgfw-lite/fgfw-lite.py": "27fbeac9823d2e226b59d4d44573ebf610b33804106eefda307387cde88697c9",
+    "./fgfw-lite/get_proxy.py": "a3ad2e2a52d299f33d5c7e72cbf5d247f1e24d7cc6cd977ae068bb457cba348b",
     "./fgfw-lite/httputil.py": "86e4ccf9ab4054fdb8357d823641ef506c4bff1982e82db35efbc2cf9da2f946",
     "./fgfw-lite/hxsocks.py": "949729338a379e68ceb256bf1018380d4dd09204aae24e862acc5cc883c1a24d",
     "./fgfw-lite/parent_proxy.py": "9a09b2f5f9b50e6b478d73450e73713b5393341a0899aa9549ef75aae5f683fd",
@@ -37,5 +37,5 @@
     "./goagent/proxy.sample.ini": "a4b9ccc07977362a7b969c3ed9aa434beb11fb2378b1aaf6453159c6f0f6517a",
     "./goagent/proxylib.py": "7d282086729f22f237de68a8f9342c3515dc4e616591c9b39880e99629ad1f66",
     "./release_note.txt": "d1aea899bcdfc228af2c9573b4067ae7c5f1d7607339c0754ff29bdfe481e56e",
-    "./userconf.sample.ini": "c675359554bc421005aa793227fdde001615a053427ea85d79ecf4219ac4e4a2"
+    "./userconf.sample.ini": "daa716bb33b7939f862d1ee5a2010d8491bf841b23ea83e834e8f2c60b79b0bf"
 }
