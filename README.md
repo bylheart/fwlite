@@ -4,7 +4,7 @@ A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects 
 
 Current Version: 4.9.1
 
-Tested on Windows and Linux.
+Tested on Windows 7 and openSUSE.
 
 [Download](http://fwlite.tk/fwlite.zip)
 
