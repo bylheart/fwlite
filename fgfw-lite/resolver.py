@@ -55,14 +55,14 @@ def _udp_dns_records(host, qtype, server):
     sock.sendto(query_data, server)
     record_list = []
     try:
-        (ins, _, _) = select.select([sock], [], [], 1)
+        (ins, _, _) = select.select([sock], [], [], 2)
         if ins:
             reply_data, reply_address = sock.recvfrom(8192)
             record_list.append(dnslib.DNSRecord.parse(reply_data))
     finally:
         while 1:
             try:
-                (ins, _, _) = select.select([sock], [], [], 1)
+                (ins, _, _) = select.select([sock], [], [], 2)
                 if not ins:
                     break
                 reply_data, reply_address = sock.recvfrom(8192)
@@ -81,7 +81,7 @@ def tcp_dns_record(host, qtype, server, proxy):
     query_data = query.pack()
     for _ in range(2):
         try:
-            sock = create_connection(server, ctimeout=3, parentproxy=proxy, tunnel=True)
+            sock = create_connection(server, ctimeout=5, parentproxy=proxy, tunnel=True)
             sock.send(struct.pack('>h', len(query_data)) + query_data)
             rfile = sock.makefile('rb')
             reply_data_length = rfile.read(2)
