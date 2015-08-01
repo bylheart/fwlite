@@ -1,3 +1,7 @@
+2015.7.21 v4.9.1
+select parent proxies by response time
+minor bug fix
+
 2015.7.18 v4.9
 new resolver, now object oriented
 add: a simple anti-gfw dns server
