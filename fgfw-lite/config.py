@@ -100,7 +100,7 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
             self.addparentproxy(k, v)
 
         if not self.rproxy and len([k for k in self.parentlist.httpsparents() if k.httpspriority < 100]) == 0:
-            self.addparentproxy('shadowsocks_0', 'ss://aes-128-cfb:6Rc59g0jFlTppvel@155.254.32.50:8000')
+            self.addparentproxy('default_ss', 'ss://aes-128-cfb:6Rc59g0jFlTppvel@us03.fwlite.tk:8000')
 
         self.maxretry = self.userconf.dgetint('fgfwproxy', 'maxretry', 4)
 
