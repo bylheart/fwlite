@@ -463,12 +463,19 @@ class ProxyHandler(HTTPRequestHandler):
             # Does the client want to close connection after this request?
             conntype = self.headers.get('Connection', "")
             if self.request_version >= b"HTTP/1.1":
-                client_close = conntype.lower() == 'close'
+                client_close = 'close' in conntype.lower()
             else:
-                client_close = conntype.lower() != 'keep_alive'
-            del self.headers['Upgrade']
+                client_close = 'keep_alive' in conntype.lower()
+            if 'Upgrade' in self.headers:
+                if 'websocket' in self.headers['Upgrade']:
+                    self.headers['Upgrade'] = 'websocket'
+                    client_close = True
+                else:
+                    self.logger.warning('Upgrade header found! (%s), FW-Lite do not support this...' % self.headers['Upgrade'])
+                    del self.headers['Upgrade']
+            else:
+                self.headers['Connection'] = 'keep_alive'
             del self.headers['Proxy-Connection']
-            self.headers['Connection'] = 'keep_alive'
             for k, v in self.headers.items():
                 if isinstance(v, bytes):
                     v = v.decode('latin1')
@@ -548,9 +555,11 @@ class ProxyHandler(HTTPRequestHandler):
             header_data, response_header = read_headers(remoterfile)
             conntype = response_header.get('Connection', "")
             if protocol_version >= b"HTTP/1.1":
-                remote_close = conntype.lower() == 'close'
+                remote_close = 'close' in conntype.lower()
             else:
-                remote_close = conntype.lower() != 'keep_alive'
+                remote_close = 'keep_alive' in conntype.lower()
+            if 'Upgrade' in response_header:
+                remote_close = True
             if "Content-Length" in response_header:
                 if "," in response_header["Content-Length"]:
                     # Proxies sometimes cause Content-Length headers to get
@@ -567,7 +576,7 @@ class ProxyHandler(HTTPRequestHandler):
             buf = io.BytesIO(header_data)
             header_data = b''
             for line in buf:
-                if line.startswith('Connection'):
+                if line.startswith('Connection') and 'Upgrade' not in line:
                     header_data += b'Connection: close\r\n' if client_close else b'Connection: keep_alive\r\n'
                 else:
                     header_data += line
@@ -580,7 +589,7 @@ class ProxyHandler(HTTPRequestHandler):
                 raise IOError(0, 'Bad 302!')
             # read response body
             self.phase = 'reading response body'
-            if self.command == 'HEAD' or 100 <= response_status < 200 or response_status in (204, 205, 304):
+            if self.command == 'HEAD' or response_status in (204, 205, 304):
                 pass
             elif response_header.get("Transfer-Encoding") and response_header.get("Transfer-Encoding") != "identity":
                 flag = 1
@@ -601,16 +610,29 @@ class ProxyHandler(HTTPRequestHandler):
                     content_length -= len(data)
                     self.wfile_write(data)
             else:
+                # websocket?
                 self.close_connection = 1
                 self.retryable = False
-                while 1:
-                    try:
-                        data = self.remotesoc.recv(self.bufsize)
-                        if not data:
-                            raise
-                        self.wfile_write(data)
-                    except Exception:
+                self.wfile_write()
+                fd = [self.connection, self.remotesoc]
+                while fd:
+                    ins, _, _ = select.select(fd, [], [], 60)
+                    if not ins:
                         break
+                    if self.connection in ins:
+                        data = self.connection_recv(self.bufsize)
+                        if data:
+                            self.remotesoc.sendall(data)
+                        else:
+                            fd.remove(self.connection)
+                            self.remotesoc.shutdown(socket.SHUT_WR)
+                    if self.remotesoc in ins:
+                        data = self.remotesoc.recv(self.bufsize)
+                        if data:
+                            self._wfile_write(data)
+                        else:
+                            fd.remove(self.remotesoc)
+                            self.connection.shutdown(socket.SHUT_WR)
             self.wfile_write()
             self.phase = 'request finish'
             self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname, rtime)
