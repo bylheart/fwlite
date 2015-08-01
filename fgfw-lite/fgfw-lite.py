@@ -1034,7 +1034,8 @@ def update(conf, auto=False):
     for url, path in filelist:
         etag = conf.version.dget('Update', path.replace('./', '').replace('/', '-'), '')
         req = urllib2.Request(url)
-        req.add_header('If-None-Match', etag)
+        if etag:
+            req.add_header('If-None-Match', etag)
         try:
             r = urllib2.urlopen(req)
         except Exception as e:
@@ -1047,15 +1048,19 @@ def update(conf, auto=False):
             if r.getcode() == 200 and data:
                 with open(path, 'wb') as localfile:
                     localfile.write(data)
-                conf.version.set('Update', path.replace('./', '').replace('/', '-'), r.info().getheader('ETag'))
-                conf.confsave()
+                etag = r.info().getheader('ETag')
+                if etag:
+                    conf.version.set('Update', path.replace('./', '').replace('/', '-'), etag)
+                    conf.confsave()
                 conf.logger.info('%s Updated.' % path)
             else:
                 conf.logger.info('{} NOT updated: {}'.format(path, str(r.getcode())))
     branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
     count = 0
     try:
-        s = urllib2.urlopen('http://fwlite.tk/ver').read()
+        r = urllib2.Request('http://fwlite.tk/ver')
+        r.add_header('User-Agent', 'FW-Lite ' + __version__)
+        s = urllib2.urlopen(r).read()
         if int(s) < conf.version.dgetint('Update', 'ver', 0):
             conf.logger.info('server version invalid, abort.')
             return
@@ -1076,7 +1081,7 @@ def update(conf, auto=False):
                 if v == conf.version.dget('Update', path.replace('./', '').replace('/', '-'), ''):
                     conf.logger.debug('{} Not Modified'.format(path))
                     continue
-                conf.logger.info('Update: Downloading %s' % path)
+                conf.logger.info('Update: Downloading %s...' % path)
                 fdata = urllib2.urlopen('https://github.com/v3aqb/fwlite/raw/%s%s' % (branch, path[1:])).read()
                 h = hashlib.new("sha256", fdata).hexdigest()
                 if h != v:
