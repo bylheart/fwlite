@@ -6,7 +6,7 @@ Current Version: 4.9.1
 
 Tested on Windows 7 and openSUSE.
 
-[Download](http://fwlite.tk/fwlite.zip)
+[Download](https://github.com/v3aqb/fwlite/archive/master.zip)
 
 ##Features
 
