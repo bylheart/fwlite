@@ -75,7 +75,7 @@ class stats(object):
         else:
             r = next(self.con.execute("SELECT count(*), sum(time) from log where ppname = (?) and ts >= (?) and success = 1 order by ts desc LIMIT 50", (ppname, sincetime)))
         if r[0] == 0:
-            return 0
+            return 1
         logging.debug('avg time %s via %s: %.3f' % (hostname, ppname, r[1] / r[0]))
         return r[1] / r[0]
 
