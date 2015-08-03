@@ -27,6 +27,7 @@ Tested on Windows 7 and openSUSE.
 - Support Network which require a Proxy ([issue #39](https://github.com/v3aqb/fwlite/issues/39))
 - Support HOSTS
 - Support FTP LIST/RETR
+- Support websocket protocol
 - Simple Adblock
 - Supported parent proxy
   - HTTP Proxy
