@@ -8,7 +8,7 @@ import select
 import traceback
 import logging
 import time
-from threading import Event, Thread
+from threading import Event, Thread, RLock
 from collections import defaultdict
 
 from repoze.lru import lru_cache
@@ -97,10 +97,14 @@ def tcp_dns_record(host, qtype, server, proxy):
 
 
 class BaseResolver(object):
-    def __init__(self, dnsserver):
-        self.dnsserver = dnsserver
+    def __init__(self):
+        self.hostlock = defaultdict(RLock)
 
     def record(self, host, qtype):
+        with self.hostlock[(host, qtype)]:
+            return self._record(host, qtype)
+
+    def _record(self, host, qtype):
         return _udp_dns_record(host, qtype, self.dnsserver)
 
     def resolve(self, host):
@@ -158,11 +162,12 @@ class UDP_Resolver(BaseResolver):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.timeout = timeout
         self.event_dict = defaultdict(MEvent)
+        self.hostlock = defaultdict(RLock)
         t = Thread(target=self.daemon)
         t.daemon = True
         t.start()
 
-    def record(self, domain, qtype):
+    def _record(self, domain, qtype):
         if isinstance(qtype, str):
             request = dnslib.DNSRecord.question(domain, qtype=qtype)
         else:
@@ -206,11 +211,12 @@ class R_UDP_Resolver(BaseResolver):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.timeout = timeout
         self.event_dict = defaultdict(MEvent)
+        self.hostlock = defaultdict(RLock)
         t = Thread(target=self.daemon)
         t.daemon = True
         t.start()
 
-    def record(self, domain, qtype):
+    def _record(self, domain, qtype):
         if isinstance(qtype, str):
             request = dnslib.DNSRecord.question(domain, qtype=qtype)
         else:
@@ -257,8 +263,9 @@ class TCP_Resolver(BaseResolver):
     def __init__(self, dnsserver, proxy=None):
         self.dnsserver = dnsserver
         self.proxy = proxy
+        self.hostlock = defaultdict(RLock)
 
-    def record(self, domain, qtype):
+    def _record(self, domain, qtype):
         return tcp_dns_record(domain, qtype, self.dnsserver, self.proxy)
 
 
@@ -267,8 +274,9 @@ class Resolver(BaseResolver):
         self.dnsserver = dnsserver
         self.UDP_Resolver = BaseResolver(dnsserver)
         self.TCP_Resolver = TCP_Resolver(dnsserver, proxy)
+        self.hostlock = defaultdict(RLock)
 
-    def record(self, domain, qtype):
+    def _record(self, domain, qtype):
         record = self.UDP_Resolver.record(domain, qtype)
         if not record or record.header.tc == 1:
             record = self.TCP_Resolver.record(domain, qtype)
@@ -280,8 +288,9 @@ class Anti_GFW_Resolver(BaseResolver):
         self.local = UDP_Resolver(localdns)
         self.remote = TCP_Resolver(remotedns, proxy)
         self.apfilter = apfilter
+        self.hostlock = defaultdict(RLock)
 
-    def record(self, domain, qtype):
+    def _record(self, domain, qtype):
         try:
             if not self.is_poisoned(domain):
                 return self.local.record(domain, qtype)
