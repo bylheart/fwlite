@@ -8,9 +8,25 @@ Tested on Windows 7 and openSUSE.
 
 [Download](https://github.com/v3aqb/fwlite/archive/master.zip)
 
+##Quick Start
+
+FW-Lite is Portable Software. You can set your own GoAgent APPID and other parent proxys in the `parents` section of main configuration file `userconf.ini`.
+
+Set your browser's proxy setting to `http://127.0.0.1:8118`, enjoy.
+
+For Windows, run `FW_Lite.exe`
+
+For Linux and Mac, run `FW_Lite.pyw`
+
+requirements under openSUSE:
+
+    zypper install python-repoze.lru python-ipaddr python-gevent
+    zypper install python-pyOpenSSL python-pycrypto  # for goagent
+    zypper install python-M2Crypto  # or python-cryptography, for shadowsocks
+    zypper install python-pyside  # for GUI
+
 ##Features
 
-- Automatic Update
 - Set IE proxy automatically (windows)
 - URL Search (if your browser doesn't support this well)
 - Detect blocked sites
@@ -42,24 +58,7 @@ Tested on Windows 7 and openSUSE.
 - Support PAC for WPAD
 - A simple anti-poison DNS server
 
-Not all features are covered in GUI.
-
-##Quick Start
-
-FW-Lite is Portable Software. You can set your own GoAgent APPID and other parent proxys in the `parents` section of main configuration file `userconf.ini`.
-
-Set your browser's proxy setting to `http://127.0.0.1:8118`, enjoy.
-
-For Windows, run `FW_Lite.exe`
-
-For Linux and Mac, run `FW_Lite.pyw`
-
-requirements under openSUSE:
-
-    zypper install python-repoze.lru python-ipaddr python-gevent
-    zypper install python-pyOpenSSL python-pycrypto  # for goagent
-    zypper install python-M2Crypto  # or python-cryptography, for shadowsocks
-    zypper install python-pyside  # for GUI
+Not all features are listed here, and not all of them covered in GUI.
 
 ##User Defined Rules(./fgfw-lite/local.txt)
 
