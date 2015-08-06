@@ -1062,17 +1062,6 @@ def update(conf, auto=False):
     branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
     count = 0
     try:
-        r = urllib2.Request('http://fwlite.tk/ver')
-        r.add_header('User-Agent', 'FW-Lite ' + __version__)
-        s = urllib2.urlopen(r).read()
-        if int(s) < conf.version.dgetint('Update', 'ver', 0):
-            conf.logger.info('server version invalid, abort.')
-            return
-        else:
-            conf.version.set('Update', 'ver', s)
-    except Exception as e:
-        conf.logger.info('read server ver failed: %r' % e)
-    try:
         r = json.loads(urllib2.urlopen('https://github.com/v3aqb/fwlite/raw/%s/fgfw-lite/update.json' % branch).read())
     except Exception as e:
         conf.logger.info('read update.json failed: %r' % e)
