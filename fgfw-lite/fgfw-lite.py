@@ -38,7 +38,7 @@ try:
     import gevent.server
     import gevent.queue
     import gevent.monkey
-    gevent.monkey.patch_all(subprocess=True)
+    gevent.monkey.patch_all(subprocess=True, Event=True)
 except ImportError:
     sys.stderr.write('Warning: gevent not found! Using thread instead...\n')
 except TypeError:
