@@ -748,16 +748,12 @@ class ProxyHandler(HTTPRequestHandler):
                 self.logger.warning('do_CONNECT error: %r on %s %s' % (e, self.phase, count))
                 break
         if self.rbuffer and self.rbuffer[0].startswith((b'\x16\x03\x00', b'\x16\x03\x01', b'\x16\x03\x02', b'\x16\x03\x03')) and count < 2:
-            self.logger.warning('TLS key exchange failed? hostname: %s, %s %s %s' % (self.requesthost[0], self.phase, count, reason))
+            if reason != 'client closed' and self.phase != 'read from client':
+                self.logger.warning('TLS key exchange failed? hostname: %s, %s %s %s' % (self.requesthost[0], self.phase, count, reason))
         if self.retryable:
-            try:
-                self.remotesoc.close()
-            except:
-                pass
             reason = reason or "don't know why"
-            if reason == 'client closed':
-                return
-            self.logger.warning('%s %s via %s failed on %s! %s' % (self.command, self.path, self.ppname, self.phase, reason))
+            if reason != 'client closed' and self.phase != 'read from client':
+                self.logger.warning('%s %s via %s failed on %s! %s' % (self.command, self.path, self.ppname, self.phase, reason))
             return self._do_CONNECT(True)
         self.rbuffer = deque()
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
