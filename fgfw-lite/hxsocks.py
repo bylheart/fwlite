@@ -65,7 +65,7 @@ class hxssocket(basesocket):
         self.parentproxy = parentproxy
         if self.hxsServer:
             self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
-            self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [default_method])[0]
+            self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [default_method])[0].lower()
             self.serverid = (self.hxsServer.username, self.hxsServer.hostname)
         self.cipher = None
         self.connected = 0

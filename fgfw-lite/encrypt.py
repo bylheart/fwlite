@@ -39,7 +39,6 @@
 import os
 import hashlib
 import hmac
-import string
 from collections import defaultdict, deque
 from repoze.lru import lru_cache
 from ctypes_libsodium import Salsa20Crypto
@@ -107,7 +106,7 @@ method_supported = {
 
 
 def get_cipher_len(method):
-    return method_supported.get(method.lower(), None)
+    return method_supported.get(method, None)
 
 
 class sized_deque(deque):
@@ -136,8 +135,8 @@ def get_cipher(key, method, op, iv):
 
 class Encryptor(object):
     def __init__(self, password, method=None, servermode=False):
-        if method == 'table':
-            method = None
+        if method not in method_supported:
+            raise ValueError('encryption method not supported')
         self.key = password
         self.method = method
         self.servermode = servermode
@@ -145,43 +144,35 @@ class Encryptor(object):
         self.iv_sent = False
         self.cipher_iv = b''
         self.decipher = None
-        if method is not None:
-            self.key_len, self.iv_len = get_cipher_len(method)
-            self.key = EVP_BytesToKey(password, self.key_len)
-            self.cipher_iv = random_string(self.iv_len)
-            self.cipher = get_cipher(self.key, method, 1, self.cipher_iv)
-        else:
-            raise ValueError('"table" encryption is no longer supported!')
+
+        self.key_len, self.iv_len = get_cipher_len(method)
+        self.key = EVP_BytesToKey(password, self.key_len)
+        self.cipher_iv = random_string(self.iv_len)
+        self.cipher = get_cipher(self.key, method, 1, self.cipher_iv)
 
     def encrypt(self, buf):
         if len(buf) == 0:
             raise ValueError('buf should not be empty')
-        if self.method is None:
-            return string.translate(buf, self.encrypt_table)
+        if self.iv_sent:
+            return self.cipher.update(buf)
         else:
-            if self.iv_sent:
-                return self.cipher.update(buf)
-            else:
-                self.iv_sent = True
-                return self.cipher_iv + self.cipher.update(buf)
+            self.iv_sent = True
+            return self.cipher_iv + self.cipher.update(buf)
 
     def decrypt(self, buf):
         if len(buf) == 0:
             raise ValueError('buf should not be empty')
-        if self.method is None:
-            return string.translate(buf, self.decrypt_table)
-        else:
-            if self.decipher is None:
-                decipher_iv = buf[:self.iv_len]
-                if self.servermode:
-                    if decipher_iv in USED_IV[self.key]:
-                        raise ValueError('iv reused, possible replay attrack')
-                    USED_IV[self.key].append(decipher_iv)
-                self.decipher = get_cipher(self.key, self.method, 0, decipher_iv)
-                buf = buf[self.iv_len:]
-                if len(buf) == 0:
-                    return buf
-            return self.decipher.update(buf)
+        if self.decipher is None:
+            decipher_iv = buf[:self.iv_len]
+            if self.servermode:
+                if decipher_iv in USED_IV[self.key]:
+                    raise ValueError('iv reused, possible replay attrack')
+                USED_IV[self.key].append(decipher_iv)
+            self.decipher = get_cipher(self.key, self.method, 0, decipher_iv)
+            buf = buf[self.iv_len:]
+            if len(buf) == 0:
+                return buf
+        return self.decipher.update(buf)
 
 
 @lru_cache(128)
@@ -210,7 +201,7 @@ class AEncryptor(object):
     '''
     def __init__(self, key, method, salt, ctx, servermode):
         if method not in method_supported:
-            raise ValueError('method not supported')
+            raise ValueError('encryption method not supported')
         self.method = method
         self.servermode = servermode
         self.key_len, self.iv_len = get_cipher_len(method)
@@ -229,16 +220,13 @@ class AEncryptor(object):
     def encrypt(self, buf):
         if len(buf) == 0:
             raise ValueError('buf should not be empty')
-        if self.method is None:
-            return string.translate(buf, self.encrypt_table)
+        if self.iv_sent:
+            ct = self.cipher.update(buf)
         else:
-            if self.iv_sent:
-                ct = self.cipher.update(buf)
-            else:
-                self.iv_sent = True
-                ct = self.cipher_iv + self.cipher.update(buf)
-            self.enmac.update(ct)
-            return ct, self.enmac.digest()
+            self.iv_sent = True
+            ct = self.cipher_iv + self.cipher.update(buf)
+        self.enmac.update(ct)
+        return ct, self.enmac.digest()
 
     def decrypt(self, buf, mac):
         if len(buf) == 0:
@@ -331,22 +319,22 @@ if __name__ == '__main__':
         except Exception as e:
             print(repr(e))
     print('test AE')
-    ae1 = AEncryptor(b'123456', 'aes-256-cfb', 'salt', 'ctx', False, hashlib.sha256)
-    ae2 = AEncryptor(b'123456', 'aes-256-cfb', 'salt', 'ctx', True, hashlib.sha256)
+    ae1 = AEncryptor(b'123456', 'aes-256-cfb', 'salt', 'ctx', False)
+    ae2 = AEncryptor(b'123456', 'aes-256-cfb', 'salt', 'ctx', True)
     a, b = ae1.encrypt(b'abcde')
     c, d = ae1.encrypt(b'fg')
     print(ae2.decrypt(a, b))
     print(ae2.decrypt(c, d))
     for method in lst:
         try:
-            cipher1 = AEncryptor(b'123456', method, 'salt', 'ctx', False, hashlib.md5,)
-            cipher2 = AEncryptor(b'123456', method, 'salt', 'ctx', True, hashlib.md5)
+            cipher1 = AEncryptor(b'123456', method, 'salt', 'ctx', False)
+            cipher2 = AEncryptor(b'123456', method, 'salt', 'ctx', True)
             t = time.time()
             for _ in range(1049):
                 a, b = cipher1.encrypt(s)
                 c, d = cipher1.encrypt(s)
                 cipher2.decrypt(a, b)
                 cipher2.decrypt(c, d)
-            print('%s-HMAC-MD5 %ss' % (method, time.time() - t))
+            print('%s-HMAC %ss' % (method, time.time() - t))
         except Exception as e:
             print(repr(e))
