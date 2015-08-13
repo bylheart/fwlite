@@ -97,7 +97,7 @@ except ImportError:
 
 
 if sys.platform.startswith('win'):
-    PYTHON2 = '"%s/Python27/python27.exe"' % WORKINGDIR
+    PYTHON2 = '"./Python27/python27.exe"'
 else:
     for cmd in ('python2.7', 'python27', 'python2'):
         if subprocess.call(shlex.split('which %s' % cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
@@ -1137,8 +1137,8 @@ class FGFWProxyHandler(object):
 class goagentHandler(FGFWProxyHandler):
     """docstring for ClassName"""
     def config(self):
-        self.cwd = '%s/goagent' % WORKINGDIR
-        self.cmd = '%s %s/goagent/proxy.py' % (PYTHON2, WORKINGDIR.replace(' ', '\ '))
+        self.cwd = './goagent'
+        self.cmd = '%s ./proxy.py' % (PYTHON2)
         self.enable = self.conf.userconf.dgetbool('goagent', 'enable', False)
 
         self._config()

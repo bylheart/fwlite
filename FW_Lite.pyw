@@ -144,7 +144,7 @@ class MainWindow(QtGui.QMainWindow):
         self.killProcess()
         self.runner.readyReadStandardError.connect(self.newStderrInfo)
         self.runner.readyReadStandardOutput.connect(self.newStdoutInfo)
-        python = ('"%s/Python27/python27.exe"' % WORKINGDIR) if sys.platform.startswith('win') else '/usr/bin/env python'
+        python = ('"./Python27/python27.exe"') if sys.platform.startswith('win') else '/usr/bin/env python'
         cmd = '%s -B ./fgfw-lite/fgfw-lite.py -GUI' % python
         self.runner.start(cmd)
 
