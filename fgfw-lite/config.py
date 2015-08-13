@@ -158,7 +158,6 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
 
     def addparentproxy(self, name, proxy):
         self.parentlist.addstr(name, proxy)
-        self.logger.info('add parent: %s: %s' % (name, proxy))
 
     def stdout(self, text=b''):
         if self.GUI:

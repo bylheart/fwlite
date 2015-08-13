@@ -4,6 +4,7 @@ import sys
 import time
 import traceback
 import socket
+import logging
 from threading import Timer
 try:
     import urllib.parse as urlparse
@@ -123,6 +124,7 @@ class ParentProxyList(object):
         self.add(ParentProxy(name, proxy))
 
     def add(self, parentproxy):
+        logging.info('add parent: %s: %s://%s:%s' % (parentproxy.name, parentproxy.parse.scheme, parentproxy.parse.hostname, parentproxy.parse.port))
         assert isinstance(parentproxy, ParentProxy)
         self.dict[parentproxy.name] = parentproxy
         if parentproxy.name == 'direct':
