@@ -217,7 +217,7 @@ class AEncryptor(object):
         self.enmac = hmac.new(self.auth_key, digestmod=hfunc)
         self.demac = hmac.new(self.de_auth_key, digestmod=hfunc)
 
-    def encrypt(self, buf):
+    def encrypt(self, buf, ad=None):
         if len(buf) == 0:
             raise ValueError('buf should not be empty')
         if self.iv_sent:
@@ -225,12 +225,16 @@ class AEncryptor(object):
         else:
             self.iv_sent = True
             ct = self.cipher_iv + self.cipher.update(buf)
+        if ad:
+            self.enmac.update(ad)
         self.enmac.update(ct)
         return ct, self.enmac.digest()
 
-    def decrypt(self, buf, mac):
+    def decrypt(self, buf, mac, ad=None):
         if len(buf) == 0:
             raise ValueError('buf should not be empty')
+        if ad:
+            self.demac.update(ad)
         self.demac.update(buf)
         rmac = self.demac.digest()
         if self.decipher is None:
