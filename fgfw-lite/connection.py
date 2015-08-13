@@ -7,7 +7,7 @@ import struct
 import logging
 import random
 
-from shadowsocks import sssocket
+from sssocket import sssocket
 from hxsocks import hxssocket
 from parent_proxy import ParentProxy
 from httputil import read_reaponse_line, read_header_data
