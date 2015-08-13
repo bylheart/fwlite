@@ -45,10 +45,7 @@ from ctypes_libsodium import Salsa20Crypto
 try:
     from M2Crypto.EVP import Cipher
     from M2Crypto import EC
-    import M2Crypto.Rand
-    random_string = M2Crypto.Rand.rand_bytes
 except ImportError:
-    random_string = os.urandom
     from streamcipher import StreamCipher as Cipher
     EC = None
 try:
@@ -69,6 +66,8 @@ except ImportError:
             for x, y in zip(a, b):
                 result |= x ^ y
             return result == 0
+
+random_string = os.urandom
 
 
 @lru_cache(128)
