@@ -124,7 +124,11 @@ class ParentProxyList(object):
         self.add(ParentProxy(name, proxy))
 
     def add(self, parentproxy):
-        logging.info('add parent: %s: %s://%s:%s' % (parentproxy.name, parentproxy.parse.scheme, parentproxy.parse.hostname, parentproxy.parse.port))
+        if parentproxy.parse.scheme:
+            s = '%s://%s:%s' % (parentproxy.parse.scheme, parentproxy.parse.hostname, parentproxy.parse.port)
+        else:
+            s = 'None'
+        logging.info('add parent: %s: %s' % (parentproxy.name, s))
         assert isinstance(parentproxy, ParentProxy)
         self.dict[parentproxy.name] = parentproxy
         if parentproxy.name == 'direct':
