@@ -67,7 +67,9 @@ except ImportError:
                 result |= x ^ y
             return result == 0
 
-random_string = os.urandom
+
+def random_string(size):
+    return b'\x16\x03\x03\x00' + os.urandom(size-4)
 
 
 @lru_cache(128)
