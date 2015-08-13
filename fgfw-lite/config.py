@@ -3,6 +3,7 @@
 import os
 import sys
 import socket
+import shutil
 import logging
 import logging.handlers
 from collections import defaultdict
@@ -18,6 +19,17 @@ from get_proxy import get_proxy
 from redirector import redirector
 from util import SConfigParser, parse_hostport
 import resolver
+
+if not os.path.isfile('./userconf.ini'):
+    shutil.copyfile('./userconf.sample.ini', './userconf.ini')
+
+if not os.path.isfile('./fgfw-lite/local.txt'):
+    with open('./fgfw-lite/local.txt', 'w') as f:
+        f.write('''\
+! local gfwlist config
+! rules: https://autoproxy.org/zh-CN/Rules
+! /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1/
+''')
 
 
 class Config(object):

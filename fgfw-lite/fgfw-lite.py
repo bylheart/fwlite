@@ -58,7 +58,6 @@ import json
 import ftplib
 import random
 import select
-import shutil
 import socket
 import traceback
 try:
@@ -109,26 +108,6 @@ NetWorkIOError = (IOError, OSError)
 DEFAULT_TIMEOUT = 5
 FAKEGIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x01D\x00;'
 goagent = None
-
-
-def prestart():
-    s = 'FW_Lite ' + __version__
-    if gevent:
-        s += ' with gevent %s' % gevent.__version__
-    logging.info(s)
-
-    if not os.path.isfile('./userconf.ini'):
-        shutil.copyfile('./userconf.sample.ini', './userconf.ini')
-
-    if not os.path.isfile('./fgfw-lite/local.txt'):
-        with open('./fgfw-lite/local.txt', 'w') as f:
-            f.write('''\
-! local gfwlist config
-! rules: https://autoproxy.org/zh-CN/Rules
-! /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1/
-''')
-
-prestart()
 
 
 class httpconn_pool(object):
@@ -1237,6 +1216,10 @@ def atexit_do():
 
 
 def main():
+    s = 'FW_Lite ' + __version__
+    if gevent:
+        s += ' with gevent %s' % gevent.__version__
+    logging.info(s)
     conf = config.conf
     Timer(10, updater, (conf, )).start()
     global goagent
