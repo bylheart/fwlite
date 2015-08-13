@@ -1,3 +1,11 @@
+2015.8.13 v4.9.3
+bugfix: unable to create local.txt
+bugfix: unable to start when chinese character in path
+bugfix: unable to start goagent
+bugfix: unable to co-exist with shadowsocks-python
+refine: logging
+refine: encryption
+
 2015.8.6 v4.9.2
 remove default_ss due to ddos attack
 support websocket

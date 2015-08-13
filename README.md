@@ -2,7 +2,7 @@
 
 A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects blocked sites automatically, apply parent proxy. And a lot more.
 
-Current Version: 4.9.2
+Current Version: 4.9.3
 
 Tested on Windows 7 and openSUSE.
 
