@@ -125,12 +125,12 @@ class BaseResolver(object):
 
     def get_ip_address(self, host):
         try:
-            return ip_address(host)
+            return ip_address(unicode(host))
         except:
             try:
-                return ip_address(self.resolve(host)[0][1])
+                return ip_address(unicode(self.resolve(host)[0][1]))
             except:
-                return ip_address('8.8.8.8')
+                return ip_address(u'8.8.8.8')
 
 
 class MEvent(object):

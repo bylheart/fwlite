@@ -52,8 +52,19 @@ class Config(object):
         else:
             self.listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
 
-        self.local_ip = set(socket.gethostbyname_ex(socket.gethostname())[2])
-
+        try:
+            self.local_ip = set(socket.gethostbyname_ex(socket.gethostname())[2])
+        except:
+            try:
+                csock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                csock.connect(('8.8.8.8', 53))
+                (addr, port) = csock.getsockname()
+                csock.close()
+                self.local_ip = set([addr])
+            except socket.error:
+                self.local_ip = set(['127.0.0.1'])
+        ip = self.local_ip.pop()
+        self.local_ip.add(ip)
         self.PAC = '''\
 function FindProxyForURL(url, host) {
 if (isPlainHostName(host) ||
@@ -64,7 +75,7 @@ if (isPlainHostName(host) ||
     {
         return 'DIRECT';
     }
-return "PROXY %s:%s; DIRECT";}''' % (socket.gethostbyname(socket.gethostname()), self.listen[1])
+return "PROXY %s:%s; DIRECT";}''' % (ip, self.listen[1])
         if self.userconf.dget('fgfwproxy', 'pac', ''):
             if os.path.isfile(self.userconf.dget('fgfwproxy', 'pac', '')):
                 self.PAC = open(self.userconf.dget('fgfwproxy', 'pac', '')).read()
