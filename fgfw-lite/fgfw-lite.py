@@ -799,10 +799,10 @@ class ProxyHandler(HTTPRequestHandler):
                 self.rtimeout = self.conf.timeout
                 self.ctimeout = self.conf.timeout
             else:
-                self.rtimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 10)
-                self.ctimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 10)
+                self.rtimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 20)
+                self.ctimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 20)
         else:
-            self.ctimeout = self.rtimeout = 10
+            self.ctimeout = self.rtimeout = 20
 
     def _http_connect_via_proxy(self, netloc, iplist):
         if not self.failed_parents:
