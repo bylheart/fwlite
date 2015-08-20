@@ -76,9 +76,11 @@ def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, p
     logger.debug('connection.create_connection: %r %r %r %r' % (netloc, parentproxy, via, tunnel))
     parentproxy = parentproxy or ''
     via = via or ''
-    if not isinstance(parentproxy, ParentProxy):
+    if parentproxy and not isinstance(parentproxy, ParentProxy):
+        logging.warning('parentproxy is not a ParentProxy instance, please check. %s' % parentproxy)
         parentproxy = ParentProxy(parentproxy, parentproxy)
     if via and not isinstance(via, ParentProxy):
+        logging.warning('via is not a ParentProxy instance, please check. %s' % via)
         via = ParentProxy('Via', via)
     ctimeout = ctimeout or parentproxy.timeout
     s = None
