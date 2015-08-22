@@ -1163,25 +1163,14 @@ class goagentHandler(FGFWProxyHandler):
         goagent.set('gae', 'pagespeed', self.conf.userconf.dget('goagent', 'pagespeed', '0'))
         goagent.set('gae', 'validate', self.conf.userconf.dget('goagent', 'validate', '1'))
         goagent.set('gae', 'options', self.conf.userconf.dget('goagent', 'options', ''))
+        goagent.set('pac', 'enable', '0')
+        goagent.set('proxy', 'autodetect', '0')
 
         if self.conf.userconf.dget('goagent', 'google_cn', ''):
             goagent.set('iplist', 'google_cn', self.conf.userconf.dget('goagent', 'google_cn', ''))
         if self.conf.userconf.dget('goagent', 'google_hk', ''):
             goagent.set('iplist', 'google_hk', self.conf.userconf.dget('goagent', 'google_hk', ''))
-        if self.enable:
-            self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20 200 8')
-            self.conf.parentlist.get('goagent').country_code = 'US'
 
-        if self.conf.userconf.dget('goagent', 'vps'):
-            goagent.set('vps', 'enable', '1')
-            goagent.set('vps', 'fetchserver', self.conf.userconf.dget('goagent', 'vps'))
-            self.conf.addparentproxy('goagent-vps', 'http://127.0.0.1:8088')
-        else:
-            goagent.set('php', 'enable', '0')
-
-        goagent.set('pac', 'enable', '0')
-
-        goagent.set('proxy', 'autodetect', '0')
         if self.conf.parentlist.get('direct') and self.conf.parentlist.get('direct').scheme == 'http':
             p = self.conf.parentlist.get('direct').parse
             goagent.set('proxy', 'enable', '1')
@@ -1196,6 +1185,16 @@ class goagentHandler(FGFWProxyHandler):
 
         with open('./goagent/proxy.ini', 'w') as configfile:
             goagent.write(configfile)
+
+        if self.enable:
+            self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20 200 8')
+            self.conf.parentlist.get('goagent').country_code = 'US'
+            if self.conf.userconf.dget('goagent', 'vps'):
+                goagent.set('vps', 'enable', '1')
+                goagent.set('vps', 'fetchserver', self.conf.userconf.dget('goagent', 'vps'))
+                self.conf.addparentproxy('goagent-vps', 'http://127.0.0.1:8088')
+            else:
+                goagent.set('vps', 'enable', '0')
 
     def setting(self, conf=None):
         if not conf:
