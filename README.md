@@ -2,6 +2,8 @@
 
 A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects blocked sites automatically, apply parent proxy. And a lot more.
 
+FW-Lite is Portable Software.
+
 Current Version: 4.9.3
 
 Tested on Windows 7 and openSUSE.
@@ -10,15 +12,23 @@ Tested on Windows 7 and openSUSE.
 
 ##Quick Start
 
-FW-Lite is Portable Software. You can set your own GoAgent APPID and other parent proxys in the `parents` section of main configuration file `userconf.ini`.
+####Set parent proxy
+Add your own parent proxy in the `parents` section of main configuration file `userconf.ini`.
 
-Set your browser's proxy setting to `http://127.0.0.1:8118`, enjoy.
+It looks like this:
 
+    [parents]
+    shadowsocks = ss://aes-256-cfb:password@127.0.0.1:8388
+
+####Set browser
+Set your browser's proxy setting to `http://127.0.0.1:8118`.
+
+####Start
 For Windows, run `FW_Lite.exe`
 
 For Linux and Mac, run `FW_Lite.pyw`
 
-requirements under openSUSE:
+####Requirements under openSUSE
 
     zypper install python-repoze.lru python-ipaddr python-gevent
     zypper install python-pyOpenSSL python-pycrypto  # for goagent
@@ -50,11 +60,11 @@ requirements under openSUSE:
   - HTTPS Proxy (HTTP Proxy over TLS)
   - Socks5 Proxy
   - SNI Proxy
-  - [GoAgent]
-  - [Shadowsocks]
-- Prioritize parent proxies by location and response time(per hostname)
+  - [GoAgent] by @phuslu
+  - [Shadowsocks] by @clowwindy
+- Prioritize parent proxies by location and response time
 - Use GoAgent for HTTP request only, no worry about certificates
-- Redirector
+- Redirector(some hidden function here)
 - Support PAC for WPAD
 - A simple anti-poison DNS server
 
@@ -77,7 +87,7 @@ Redirect with Regular Expression
 
     /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1&ie=gb2312/
 
-Not applying rules for certain sites. For false positeves in gfwlist.
+Not applying rules for certain sites. For false positives in gfwlist.
 
     ||twimg.com auto
 
