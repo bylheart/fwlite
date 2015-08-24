@@ -112,3 +112,15 @@ class basesocket(object):
 
     def shutdown(self, how):
         return self._sock.shutdown(how)
+
+    def connect(self, address):
+        raise NotImplementedError
+
+    def recv(self, size):
+        raise NotImplementedError
+
+    def sendall(self, data):
+        raise NotImplementedError
+
+    def makefile(self, mode='rb', bufsize=0):
+        raise NotImplementedError
