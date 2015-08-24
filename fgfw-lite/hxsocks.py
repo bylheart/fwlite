@@ -54,7 +54,7 @@ for fname in os.listdir('./.hxs_known_hosts'):
 class hxssocket(basesocket):
     bufsize = 32768
 
-    def __init__(self, hxsServer=None, ctimeout=4, parentproxy=None, iplist=None):
+    def __init__(self, hxsServer=None, ctimeout=4, parentproxy=None):
         basesocket.__init__(self)
         if hxsServer and not isinstance(hxsServer, ParentProxy):
             hxsServer = ParentProxy(hxsServer, hxsServer)

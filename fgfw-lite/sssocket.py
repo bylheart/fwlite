@@ -10,7 +10,7 @@ from basesocket import basesocket
 class sssocket(basesocket):
     bufsize = 8192
 
-    def __init__(self, ssServer=None, ctimeout=1, parentproxy=None, iplist=None):
+    def __init__(self, ssServer=None, ctimeout=1, parentproxy=None):
         basesocket.__init__(self)
         if ssServer and not isinstance(ssServer, ParentProxy):
             ssServer = ParentProxy(ssServer, ssServer)

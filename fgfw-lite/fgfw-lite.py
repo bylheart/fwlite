@@ -816,8 +816,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _connect_via_proxy(self, netloc, iplist=None, tunnel=False):
         self.on_conn_log()
-        via = None if self.pproxy.name in ('via', 'direct') else (self.conf.via or self.conf.parentlist.get('direct'))
-        return create_connection(netloc, ctimeout=self.ctimeout, iplist=iplist, parentproxy=self.pproxy, via=via, tunnel=tunnel)
+        return create_connection(netloc, ctimeout=self.ctimeout, iplist=iplist, parentproxy=self.pproxy, tunnel=tunnel)
 
     def do_FTP(self):
         self.logger.info('{} {}'.format(self.command, self.path))

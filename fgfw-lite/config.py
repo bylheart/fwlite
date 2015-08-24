@@ -113,10 +113,6 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
         else:
             self.addparentproxy('direct', 'direct 0')
 
-        self.via = None
-        if self.userconf.dget('fgfwproxy', 'via', ''):
-            self.via = ParentProxy('via', self.userconf.dget('fgfwproxy', 'via', ''))
-
         ParentProxy.set_via(self.parentlist.direct)
 
         for k, v in self.userconf.items('parents'):
