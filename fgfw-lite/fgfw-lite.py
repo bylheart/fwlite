@@ -806,10 +806,10 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _http_connect_via_proxy(self, netloc, iplist):
         if not self.failed_parents:
-            res = self.HTTPCONN_POOL.get(self.upstream_name)
-            if res:
+            result = self.HTTPCONN_POOL.get(self.upstream_name)
+            if result:
                 self._proxylist.insert(0, self.conf.parentlist.get(self.ppname))
-                sock, self.ppname = res
+                sock, self.ppname = result
                 self.on_conn_log()
                 return sock
         return self._connect_via_proxy(netloc, iplist)
