@@ -12,6 +12,12 @@ class basesocket(object):
         self._rbuffer = io.BytesIO()
         self._sock = None
 
+    def read(self, size):
+        data = b''
+        while len(data) < size:
+            data += self.recv(size-len(data))
+        return data
+
     def readline(self, size=-1):
         buf = self._rbuffer
         buf.seek(0, 2)  # seek end
