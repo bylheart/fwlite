@@ -8,7 +8,7 @@ from basesocket import basesocket
 
 
 class sssocket(basesocket):
-    bufsize = 65535
+    bufsize = 65519
 
     def __init__(self, ssServer=None, ctimeout=1, parentproxy=None):
         basesocket.__init__(self)
