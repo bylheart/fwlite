@@ -521,10 +521,10 @@ class ProxyHandler(HTTPRequestHandler):
                             self.rbuffer.append(data)
                         self.remotesoc.sendall(data)
                 # read response line
-                timelog = time.time()
+                timelog = time.clock()
                 self.phase = 'reading response_line'
                 response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
-                rtime = time.time() - timelog
+                rtime = time.clock() - timelog
             # read response headers
             while response_status == 100:
                 hdata = read_header_data(remoterfile)
@@ -692,7 +692,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.debug('remote write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))
             count = 1
-            timelog = time.time()
+            timelog = time.clock()
         rtime = 0
         while 1:
             try:
@@ -712,7 +712,7 @@ class ProxyHandler(HTTPRequestHandler):
                     # Now remotesoc is connected, set read timeout
                     self.remotesoc.settimeout(self.rtimeout)
                     count += 1
-                    timelog = time.time()
+                    timelog = time.clock()
                     if self.retryable:
                         self.rbuffer.append(data)
                 if self.remotesoc in ins:
@@ -721,7 +721,7 @@ class ProxyHandler(HTTPRequestHandler):
                     if not data:  # remote connection closed
                         reason = 'remote closed'
                         break
-                    rtime = time.time() - timelog
+                    rtime = time.clock() - timelog
                     self._wfile_write(data)
             except NetWorkIOError as e:
                 self.logger.warning('do_CONNECT error: %r on %s %s' % (e, self.phase, count))
