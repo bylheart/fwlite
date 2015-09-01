@@ -240,10 +240,11 @@ class AEncryptor(object):
         rmac = self.demac.digest()
         if self.decipher is None:
             decipher_iv = buf[:self.iv_len]
-            if self.servermode:
-                if decipher_iv in USED_IV[self.decrypt_key]:
-                    raise ValueError('iv reused, possible replay attrack')
-                USED_IV[self.decrypt_key].append(decipher_iv)
+            # REMOVED DUE TO EXCESSIVE MEMORY USE. lots of decrypt_keys
+            # if self.servermode:
+            #     if decipher_iv in USED_IV[self.decrypt_key]:
+            #         raise ValueError('iv reused, possible replay attrack')
+            #     USED_IV[self.decrypt_key].append(decipher_iv)
             self.decipher = get_cipher(self.decrypt_key, self.method, 0, decipher_iv)
             buf = buf[self.iv_len:]
         pt = self.decipher.update(buf) if buf else b''
