@@ -39,7 +39,6 @@
 import os
 import hashlib
 import hmac
-from collections import defaultdict, deque
 from repoze.lru import lru_cache
 from ctypes_libsodium import Salsa20Crypto
 try:
@@ -110,13 +109,6 @@ def get_cipher_len(method):
     return method_supported.get(method, None)
 
 
-class sized_deque(deque):
-    def __init__(self):
-        deque.__init__(self, maxlen=1048576)
-
-USED_IV = defaultdict(sized_deque)
-
-
 def create_rc4_md5(method, key, iv, op):
     md5 = hashlib.md5()
     md5.update(key)
@@ -165,10 +157,6 @@ class Encryptor(object):
             raise ValueError('buf should not be empty')
         if self.decipher is None:
             decipher_iv = buf[:self.iv_len]
-            if self.servermode:
-                if decipher_iv in USED_IV[self.key]:
-                    raise ValueError('iv reused, possible replay attrack')
-                USED_IV[self.key].append(decipher_iv)
             self.decipher = get_cipher(self.key, self.method, 0, decipher_iv)
             buf = buf[self.iv_len:]
             if len(buf) == 0:
