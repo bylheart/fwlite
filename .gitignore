@@ -9,3 +9,4 @@
 /fgfw-lite/_redirector.py
 /.hxs_known_hosts/*
 /fgfw-lite/adblock.txt
+*.log
