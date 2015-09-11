@@ -20,7 +20,7 @@
 
 from __future__ import print_function, division
 
-__version__ = '4.9.3'
+__version__ = '4.9.4'
 
 import sys
 import os
@@ -278,7 +278,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 class ProxyHandler(HTTPRequestHandler):
     server_version = "FW-Lite/" + __version__
     protocol_version = "HTTP/1.1"
-    bufsize = 32 * 1024
+    bufsize = 65519
     timeout = 60
 
     def handle_one_request(self):
@@ -521,10 +521,10 @@ class ProxyHandler(HTTPRequestHandler):
                             self.rbuffer.append(data)
                         self.remotesoc.sendall(data)
                 # read response line
-                timelog = time.time()
+                timelog = time.clock()
                 self.phase = 'reading response_line'
                 response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
-                rtime = time.time() - timelog
+                rtime = time.clock() - timelog
             # read response headers
             while response_status == 100:
                 hdata = read_header_data(remoterfile)
@@ -692,7 +692,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.debug('remote write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))
             count = 1
-            timelog = time.time()
+            timelog = time.clock()
         rtime = 0
         while 1:
             try:
@@ -712,7 +712,7 @@ class ProxyHandler(HTTPRequestHandler):
                     # Now remotesoc is connected, set read timeout
                     self.remotesoc.settimeout(self.rtimeout)
                     count += 1
-                    timelog = time.time()
+                    timelog = time.clock()
                     if self.retryable:
                         self.rbuffer.append(data)
                 if self.remotesoc in ins:
@@ -721,7 +721,7 @@ class ProxyHandler(HTTPRequestHandler):
                     if not data:  # remote connection closed
                         reason = 'remote closed'
                         break
-                    rtime = time.time() - timelog
+                    rtime = time.clock() - timelog
                     self._wfile_write(data)
             except NetWorkIOError as e:
                 self.logger.warning('do_CONNECT error: %r on %s %s' % (e, self.phase, count))
@@ -806,18 +806,17 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _http_connect_via_proxy(self, netloc, iplist):
         if not self.failed_parents:
-            res = self.HTTPCONN_POOL.get(self.upstream_name)
-            if res:
+            result = self.HTTPCONN_POOL.get(self.upstream_name)
+            if result:
                 self._proxylist.insert(0, self.conf.parentlist.get(self.ppname))
-                sock, self.ppname = res
+                sock, self.ppname = result
                 self.on_conn_log()
                 return sock
         return self._connect_via_proxy(netloc, iplist)
 
     def _connect_via_proxy(self, netloc, iplist=None, tunnel=False):
         self.on_conn_log()
-        via = None if self.pproxy.name in ('via', 'direct') else (self.conf.via or self.conf.parentlist.get('direct'))
-        return create_connection(netloc, ctimeout=self.ctimeout, iplist=iplist, parentproxy=self.pproxy, via=via, tunnel=tunnel)
+        return create_connection(netloc, ctimeout=self.ctimeout, iplist=iplist, parentproxy=self.pproxy, tunnel=tunnel)
 
     def do_FTP(self):
         self.logger.info('{} {}'.format(self.command, self.path))

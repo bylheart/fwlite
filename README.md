@@ -4,7 +4,7 @@ A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects 
 
 FW-Lite is Portable Software.
 
-Current Version: 4.9.3
+Current Version: 4.9.4
 
 Tested on Windows 7 and openSUSE.
 
@@ -22,6 +22,8 @@ It looks like this:
 
 ####Set browser
 Set your browser's proxy setting to `http://127.0.0.1:8118`.
+
+On Windows, this should be done automatically.
 
 ####Start
 For Windows, run `FW_Lite.exe`

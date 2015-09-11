@@ -1,3 +1,8 @@
+2015.9.11 v4.9.4
+support a chain of proxies
+imporve performance
+some bugfix
+
 2015.8.13 v4.9.3
 bugfix: unable to create local.txt
 bugfix: unable to start when chinese character in path

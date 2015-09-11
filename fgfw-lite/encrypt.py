@@ -39,7 +39,6 @@
 import os
 import hashlib
 import hmac
-from collections import defaultdict, deque
 from repoze.lru import lru_cache
 from ctypes_libsodium import Salsa20Crypto
 try:
@@ -110,13 +109,6 @@ def get_cipher_len(method):
     return method_supported.get(method, None)
 
 
-class sized_deque(deque):
-    def __init__(self):
-        deque.__init__(self, maxlen=1048576)
-
-USED_IV = defaultdict(sized_deque)
-
-
 def create_rc4_md5(method, key, iv, op):
     md5 = hashlib.md5()
     md5.update(key)
@@ -165,10 +157,6 @@ class Encryptor(object):
             raise ValueError('buf should not be empty')
         if self.decipher is None:
             decipher_iv = buf[:self.iv_len]
-            if self.servermode:
-                if decipher_iv in USED_IV[self.key]:
-                    raise ValueError('iv reused, possible replay attrack')
-                USED_IV[self.key].append(decipher_iv)
             self.decipher = get_cipher(self.key, self.method, 0, decipher_iv)
             buf = buf[self.iv_len:]
             if len(buf) == 0:
@@ -240,10 +228,11 @@ class AEncryptor(object):
         rmac = self.demac.digest()
         if self.decipher is None:
             decipher_iv = buf[:self.iv_len]
-            if self.servermode:
-                if decipher_iv in USED_IV[self.decrypt_key]:
-                    raise ValueError('iv reused, possible replay attrack')
-                USED_IV[self.decrypt_key].append(decipher_iv)
+            # REMOVED DUE TO EXCESSIVE MEMORY USE. lots of decrypt_keys
+            # if self.servermode:
+            #     if decipher_iv in USED_IV[self.decrypt_key]:
+            #         raise ValueError('iv reused, possible replay attrack')
+            #     USED_IV[self.decrypt_key].append(decipher_iv)
             self.decipher = get_cipher(self.decrypt_key, self.method, 0, decipher_iv)
             buf = buf[self.iv_len:]
         pt = self.decipher.update(buf) if buf else b''
@@ -314,13 +303,13 @@ if __name__ == '__main__':
     for method in lst:
         try:
             cipher = Encryptor('123456', method)
-            t = time.time()
+            t = time.clock()
             for _ in range(1049):
                 a = cipher.encrypt(s)
                 b = cipher.encrypt(s)
                 c = cipher.decrypt(a)
                 d = cipher.decrypt(b)
-            print('%s %ss' % (method, time.time() - t))
+            print('%s %ss' % (method, time.clock() - t))
         except Exception as e:
             print(repr(e))
     print('test AE')
@@ -334,12 +323,12 @@ if __name__ == '__main__':
         try:
             cipher1 = AEncryptor(b'123456', method, 'salt', 'ctx', False)
             cipher2 = AEncryptor(b'123456', method, 'salt', 'ctx', True)
-            t = time.time()
+            t = time.clock()
             for _ in range(1049):
                 a, b = cipher1.encrypt(s)
                 c, d = cipher1.encrypt(s)
                 cipher2.decrypt(a, b)
                 cipher2.decrypt(c, d)
-            print('%s-HMAC %ss' % (method, time.time() - t))
+            print('%s-HMAC %ss' % (method, time.clock() - t))
         except Exception as e:
             print(repr(e))

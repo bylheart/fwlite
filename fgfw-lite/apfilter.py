@@ -255,7 +255,7 @@ if __name__ == "__main__":
         show()
 
     gfwlist = ap_filter()
-    t = time.time()
+    t = time.clock()
     with open('gfwlist.txt') as f:
         data = f.read()
         if '!' not in data:
@@ -269,7 +269,7 @@ if __name__ == "__main__":
                 except:
                     pass
             del data
-    print('loading: %fs' % (time.time() - t))
+    print('loading: %fs' % (time.clock() - t))
     print('result for inxian: %r' % gfwlist.match('http://www.inxian.com', 'www.inxian.com'))
     print('result for twitter: %r' % gfwlist.match('www.twitter.com:443', 'www.twitter.com'))
     print('result for 163: %r' % gfwlist.match('http://www.163.com', 'www.163.com'))
@@ -282,11 +282,11 @@ if __name__ == "__main__":
     host = urlparse.urlparse(url).hostname
     print('%s, %s' % (url, host))
     print(gfwlist.match(url, host))
-    t = time.time()
+    t = time.clock()
     for _ in range(10000):
         gfwlist.match(url, host)
     print('KEYLEN = %d' % gfwlist.KEYLEN)
-    print('10000 query for %s, %fs' % (url, time.time() - t))
+    print('10000 query for %s, %fs' % (url, time.clock() - t))
     print('O(1): %d' % (len(gfwlist.domains) + len(gfwlist.exclude_domains)))
     print('O(n): %d' % (len(gfwlist.excludes) + len(gfwlist.matches)))
     l = gfwlist.fast.keys()

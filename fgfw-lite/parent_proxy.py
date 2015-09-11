@@ -21,13 +21,13 @@ from util import ip_to_country_code
 
 
 class ParentProxy(object):
-    via = ''
+    via = None
     DEFAULT_TIMEOUT = 8
 
     def __init__(self, name, proxy):
         '''
         name: str, name of parent proxy
-        proxy: "http://127.0.0.1:8087 <optional int: httppriority> <optional int: httpspriority>"
+        proxy: "http://127.0.0.1:8087<|more proxies> <optional int: httppriority> <optional int: httpspriority>"
         '''
         proxy, _, priority = proxy.partition(' ')
         httppriority, _, httpspriority = priority.partition(' ')
@@ -41,7 +41,11 @@ class ParentProxy(object):
         elif proxy and '//' not in proxy:
             proxy = 'http://' + proxy
         self.name = name
-        self.proxy = proxy
+        proxy_list = proxy.split('|')
+        self.proxy = proxy_list[0]
+        if len(proxy_list) > 1:
+            self.via = ParentProxy('via', '|'.join(proxy_list[1:]))
+            self.via.name = '%s://%s:%s' % (self.via.scheme, self.via.hostname, self.via.port)
         self.parse = urlparse.urlparse(self.proxy)
         self.httppriority = int(httppriority)
         self.httpspriority = int(httpspriority)
