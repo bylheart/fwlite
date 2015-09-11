@@ -23,6 +23,8 @@ It looks like this:
 ####Set browser
 Set your browser's proxy setting to `http://127.0.0.1:8118`.
 
+On Windows, this should be done automatically.
+
 ####Start
 For Windows, run `FW_Lite.exe`
 
