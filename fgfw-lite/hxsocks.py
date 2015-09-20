@@ -182,14 +182,12 @@ class hxssocket(basesocket):
             if not ctlen:
                 return b''
             ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
-            if ctlen == 0:
-                fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
-                return b''
             ct = fp.read(ctlen)
             mac = fp.read(mac_len)
-            if ctlen < 512:
-                fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
             data = self.cipher.decrypt(ct, mac)
+            data = data[1:0-ord(data[0])] if ord(data[0]) else data[1:]
+            if not data:
+                return b''
             if len(data) <= size:
                 return data
             buf_len = len(data)
@@ -218,11 +216,13 @@ class hxssocket(basesocket):
         else:
             if len(data) > 65500:
                 data, data_more = data[:65500], data[65500]
+
+            padding_len = random.randint(64, 255) if len(data) < 256 else 0
+            padding = (b'\x00' * padding_len) if padding_len else b''
+            data = chr(padding_len) + data + padding
+
             ct, mac = self.cipher.encrypt(data)
             data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
-            if len(ct) < 512:
-                rint = random.randint(64, 255)
-                data += self.pskcipher.encrypt(chr(rint)) + os.urandom(rint)
             self._sock.sendall(data)
         if data_more:
             self.sendall(data_more)
