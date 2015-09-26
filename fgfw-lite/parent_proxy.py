@@ -108,6 +108,11 @@ class ParentProxy(object):
     def set_via(cls, proxy):
         cls.via = proxy
 
+    def get_via(self):
+        if self.via == self:
+            return None
+        return self.via
+
     def __str__(self):
         return self.name
 

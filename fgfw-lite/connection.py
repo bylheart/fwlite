@@ -78,7 +78,7 @@ def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, p
         logging.warning('parentproxy is not a ParentProxy instance, please check. %s' % parentproxy)
         parentproxy = ParentProxy(parentproxy, parentproxy)
     ctimeout = ctimeout or parentproxy.timeout
-    via = parentproxy.via if parentproxy else None
+    via = parentproxy.get_via() if parentproxy else None
     s = None
     if not parentproxy or not parentproxy.proxy:
         return _create_connection(netloc, ctimeout, iplist=iplist)
@@ -93,10 +93,10 @@ def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, p
         if tunnel:
             do_tunnel(s, netloc, parentproxy)
     elif parentproxy.scheme == 'ss':
-        s = sssocket(parentproxy, ctimeout, parentproxy.via)
+        s = sssocket(parentproxy, ctimeout, via)
         s.connect(netloc)
     elif parentproxy.scheme == 'hxs':
-        s = hxssocket(parentproxy, ctimeout, parentproxy.via)
+        s = hxssocket(parentproxy, ctimeout, via)
         s.connect(netloc)
     elif parentproxy.scheme == 'sni':
         s = create_connection((parentproxy.hostname, parentproxy.port or 443), ctimeout, source_address, parentproxy=via, tunnel=True)
