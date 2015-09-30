@@ -146,9 +146,9 @@ class ParentProxyList(object):
         if parentproxy.name == 'local':
             self.local = parentproxy
             return
-        if parentproxy.httppriority >= 0:
+        if 0 <= parentproxy.httppriority <= 100:
             self._httpparents.add(parentproxy)
-        if parentproxy.httpspriority >= 0:
+        if 0 <= parentproxy.httpspriority <= 100:
             self._httpsparents.add(parentproxy)
 
     def remove(self, name):
