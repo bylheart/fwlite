@@ -1,3 +1,8 @@
+2015.10.1 v4.9.5
+update gfwlist url
+adjust parent proxy behavior
+bugfix: problem with network require a Proxy, thanks @temp321 for reporting this
+
 2015.9.11 v4.9.4
 support a chain of proxies
 imporve performance
