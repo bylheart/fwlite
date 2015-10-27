@@ -15,7 +15,7 @@
     "./fgfw-lite/ctypes_libsodium.py": "b0247da98cbfe91e72e2ecac7bf271e524301912e0a5d37e4e5d5b7cd4308286",
     "./fgfw-lite/dnsserver.py": "fa318de4e07ef4acf0c45295b28690a0eee97d42fa2c76023c65bfd84da40812",
     "./fgfw-lite/encrypt.py": "417e9845e89d8f3d768c54ac85cd26b3aec23f7026d43706b45f81851038916f",
-    "./fgfw-lite/fgfw-lite.py": "205f20383a14752cf57801ad7bfb837db36021d4075670fd67ffe649a75cd6d5",
+    "./fgfw-lite/fgfw-lite.py": "c767a2ac022b466a86ff9c348f6dde3f7b31403cb1474b5b3a81562becf921c3",
     "./fgfw-lite/get_proxy.py": "4ce3955dcd522d11c5dc42005ed2228a91ff07b0ba00d1d58b81061a8db96850",
     "./fgfw-lite/httputil.py": "86e4ccf9ab4054fdb8357d823641ef506c4bff1982e82db35efbc2cf9da2f946",
     "./fgfw-lite/hxsocks.py": "fb16925cb0db23dad9ed423ee92f8efb32124e83ef626745feb043025c062536",
