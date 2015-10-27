@@ -1087,8 +1087,8 @@ def update(conf, auto=False):
     conf.PARENT_PROXY.config()
     if count:
         conf.logger.info('Update Completed, %d file Updated.' % count)
-        if conf.userconf.dget('FGFW_Lite', 'updatecmd', ''):
-            subprocess.Popen(shlex.split(conf.userconf.dget('FGFW_Lite', 'updatecmd', '')))
+    if conf.userconf.dget('FGFW_Lite', 'updatecmd', ''):
+        subprocess.Popen(shlex.split(conf.userconf.dget('FGFW_Lite', 'updatecmd', '')))
 
 
 class FGFWProxyHandler(object):
