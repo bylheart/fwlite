@@ -33,7 +33,6 @@ For Linux and Mac, run `FW_Lite.pyw`
 ####Requirements under openSUSE
 
     zypper install python-repoze.lru python-ipaddr python-gevent
-    zypper install python-pyOpenSSL python-pycrypto  # for goagent
     zypper install python-M2Crypto  # or python-cryptography, for shadowsocks
     zypper install python-pyside  # for GUI
 
@@ -62,10 +61,8 @@ For Linux and Mac, run `FW_Lite.pyw`
   - HTTPS Proxy (HTTP Proxy over TLS)
   - Socks5 Proxy
   - SNI Proxy
-  - [GoAgent] by @phuslu
   - [Shadowsocks] by @clowwindy
 - Prioritize parent proxies by location and response time
-- Use GoAgent for HTTP request only, no worry about certificates
 - Redirector(some hidden function here)
 - Support PAC for WPAD
 - A simple anti-poison DNS server
@@ -108,7 +105,7 @@ Bad 302 Redirect, counteract ISP conducted MITM hijack(GWBN):
 Assign a parent proxy for certain sites
 
     ||bbc.co.uk shadowsocks-uk
-    ||googlevideo.com goagent shadowsocks-us1 shaodwsocks-us2
+    ||googlevideo.com shadowsocks-us1 shaodwsocks-us2
 
 ##License
 

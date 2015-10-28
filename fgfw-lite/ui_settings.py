@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\settings.ui'
 #
-# Created: Tue Nov 18 21:28:27 2014
+# Created: Wed Oct 28 08:36:18 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -12,7 +12,7 @@ from PySide import QtCore, QtGui
 class Ui_Settings(object):
     def setupUi(self, Settings):
         Settings.setObjectName("Settings")
-        Settings.resize(573, 411)
+        Settings.resize(573, 435)
         self.horizontalLayout_5 = QtGui.QHBoxLayout(Settings)
         self.horizontalLayout_5.setObjectName("horizontalLayout_5")
         self.verticalLayout_2 = QtGui.QVBoxLayout()
@@ -39,38 +39,6 @@ class Ui_Settings(object):
         self.updateToggle.setObjectName("updateToggle")
         self.horizontalLayout_6.addWidget(self.updateToggle)
         self.verticalLayout.addLayout(self.horizontalLayout_6)
-        self.goagentBox = QtGui.QGroupBox(Settings)
-        self.goagentBox.setObjectName("goagentBox")
-        self.verticalLayout_4 = QtGui.QVBoxLayout(self.goagentBox)
-        self.verticalLayout_4.setObjectName("verticalLayout_4")
-        self.formLayout_3 = QtGui.QFormLayout()
-        self.formLayout_3.setObjectName("formLayout_3")
-        self.label = QtGui.QLabel(self.goagentBox)
-        self.label.setObjectName("label")
-        self.formLayout_3.setWidget(2, QtGui.QFormLayout.LabelRole, self.label)
-        self.label_2 = QtGui.QLabel(self.goagentBox)
-        self.label_2.setObjectName("label_2")
-        self.formLayout_3.setWidget(3, QtGui.QFormLayout.LabelRole, self.label_2)
-        self.goagentAPPIDEdit = QtGui.QLineEdit(self.goagentBox)
-        self.goagentAPPIDEdit.setObjectName("goagentAPPIDEdit")
-        self.formLayout_3.setWidget(2, QtGui.QFormLayout.FieldRole, self.goagentAPPIDEdit)
-        self.goagentPassEdit = QtGui.QLineEdit(self.goagentBox)
-        self.goagentPassEdit.setObjectName("goagentPassEdit")
-        self.formLayout_3.setWidget(3, QtGui.QFormLayout.FieldRole, self.goagentPassEdit)
-        self.goagentEnableBox = QtGui.QCheckBox(self.goagentBox)
-        self.goagentEnableBox.setObjectName("goagentEnableBox")
-        self.formLayout_3.setWidget(1, QtGui.QFormLayout.LabelRole, self.goagentEnableBox)
-        self.verticalLayout_4.addLayout(self.formLayout_3)
-        self.horizontalLayout = QtGui.QHBoxLayout()
-        self.horizontalLayout.setObjectName("horizontalLayout")
-        self.goagentSaveButton = QtGui.QPushButton(self.goagentBox)
-        self.goagentSaveButton.setObjectName("goagentSaveButton")
-        self.horizontalLayout.addWidget(self.goagentSaveButton)
-        self.goagentResetButton = QtGui.QPushButton(self.goagentBox)
-        self.goagentResetButton.setObjectName("goagentResetButton")
-        self.horizontalLayout.addWidget(self.goagentResetButton)
-        self.verticalLayout_4.addLayout(self.horizontalLayout)
-        self.verticalLayout.addWidget(self.goagentBox)
         self.groupBox_2 = QtGui.QGroupBox(Settings)
         self.groupBox_2.setObjectName("groupBox_2")
         self.verticalLayout_3 = QtGui.QVBoxLayout(self.groupBox_2)
@@ -145,12 +113,6 @@ class Ui_Settings(object):
         self.parentRemoveButton.setText(QtGui.QApplication.translate("Settings", "移除", None, QtGui.QApplication.UnicodeUTF8))
         self.gfwlistToggle.setText(QtGui.QApplication.translate("Settings", "gfwlist", None, QtGui.QApplication.UnicodeUTF8))
         self.updateToggle.setText(QtGui.QApplication.translate("Settings", "自动更新", None, QtGui.QApplication.UnicodeUTF8))
-        self.goagentBox.setTitle(QtGui.QApplication.translate("Settings", "GoAgent", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("Settings", "APPID", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("Settings", "Password", None, QtGui.QApplication.UnicodeUTF8))
-        self.goagentEnableBox.setText(QtGui.QApplication.translate("Settings", "启用", None, QtGui.QApplication.UnicodeUTF8))
-        self.goagentSaveButton.setText(QtGui.QApplication.translate("Settings", "保存", None, QtGui.QApplication.UnicodeUTF8))
-        self.goagentResetButton.setText(QtGui.QApplication.translate("Settings", "重置", None, QtGui.QApplication.UnicodeUTF8))
         self.groupBox_2.setTitle(QtGui.QApplication.translate("Settings", "Shadowsocks", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("Settings", "服务器地址", None, QtGui.QApplication.UnicodeUTF8))
         self.label_4.setText(QtGui.QApplication.translate("Settings", "服务器端口", None, QtGui.QApplication.UnicodeUTF8))

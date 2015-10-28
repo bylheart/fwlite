@@ -16,12 +16,7 @@ if sys.version_info > (3, 0):
     raw_input = input
 
 if raw_input('update? y/n: ').lower().startswith('y'):
-    updatelst = [('https://github.com/goagent/goagent/raw/3.0/local/proxy.py', './goagent/proxy.py'),
-                 ('https://github.com/goagent/goagent/raw/3.0/local/proxy.ini', './goagent/proxy.sample.ini'),
-                 ('https://github.com/goagent/goagent/raw/3.0/local/proxylib.py', './goagent/proxylib.py'),
-                 # ('https://github.com/goagent/goagent/raw/3.0/local/cacert.pem', './goagent/cacert.pem'),
-                 # ('https://github.com/goagent/goagent/raw/3.0/local/GeoIP.dat', './goagent/GeoIP.dat'),
-                 ('https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt', './fgfw-lite/gfwlist.txt'),
+    updatelst = [('https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt', './fgfw-lite/gfwlist.txt'),
                  ]
     try:
         import urllib2
@@ -63,18 +58,14 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          './fgfw-lite/get_proxy.py',
          './fgfw-lite/connection.py',
          './fgfw-lite/util.py',
-         './fgfw-lite/cloud.txt',
          './fgfw-lite/singleton.py',
+         './fgfw-lite/cloud.txt',
          './fgfw-lite/GeoLite2-Country.mmdb',
          './userconf.sample.ini',
          './Python27/python27.zip',
          './README.md',
          './FW_Lite.exe',
          './FW_Lite.pyw',
-         './goagent/proxy.py',
-         './goagent/proxylib.py',
-         './goagent/proxy.sample.ini',
-         './goagent/cacert.pem',
          './release_note.txt',
          ]
 

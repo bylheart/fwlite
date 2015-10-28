@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>573</width>
-    <height>411</height>
+    <height>435</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -54,64 +54,6 @@
         </widget>
        </item>
       </layout>
-     </item>
-     <item>
-      <widget class="QGroupBox" name="goagentBox">
-       <property name="title">
-        <string>GoAgent</string>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_4">
-        <item>
-         <layout class="QFormLayout" name="formLayout_3">
-          <item row="2" column="0">
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>APPID</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_2">
-            <property name="text">
-             <string>Password</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLineEdit" name="goagentAPPIDEdit"/>
-          </item>
-          <item row="3" column="1">
-           <widget class="QLineEdit" name="goagentPassEdit"/>
-          </item>
-          <item row="1" column="0">
-           <widget class="QCheckBox" name="goagentEnableBox">
-            <property name="text">
-             <string>启用</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
-          <item>
-           <widget class="QPushButton" name="goagentSaveButton">
-            <property name="text">
-             <string>保存</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="goagentResetButton">
-            <property name="text">
-             <string>重置</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </widget>
      </item>
      <item>
       <widget class="QGroupBox" name="groupBox_2">

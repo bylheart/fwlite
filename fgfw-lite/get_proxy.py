@@ -254,7 +254,7 @@ class get_proxy(object):
         if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True) and self.gfwlist.match(uri):
             return True
 
-    def parentproxy(self, uri, host, command, ip, level=1, nogoagent=False):
+    def parentproxy(self, uri, host, command, ip, level=1):
         '''
             decide which parentproxy to use.
             url:  'www.google.com:443'
@@ -305,9 +305,6 @@ class get_proxy(object):
         if len(parentlist) > 1:
             random.shuffle(parentlist)
             parentlist = sorted(parentlist, key=priority)
-
-        if nogoagent and self.conf.parentlist.get('goagent') in parentlist:
-            parentlist.remove(self.conf.parentlist.get('goagent'))
 
         if ifgfwed:
             if not parentlist:

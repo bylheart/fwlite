@@ -127,18 +127,8 @@ class MainWindow(QtGui.QMainWindow):
 
     def killProcess(self):
         if self.runner.state() == QtCore.QProcess.ProcessState.Running:
-            try:
-                a = urllib2.urlopen('http://127.0.0.1:8118/api/goagent/pid').read()
-                if a.isdigit():
-                    try:
-                        os.kill(int(a), signal.SIGTERM)
-                    except Exception as e:
-                        print(repr(e))
-            except:
-                pass
-            finally:
-                self.runner.kill()
-                self.runner.waitForFinished(100)
+            self.runner.kill()
+            self.runner.waitForFinished(100)
 
     def createProcess(self):
         self.killProcess()
@@ -516,8 +506,6 @@ class Settings(QtGui.QWidget):
         self.ui.parentRemoveButton.clicked.connect(self.delParent)
         self.ui.editConfButton.clicked.connect(self.openconf)
         self.ui.editLocalButton.clicked.connect(self.openlocal)
-        self.ui.goagentSaveButton.clicked.connect(self.savegoagent)
-        self.ui.goagentResetButton.clicked.connect(self.loadgoagent)
         self.ui.gfwlistToggle.stateChanged.connect(self.gfwlistToggle)
         self.ui.updateToggle.stateChanged.connect(self.autoUpdateToggle)
         self.ref.connect(self.refresh)
@@ -542,7 +530,6 @@ class Settings(QtGui.QWidget):
             self.ui.tableView.resizeColumnsToContents()
             self.ui.gfwlistToggle.setCheckState(QtCore.Qt.CheckState.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/gfwlist' % self.port, timeout=1).read().decode()) else QtCore.Qt.CheckState.Unchecked)
             self.ui.updateToggle.setCheckState(QtCore.Qt.CheckState.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/autoupdate' % self.port, timeout=1).read().decode()) else QtCore.Qt.CheckState.Unchecked)
-            self.loadgoagent()
         except:
             pass
 
@@ -586,19 +573,6 @@ class Settings(QtGui.QWidget):
         resp = conn.getresponse()
         content = resp.read()
         print(content)
-
-    def loadgoagent(self):
-        enable, appid, passwd = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/goagent/setting' % self.port, timeout=1).read().decode())
-        self.ui.goagentEnableBox.setCheckState(QtCore.Qt.CheckState.Checked if enable else QtCore.Qt.CheckState.Unchecked)
-        self.ui.goagentAPPIDEdit.setText(appid)
-        self.ui.goagentPassEdit.setText(passwd)
-
-    def savegoagent(self):
-        enable = self.ui.goagentEnableBox.isChecked()
-        appid = self.ui.goagentAPPIDEdit.text()
-        passwd = self.ui.goagentPassEdit.text()
-        data = json.dumps((enable, appid, passwd)).encode()
-        urllib2.urlopen('http://127.0.0.1:%d/api/goagent/setting' % self.port, data, timeout=1)
 
     def openlocal(self):
         self.openfile('./fgfw-lite/local.txt')

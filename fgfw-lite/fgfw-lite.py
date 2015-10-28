@@ -74,7 +74,7 @@ logging.basicConfig(level=logging.INFO,
                     datefmt='%H:%M:%S', filemode='a+')
 
 import config
-from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt
+from util import parse_hostport, is_connection_dropped, sizeof_fmt
 from connection import create_connection
 from httputil import read_reaponse_line, read_headers, read_header_data, httpconn_pool
 try:
@@ -106,7 +106,6 @@ else:
 NetWorkIOError = (IOError, OSError)
 DEFAULT_TIMEOUT = 5
 FAKEGIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x01D\x00;'
-goagent = None
 
 
 class ClientError(OSError):
@@ -257,10 +256,8 @@ class ProxyHandler(HTTPRequestHandler):
 
     def getparent(self):
         if self._proxylist is None:
-            # goagent does not support big POST
-            nogoagent = True if self.headers.get("Transfer-Encoding") or int(self.headers.get('Content-Length', 0)) > 1024 * 1024 else False
             ip = self.conf.resolver.get_ip_address(self.requesthost[0])
-            self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, ip, self.server.proxy_level, nogoagent)
+            self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, ip, self.server.proxy_level)
             self.logger.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
@@ -509,8 +506,6 @@ class ProxyHandler(HTTPRequestHandler):
             self.wfile_write(response_line)
             self.wfile_write(header_data)
             # verify
-            if response_status > 500 and self.ppname.startswith('goagent'):
-                raise IOError(0, 'bad response status code from goagent: %d' % response_status)
             if response_status in (301, 302) and self.conf.PARENT_PROXY.bad302(response_header.get('Location')):
                 raise IOError(0, 'Bad 302!')
             # read response body
@@ -882,15 +877,6 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.conf.stdout()
             except Exception as e:
                 return self.send_error(404, repr(e))
-        elif parse.path == '/api/goagent/pid' and self.command == 'GET':
-            data = json.dumps(goagent.pid)
-            return self.write(200, data, 'application/json')
-        elif parse.path == '/api/goagent/setting' and self.command == 'GET':
-            data = json.dumps(goagent.setting())
-            return self.write(200, data, 'application/json')
-        elif parse.path == '/api/goagent/setting' and self.command == 'POST':
-            goagent.setting(json.loads(body))
-            return self.write(200, data, 'application/json')
         elif parse.path == '/api/parent' and self.command == 'GET':
             data = [(p.name, ('%s://%s:%s' % (p.scheme, p.hostname, p.port)) if p.proxy else '', p.httppriority) for k, p in self.conf.parentlist.dict.items()]
             data = sorted(data, key=lambda item: item[0])
@@ -1081,80 +1067,6 @@ class FGFWProxyHandler(object):
             self.subpobj = None
 
 
-class goagentHandler(FGFWProxyHandler):
-    """docstring for ClassName"""
-    def config(self):
-        self.cwd = './goagent'
-        self.cmd = '%s ./proxy.py' % (PYTHON2)
-        self.enable = self.conf.userconf.dgetbool('goagent', 'enable', False)
-
-        self._config()
-
-    def _config(self):
-        self.conf.parentlist.remove('goagent')
-        self.conf.parentlist.remove('goagent-php')
-        goagent = SConfigParser()
-        goagent.read('./goagent/proxy.sample.ini')
-
-        goagent.set('gae', 'appid', self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'))
-        if self.enable and self.conf.userconf.dget('goagent', 'gaeappid', 'goagent') == 'goagent':
-            self.logger.warning('GoAgent APPID is NOT set!')
-            self.enable = False
-        goagent.set("gae", "password", self.conf.userconf.dget('goagent', 'gaepassword', ''))
-        goagent.set('gae', 'mode', self.conf.userconf.dget('goagent', 'mode', 'https'))
-        goagent.set('gae', 'ipv6', self.conf.userconf.dget('goagent', 'ipv6', '0'))
-        goagent.set('gae', 'sslversion', self.conf.userconf.dget('goagent', 'options', 'TLSv1'))
-        goagent.set('gae', 'keepalive', self.conf.userconf.dget('goagent', 'keepalive', '0'))
-        goagent.set('gae', 'obfuscate', self.conf.userconf.dget('goagent', 'obfuscate', '0'))
-        goagent.set('gae', 'pagespeed', self.conf.userconf.dget('goagent', 'pagespeed', '0'))
-        goagent.set('gae', 'validate', self.conf.userconf.dget('goagent', 'validate', '1'))
-        goagent.set('gae', 'options', self.conf.userconf.dget('goagent', 'options', ''))
-        goagent.set('pac', 'enable', '0')
-        goagent.set('proxy', 'autodetect', '0')
-
-        if self.conf.userconf.dget('goagent', 'google_cn', ''):
-            goagent.set('iplist', 'google_cn', self.conf.userconf.dget('goagent', 'google_cn', ''))
-        if self.conf.userconf.dget('goagent', 'google_hk', ''):
-            goagent.set('iplist', 'google_hk', self.conf.userconf.dget('goagent', 'google_hk', ''))
-
-        if self.conf.parentlist.get('direct') and self.conf.parentlist.get('direct').scheme == 'http':
-            p = self.conf.parentlist.get('direct').parse
-            goagent.set('proxy', 'enable', '1')
-            goagent.set('proxy', 'host', p.hostname)
-            goagent.set('proxy', 'port', p.port)
-            goagent.set('proxy', 'username', p.username or '')
-            goagent.set('proxy', 'password', p.password or '')
-        if '-hide' in sys.argv[1:]:
-            goagent.set('listen', 'visible', '0')
-        else:
-            goagent.set('listen', 'visible', '1')
-
-        with open('./goagent/proxy.ini', 'w') as configfile:
-            goagent.write(configfile)
-
-        if self.enable:
-            self.conf.addparentproxy('goagent', 'http://127.0.0.1:8087 20 200 8')
-            self.conf.parentlist.get('goagent').country_code = 'US'
-            if self.conf.userconf.dget('goagent', 'vps'):
-                goagent.set('vps', 'enable', '1')
-                goagent.set('vps', 'fetchserver', self.conf.userconf.dget('goagent', 'vps'))
-                self.conf.addparentproxy('goagent-vps', 'http://127.0.0.1:8088')
-            else:
-                goagent.set('vps', 'enable', '0')
-
-    def setting(self, conf=None):
-        if not conf:
-            return (self.conf.userconf.dgetbool('goagent', 'enable', True), self.conf.userconf.dget('goagent', 'gaeappid', 'goagent'), self.conf.userconf.dget('goagent', 'gaepassword', ''))
-        else:
-            self.enable, appid, passwd = conf
-            self.conf.userconf.set('goagent', 'enable', '1' if self.enable else '0')
-            self.conf.userconf.set('goagent', 'gaeappid', appid)
-            self.conf.userconf.set('goagent', 'gaepassword', passwd)
-            self.conf.confsave()
-            self.restart()
-            self.conf.stdout()
-
-
 @atexit.register
 def atexit_do():
     for item in FGFWProxyHandler.ITEMS:
@@ -1168,8 +1080,6 @@ def main():
     logging.info(s)
     conf = config.conf
     Timer(10, updater, (conf, )).start()
-    global goagent
-    goagent = goagentHandler(conf)
     d = {'http': '127.0.0.1:%d' % conf.listen[1], 'https': '127.0.0.1:%d' % conf.listen[1]}
     urllib2.install_opener(urllib2.build_opener(urllib2.ProxyHandler(d)))
     for i, level in enumerate(list(conf.userconf.dget('fgfwproxy', 'profile', '13'))):
