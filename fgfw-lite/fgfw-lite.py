@@ -44,7 +44,7 @@ except ImportError:
 except TypeError:
     gevent.monkey.patch_all()
     sys.stderr.write('Warning: Please update gevent to the latest 1.0 version!\n')
-from collections import defaultdict, deque
+from collections import deque
 import subprocess
 import shlex
 import time
@@ -53,7 +53,6 @@ import io
 import errno
 import atexit
 import base64
-import itertools
 import json
 import ftplib
 import random
@@ -67,7 +66,7 @@ except ImportError:
         from StringIO import StringIO
     except ImportError:
         from io import BytesIO as StringIO
-from threading import Thread, RLock, Timer
+from threading import Thread, Timer
 import logging
 import logging.handlers
 logging.basicConfig(level=logging.INFO,
@@ -77,7 +76,7 @@ logging.basicConfig(level=logging.INFO,
 import config
 from util import parse_hostport, is_connection_dropped, SConfigParser, sizeof_fmt
 from connection import create_connection
-from httputil import read_reaponse_line, read_headers, read_header_data
+from httputil import read_reaponse_line, read_headers, read_header_data, httpconn_pool
 try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
@@ -108,58 +107,6 @@ NetWorkIOError = (IOError, OSError)
 DEFAULT_TIMEOUT = 5
 FAKEGIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x01D\x00;'
 goagent = None
-
-
-class httpconn_pool(object):
-    def __init__(self):
-        self.POOL = defaultdict(deque)  # {upstream_name: [(soc, ppname), ...]}
-        self.socs = {}  # keep track of sock info
-        self.timerwheel = defaultdict(set)  # a list of socket object
-        self.timerwheel_iter = itertools.cycle(range(10))
-        self.timerwheel_index = next(self.timerwheel_iter)
-        self.lock = RLock()
-        self.logger = logging.getLogger('FW_Lite')
-        Timer(30, self._purge, ()).start()
-
-    def put(self, upstream_name, soc, ppname):
-        with self.lock:
-            self.POOL[upstream_name].append((soc, ppname))
-            self.socs[soc] = (self.timerwheel_index, ppname, upstream_name)
-            self.timerwheel[self.timerwheel_index].add(soc)
-
-    def get(self, upstream_name):
-        lst = self.POOL.get(upstream_name)
-        with self.lock:
-            while lst:
-                sock, pproxy = lst.popleft()
-                if is_connection_dropped([sock]):
-                    sock.close()
-                    self._remove(sock)
-                    continue
-                self._remove(sock)
-                return (sock, pproxy)
-
-    def _remove(self, soc):
-        twindex, ppn, upsname = self.socs.pop(soc)
-        self.timerwheel[twindex].discard(soc)
-        if (soc, ppn) in self.POOL[upsname]:
-            self.POOL[upsname].remove((soc, ppn))
-
-    def _purge(self):
-        pcount = 0
-        with self.lock:
-            for soc in is_connection_dropped(self.socs.keys()):
-                soc.close()
-                self._remove(soc)
-                pcount += 1
-            self.timerwheel_index = next(self.timerwheel_iter)
-            for soc in list(self.timerwheel[self.timerwheel_index]):
-                soc.close()
-                self._remove(soc)
-                pcount += 1
-        if pcount:
-            self.logger.debug('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, len(self.socs), ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
-        Timer(30, self._purge, ()).start()
 
 
 class ClientError(OSError):

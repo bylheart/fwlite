@@ -3,11 +3,16 @@
 #
 import sys
 import io
+import itertools
+import logging
+from threading import RLock, Timer
+from collections import defaultdict, deque
 try:
     from http.client import HTTPMessage
     import email
 except ImportError:
     from httplib import HTTPMessage
+from util import is_connection_dropped
 
 
 def read_reaponse_line(fp):
@@ -44,3 +49,55 @@ def parse_headers(data):
     else:
         fp = io.StringIO(data.decode('iso-8859-1'))
         return HTTPMessage(fp, 0)
+
+
+class httpconn_pool(object):
+    def __init__(self):
+        self.POOL = defaultdict(deque)  # {upstream_name: [(soc, ppname), ...]}
+        self.socs = {}  # keep track of sock info
+        self.timerwheel = defaultdict(set)  # a list of socket object
+        self.timerwheel_iter = itertools.cycle(range(10))
+        self.timerwheel_index = next(self.timerwheel_iter)
+        self.lock = RLock()
+        self.logger = logging.getLogger('FW_Lite')
+        Timer(30, self._purge, ()).start()
+
+    def put(self, upstream_name, soc, ppname):
+        with self.lock:
+            self.POOL[upstream_name].append((soc, ppname))
+            self.socs[soc] = (self.timerwheel_index, ppname, upstream_name)
+            self.timerwheel[self.timerwheel_index].add(soc)
+
+    def get(self, upstream_name):
+        lst = self.POOL.get(upstream_name)
+        with self.lock:
+            while lst:
+                sock, pproxy = lst.popleft()
+                if is_connection_dropped([sock]):
+                    sock.close()
+                    self._remove(sock)
+                    continue
+                self._remove(sock)
+                return (sock, pproxy)
+
+    def _remove(self, soc):
+        twindex, ppn, upsname = self.socs.pop(soc)
+        self.timerwheel[twindex].discard(soc)
+        if (soc, ppn) in self.POOL[upsname]:
+            self.POOL[upsname].remove((soc, ppn))
+
+    def _purge(self):
+        pcount = 0
+        with self.lock:
+            for soc in is_connection_dropped(self.socs.keys()):
+                soc.close()
+                self._remove(soc)
+                pcount += 1
+            self.timerwheel_index = next(self.timerwheel_iter)
+            for soc in list(self.timerwheel[self.timerwheel_index]):
+                soc.close()
+                self._remove(soc)
+                pcount += 1
+        if pcount:
+            self.logger.debug('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, len(self.socs), ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
+        Timer(30, self._purge, ()).start()
