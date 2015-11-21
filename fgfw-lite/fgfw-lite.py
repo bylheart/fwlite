@@ -94,6 +94,12 @@ except ImportError:
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
     from ipaddr import IPAddress as ip_address
 
+try:
+    from _manager import on_finish
+except ImportError:
+    def on_finish(hdlr):
+        pass
+
 
 if sys.platform.startswith('win'):
     PYTHON2 = '"./Python27/python27.exe"'
@@ -227,6 +233,10 @@ class ProxyHandler(HTTPRequestHandler):
     bufsize = 65500
     timeout = 60
 
+    def setup(self):
+        BaseHTTPRequestHandler.setup(self)
+        self.traffic_count = [0, 0]  # [read from client, write to client]
+
     def handle_one_request(self):
         self._proxylist = None
         self.remotesoc = None
@@ -248,11 +258,13 @@ class ProxyHandler(HTTPRequestHandler):
                 self.close_connection = 1
             else:
                 raise
-        if self.path:
-            self.logger.debug(self.shortpath or self.path + ' finished.')
-            self.logger.debug('upload: %d, download %d' % tuple(self.traffic_count))
-        if self.remotesoc:
-            self.remotesoc.close()
+        finally:
+            if self.path:
+                self.logger.debug(self.shortpath or self.path + ' finished.')
+                self.logger.debug('upload: %d, download %d' % tuple(self.traffic_count))
+            if self.remotesoc:
+                self.remotesoc.close()
+            on_finish(self)
 
     def getparent(self):
         if self._proxylist is None:

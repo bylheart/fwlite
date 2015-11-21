@@ -12,7 +12,7 @@ except ImportError:
 
 from apfilter import ap_rule, ap_filter
 try:
-    from _redirector import redirector as uredirector
+    from _manager import redirector as uredirector
 except ImportError:
     def uredirector(hdlr):
         pass
