@@ -17,7 +17,6 @@ import atexit
 import base64
 import operator
 import json
-import signal
 import subprocess
 from collections import deque
 from PySide import QtCore, QtGui
@@ -477,7 +476,7 @@ class RemoteResolve(QtGui.QWidget):
             # result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host.encode()).decode().strip('='), server), timeout=1).read().decode())
             proxy = 'http://127.0.0.1:%d' % self.port
             server = parse_hostport(server, 53)
-            record = tcp_dns_record(host, proxy, 'ANY', server)
+            record = tcp_dns_record(host, 'ANY', server, proxy)
             if record is None:
                 return []
             while len(record.rr) == 1 and record.rr[0].rtype == 5:
