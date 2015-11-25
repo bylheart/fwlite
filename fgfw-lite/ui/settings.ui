@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>设置</string>
   </property>
+  <property name="locale">
+   <locale language="English" country="UnitedStates"/>
+  </property>
   <layout class="QHBoxLayout" name="horizontalLayout_5">
    <item>
     <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -23,8 +26,11 @@
       <layout class="QHBoxLayout" name="horizontalLayout_4">
        <item>
         <widget class="QPushButton" name="parentRemoveButton">
+         <property name="locale">
+          <locale language="English" country="UnitedStates"/>
+         </property>
          <property name="text">
-          <string>移除</string>
+          <string>Remove</string>
          </property>
         </widget>
        </item>
@@ -41,6 +47,9 @@
        </property>
        <item>
         <widget class="QCheckBox" name="gfwlistToggle">
+         <property name="locale">
+          <locale language="English" country="UnitedStates"/>
+         </property>
          <property name="text">
           <string>gfwlist</string>
          </property>
@@ -48,8 +57,11 @@
        </item>
        <item>
         <widget class="QCheckBox" name="updateToggle">
+         <property name="locale">
+          <locale language="English" country="UnitedStates"/>
+         </property>
          <property name="text">
-          <string>自动更新</string>
+          <string>Auto Update</string>
          </property>
         </widget>
        </item>
@@ -57,6 +69,9 @@
      </item>
      <item>
       <widget class="QGroupBox" name="groupBox_2">
+       <property name="locale">
+        <locale language="English" country="UnitedStates"/>
+       </property>
        <property name="title">
         <string>Shadowsocks</string>
        </property>
@@ -69,28 +84,40 @@
           <item row="1" column="0">
            <widget class="QLabel" name="label_3">
             <property name="text">
-             <string>服务器地址</string>
+             <string>Hostname</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
           <item row="2" column="0">
            <widget class="QLabel" name="label_4">
             <property name="text">
-             <string>服务器端口</string>
+             <string>Port</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
           <item row="3" column="0">
            <widget class="QLabel" name="label_5">
             <property name="text">
-             <string>　加密方式</string>
+             <string>Encryption</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
           <item row="4" column="0">
            <widget class="QLabel" name="label_6">
             <property name="text">
-             <string>　　　密码</string>
+             <string>Password</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
@@ -117,7 +144,10 @@
           <item row="0" column="0">
            <widget class="QLabel" name="label_7">
             <property name="text">
-             <string>　　　名称</string>
+             <string>Name</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
@@ -131,7 +161,10 @@
           <item row="5" column="0">
            <widget class="QLabel" name="label_8">
             <property name="text">
-             <string>　　优先级</string>
+             <string>Priority</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
@@ -152,7 +185,7 @@
           <item>
            <widget class="QPushButton" name="shadowsocksAddButton">
             <property name="text">
-             <string>添加</string>
+             <string>Add</string>
             </property>
            </widget>
           </item>
@@ -165,15 +198,21 @@
       <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
         <widget class="QPushButton" name="editConfButton">
+         <property name="locale">
+          <locale language="English" country="UnitedStates"/>
+         </property>
          <property name="text">
-          <string>编辑 userconf.ini</string>
+          <string>Edit userconf.ini</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="editLocalButton">
+         <property name="locale">
+          <locale language="English" country="UnitedStates"/>
+         </property>
          <property name="text">
-          <string>编辑 local.txt</string>
+          <string>Edit local.txt</string>
          </property>
         </widget>
        </item>

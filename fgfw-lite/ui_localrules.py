@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\localrules.ui'
 #
-# Created: Wed Nov  5 07:55:25 2014
+# Created: Thu Nov 26 00:13:13 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -13,6 +13,7 @@ class Ui_LocalRules(object):
     def setupUi(self, LocalRules):
         LocalRules.setObjectName("LocalRules")
         LocalRules.resize(400, 300)
+        LocalRules.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.verticalLayout = QtGui.QVBoxLayout(LocalRules)
         self.verticalLayout.setObjectName("verticalLayout")
         self.scrollArea = QtGui.QScrollArea(LocalRules)
@@ -38,12 +39,14 @@ class Ui_LocalRules(object):
         self.horizontalLayout = QtGui.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.label = QtGui.QLabel(LocalRules)
+        self.label.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.label.setObjectName("label")
         self.horizontalLayout.addWidget(self.label)
         self.LocalRuleEdit = QtGui.QLineEdit(LocalRules)
         self.LocalRuleEdit.setObjectName("LocalRuleEdit")
         self.horizontalLayout.addWidget(self.LocalRuleEdit)
         self.label_2 = QtGui.QLabel(LocalRules)
+        self.label_2.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.label_2.setObjectName("label_2")
         self.horizontalLayout.addWidget(self.label_2)
         self.ExpireEdit = QtGui.QLineEdit(LocalRules)
@@ -51,9 +54,11 @@ class Ui_LocalRules(object):
         self.ExpireEdit.setObjectName("ExpireEdit")
         self.horizontalLayout.addWidget(self.ExpireEdit)
         self.label_3 = QtGui.QLabel(LocalRules)
+        self.label_3.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.label_3.setObjectName("label_3")
         self.horizontalLayout.addWidget(self.label_3)
         self.AddLocalRuleButton = QtGui.QPushButton(LocalRules)
+        self.AddLocalRuleButton.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.AddLocalRuleButton.setObjectName("AddLocalRuleButton")
         self.horizontalLayout.addWidget(self.AddLocalRuleButton)
         self.verticalLayout.addLayout(self.horizontalLayout)
@@ -63,8 +68,8 @@ class Ui_LocalRules(object):
 
     def retranslateUi(self, LocalRules):
         LocalRules.setWindowTitle(QtGui.QApplication.translate("LocalRules", "Form", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("LocalRules", "添加规则", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("LocalRules", "有效期", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_3.setText(QtGui.QApplication.translate("LocalRules", "分钟", None, QtGui.QApplication.UnicodeUTF8))
-        self.AddLocalRuleButton.setText(QtGui.QApplication.translate("LocalRules", "添加", None, QtGui.QApplication.UnicodeUTF8))
+        self.label.setText(QtGui.QApplication.translate("LocalRules", "Add Rule", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_2.setText(QtGui.QApplication.translate("LocalRules", "Expires", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_3.setText(QtGui.QApplication.translate("LocalRules", "Minutes", None, QtGui.QApplication.UnicodeUTF8))
+        self.AddLocalRuleButton.setText(QtGui.QApplication.translate("LocalRules", "Add", None, QtGui.QApplication.UnicodeUTF8))
 

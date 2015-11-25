@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
+  <property name="locale">
+   <locale language="English" country="UnitedStates"/>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0">
    <item>
     <widget class="QScrollArea" name="scrollArea">
@@ -49,8 +52,11 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLabel" name="label">
+       <property name="locale">
+        <locale language="English" country="UnitedStates"/>
+       </property>
        <property name="text">
-        <string>添加规则</string>
+        <string>Add Rule</string>
        </property>
       </widget>
      </item>
@@ -59,8 +65,11 @@
      </item>
      <item>
       <widget class="QLabel" name="label_2">
+       <property name="locale">
+        <locale language="English" country="UnitedStates"/>
+       </property>
        <property name="text">
-        <string>目标</string>
+        <string>Redirect to</string>
        </property>
       </widget>
      </item>
@@ -76,8 +85,11 @@
      </item>
      <item>
       <widget class="QPushButton" name="AddRedirectorRuleButton">
+       <property name="locale">
+        <locale language="English" country="UnitedStates"/>
+       </property>
        <property name="text">
-        <string>添加</string>
+        <string>Add</string>
        </property>
       </widget>
      </item>

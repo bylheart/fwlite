@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\remoteresolver.ui'
 #
-# Created: Wed Nov  5 07:55:27 2014
+# Created: Thu Nov 26 00:13:16 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -13,6 +13,7 @@ class Ui_remote_resolver(object):
     def setupUi(self, remote_resolver):
         remote_resolver.setObjectName("remote_resolver")
         remote_resolver.resize(300, 200)
+        remote_resolver.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.verticalLayoutWidget = QtGui.QWidget(remote_resolver)
         self.verticalLayoutWidget.setGeometry(QtCore.QRect(0, 4, 301, 191))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
@@ -54,5 +55,5 @@ class Ui_remote_resolver(object):
         self.hostLineEdit.setText(QtGui.QApplication.translate("remote_resolver", "www.google.com", None, QtGui.QApplication.UnicodeUTF8))
         self.serverLabel.setText(QtGui.QApplication.translate("remote_resolver", "DNS Server:", None, QtGui.QApplication.UnicodeUTF8))
         self.serverlineEdit.setText(QtGui.QApplication.translate("remote_resolver", "8.8.8.8", None, QtGui.QApplication.UnicodeUTF8))
-        self.goButton.setText(QtGui.QApplication.translate("remote_resolver", "Go", None, QtGui.QApplication.UnicodeUTF8))
+        self.goButton.setText(QtGui.QApplication.translate("remote_resolver", "Resolve", None, QtGui.QApplication.UnicodeUTF8))
 

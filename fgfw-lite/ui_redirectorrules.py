@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\redirectorrules.ui'
 #
-# Created: Wed Nov  5 07:55:26 2014
+# Created: Thu Nov 26 00:13:15 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -13,6 +13,7 @@ class Ui_RedirectorRules(object):
     def setupUi(self, RedirectorRules):
         RedirectorRules.setObjectName("RedirectorRules")
         RedirectorRules.resize(400, 300)
+        RedirectorRules.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.verticalLayout = QtGui.QVBoxLayout(RedirectorRules)
         self.verticalLayout.setObjectName("verticalLayout")
         self.scrollArea = QtGui.QScrollArea(RedirectorRules)
@@ -38,12 +39,14 @@ class Ui_RedirectorRules(object):
         self.horizontalLayout = QtGui.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.label = QtGui.QLabel(RedirectorRules)
+        self.label.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.label.setObjectName("label")
         self.horizontalLayout.addWidget(self.label)
         self.RuleEdit = QtGui.QLineEdit(RedirectorRules)
         self.RuleEdit.setObjectName("RuleEdit")
         self.horizontalLayout.addWidget(self.RuleEdit)
         self.label_2 = QtGui.QLabel(RedirectorRules)
+        self.label_2.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.label_2.setObjectName("label_2")
         self.horizontalLayout.addWidget(self.label_2)
         self.DestEdit = QtGui.QLineEdit(RedirectorRules)
@@ -51,6 +54,7 @@ class Ui_RedirectorRules(object):
         self.DestEdit.setObjectName("DestEdit")
         self.horizontalLayout.addWidget(self.DestEdit)
         self.AddRedirectorRuleButton = QtGui.QPushButton(RedirectorRules)
+        self.AddRedirectorRuleButton.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.AddRedirectorRuleButton.setObjectName("AddRedirectorRuleButton")
         self.horizontalLayout.addWidget(self.AddRedirectorRuleButton)
         self.verticalLayout.addLayout(self.horizontalLayout)
@@ -60,7 +64,7 @@ class Ui_RedirectorRules(object):
 
     def retranslateUi(self, RedirectorRules):
         RedirectorRules.setWindowTitle(QtGui.QApplication.translate("RedirectorRules", "Form", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("RedirectorRules", "添加规则", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("RedirectorRules", "目标", None, QtGui.QApplication.UnicodeUTF8))
-        self.AddRedirectorRuleButton.setText(QtGui.QApplication.translate("RedirectorRules", "添加", None, QtGui.QApplication.UnicodeUTF8))
+        self.label.setText(QtGui.QApplication.translate("RedirectorRules", "Add Rule", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_2.setText(QtGui.QApplication.translate("RedirectorRules", "Redirect to", None, QtGui.QApplication.UnicodeUTF8))
+        self.AddRedirectorRuleButton.setText(QtGui.QApplication.translate("RedirectorRules", "Add", None, QtGui.QApplication.UnicodeUTF8))
 

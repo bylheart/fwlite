@@ -13,16 +13,22 @@
   <property name="windowTitle">
    <string>FW-Lite</string>
   </property>
+  <property name="locale">
+   <locale language="English" country="UnitedStates"/>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_3">
     <item>
      <widget class="QTabWidget" name="tabWidget">
+      <property name="locale">
+       <locale language="English" country="UnitedStates"/>
+      </property>
       <property name="currentIndex">
        <number>0</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
-        <string>控制台</string>
+        <string>Console</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>

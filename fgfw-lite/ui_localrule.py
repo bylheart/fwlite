@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\localrule.ui'
 #
-# Created: Wed Nov  5 07:55:24 2014
+# Created: Thu Nov 26 00:13:12 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -13,6 +13,7 @@ class Ui_LocalRule(object):
     def setupUi(self, LocalRule):
         LocalRule.setObjectName("LocalRule")
         LocalRule.resize(232, 23)
+        LocalRule.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.horizontalLayout = QtGui.QHBoxLayout(LocalRule)
         self.horizontalLayout.setContentsMargins(-1, 0, -1, 0)
         self.horizontalLayout.setObjectName("horizontalLayout")
@@ -21,9 +22,11 @@ class Ui_LocalRule(object):
         self.lineEdit.setObjectName("lineEdit")
         self.horizontalLayout.addWidget(self.lineEdit)
         self.copyButton = QtGui.QPushButton(LocalRule)
+        self.copyButton.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.copyButton.setObjectName("copyButton")
         self.horizontalLayout.addWidget(self.copyButton)
         self.delButton = QtGui.QPushButton(LocalRule)
+        self.delButton.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.delButton.setObjectName("delButton")
         self.horizontalLayout.addWidget(self.delButton)
 
@@ -32,6 +35,6 @@ class Ui_LocalRule(object):
 
     def retranslateUi(self, LocalRule):
         LocalRule.setWindowTitle(QtGui.QApplication.translate("LocalRule", "Form", None, QtGui.QApplication.UnicodeUTF8))
-        self.copyButton.setText(QtGui.QApplication.translate("LocalRule", "复制", None, QtGui.QApplication.UnicodeUTF8))
-        self.delButton.setText(QtGui.QApplication.translate("LocalRule", "删除", None, QtGui.QApplication.UnicodeUTF8))
+        self.copyButton.setText(QtGui.QApplication.translate("LocalRule", "Copy", None, QtGui.QApplication.UnicodeUTF8))
+        self.delButton.setText(QtGui.QApplication.translate("LocalRule", "Delete", None, QtGui.QApplication.UnicodeUTF8))
 
