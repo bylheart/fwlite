@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import translate
+tr = translate.translate.translate
+# -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\redirectorrules.ui'
 #
-# Created: Thu Nov 26 00:13:15 2015
+# Created: Sat Nov 28 05:32:50 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -63,8 +66,8 @@ class Ui_RedirectorRules(object):
         QtCore.QMetaObject.connectSlotsByName(RedirectorRules)
 
     def retranslateUi(self, RedirectorRules):
-        RedirectorRules.setWindowTitle(QtGui.QApplication.translate("RedirectorRules", "Form", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("RedirectorRules", "Add Rule", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("RedirectorRules", "Redirect to", None, QtGui.QApplication.UnicodeUTF8))
-        self.AddRedirectorRuleButton.setText(QtGui.QApplication.translate("RedirectorRules", "Add", None, QtGui.QApplication.UnicodeUTF8))
+        RedirectorRules.setWindowTitle(tr("RedirectorRules", "Form", None, QtGui.QApplication.UnicodeUTF8))
+        self.label.setText(tr("RedirectorRules", "Add Rule", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_2.setText(tr("RedirectorRules", "Redirect to", None, QtGui.QApplication.UnicodeUTF8))
+        self.AddRedirectorRuleButton.setText(tr("RedirectorRules", "Add", None, QtGui.QApplication.UnicodeUTF8))
 

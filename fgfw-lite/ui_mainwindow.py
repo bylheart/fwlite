@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import translate
+tr = translate.translate.translate
+# -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\mainwindow.ui'
 #
-# Created: Thu Nov 26 00:13:14 2015
+# Created: Sat Nov 28 05:32:50 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -44,6 +47,6 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "FW-Lite", None, QtGui.QApplication.UnicodeUTF8))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QtGui.QApplication.translate("MainWindow", "Console", None, QtGui.QApplication.UnicodeUTF8))
+        MainWindow.setWindowTitle(tr("MainWindow", "FW-Lite", None, QtGui.QApplication.UnicodeUTF8))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), tr("MainWindow", "Console", None, QtGui.QApplication.UnicodeUTF8))
 

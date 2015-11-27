@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import translate
+tr = translate.translate.translate
+# -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\remoteresolver.ui'
 #
-# Created: Thu Nov 26 00:13:16 2015
+# Created: Sat Nov 28 05:32:51 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -50,10 +53,10 @@ class Ui_remote_resolver(object):
         QtCore.QMetaObject.connectSlotsByName(remote_resolver)
 
     def retranslateUi(self, remote_resolver):
-        remote_resolver.setWindowTitle(QtGui.QApplication.translate("remote_resolver", "FW-Lite Remote Resolver", None, QtGui.QApplication.UnicodeUTF8))
-        self.hostLabel.setText(QtGui.QApplication.translate("remote_resolver", "Hostname:", None, QtGui.QApplication.UnicodeUTF8))
-        self.hostLineEdit.setText(QtGui.QApplication.translate("remote_resolver", "www.google.com", None, QtGui.QApplication.UnicodeUTF8))
-        self.serverLabel.setText(QtGui.QApplication.translate("remote_resolver", "DNS Server:", None, QtGui.QApplication.UnicodeUTF8))
-        self.serverlineEdit.setText(QtGui.QApplication.translate("remote_resolver", "8.8.8.8", None, QtGui.QApplication.UnicodeUTF8))
-        self.goButton.setText(QtGui.QApplication.translate("remote_resolver", "Resolve", None, QtGui.QApplication.UnicodeUTF8))
+        remote_resolver.setWindowTitle(tr("remote_resolver", "FW-Lite Remote Resolver", None, QtGui.QApplication.UnicodeUTF8))
+        self.hostLabel.setText(tr("remote_resolver", "Hostname:", None, QtGui.QApplication.UnicodeUTF8))
+        self.hostLineEdit.setText(tr("remote_resolver", "www.google.com", None, QtGui.QApplication.UnicodeUTF8))
+        self.serverLabel.setText(tr("remote_resolver", "DNS Server:", None, QtGui.QApplication.UnicodeUTF8))
+        self.serverlineEdit.setText(tr("remote_resolver", "8.8.8.8", None, QtGui.QApplication.UnicodeUTF8))
+        self.goButton.setText(tr("remote_resolver", "Resolve", None, QtGui.QApplication.UnicodeUTF8))
 

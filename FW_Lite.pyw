@@ -28,6 +28,8 @@ from ui_redirectorrules import Ui_RedirectorRules
 from ui_settings import Ui_Settings
 from util import SConfigParser, parse_hostport
 from resolver import tcp_dns_record
+import translate
+tr = translate.translate.translate
 try:
     import httplib
     import urllib2
@@ -109,13 +111,13 @@ class MainWindow(QtGui.QMainWindow):
         self.port = int(listen) if listen.isdigit() else int(listen.split(':')[1])
 
         self.LocalRules = LocalRules(self)
-        self.ui.tabWidget.addTab(self.LocalRules, u"用户规则")
+        self.ui.tabWidget.addTab(self.LocalRules, tr("MainWindow", "user_rules", None, QtGui.QApplication.UnicodeUTF8))
 
         self.RedirRules = RedirectorRules(self)
-        self.ui.tabWidget.addTab(self.RedirRules, u"重定向规则")
+        self.ui.tabWidget.addTab(self.RedirRules, tr("MainWindow", "redir_rules", None, QtGui.QApplication.UnicodeUTF8))
 
         self.Settings = Settings(self)
-        self.ui.tabWidget.addTab(self.Settings, u"设置")
+        self.ui.tabWidget.addTab(self.Settings, tr("MainWindow", "settings", None, QtGui.QApplication.UnicodeUTF8))
 
         self.resolve = RemoteResolve(self)
 
@@ -169,13 +171,13 @@ class MainWindow(QtGui.QMainWindow):
         self.move(qr.topLeft())
 
     def createActions(self):
-        self.showToggleAction = QtGui.QAction(u"显示/隐藏", self, triggered=self.showToggle)
-        self.reloadAction = QtGui.QAction(u"重新载入", self, triggered=self.reload)
-        self.setIENoneAction = QtGui.QAction(u"直接连接", self, triggered=lambda: setIEproxy(0))
-        self.flushDNSAction = QtGui.QAction(u"清空DNS缓存", self, triggered=self.flushDNS)
-        self.remoteDNSAction = QtGui.QAction(u"远程DNS解析", self, triggered=self.remoteDNS)
-        self.settingDNSAction = QtGui.QAction(u"设置", self, triggered=self.openSetting)
-        self.quitAction = QtGui.QAction(u"退出", self, triggered=self.on_Quit)
+        self.showToggleAction = QtGui.QAction(tr("MainWindow", "show_toggle", None, QtGui.QApplication.UnicodeUTF8), self, triggered=self.showToggle)
+        self.reloadAction = QtGui.QAction(tr("MainWindow", "reload", None, QtGui.QApplication.UnicodeUTF8), self, triggered=self.reload)
+        self.setIENoneAction = QtGui.QAction(tr("MainWindow", "direct_access", None, QtGui.QApplication.UnicodeUTF8), self, triggered=lambda: setIEproxy(0))
+        self.flushDNSAction = QtGui.QAction(tr("MainWindow", "clear_dns_cache", None, QtGui.QApplication.UnicodeUTF8), self, triggered=self.flushDNS)
+        self.remoteDNSAction = QtGui.QAction(tr("MainWindow", "remote_dns_resolve", None, QtGui.QApplication.UnicodeUTF8), self, triggered=self.remoteDNS)
+        self.settingDNSAction = QtGui.QAction(tr("MainWindow", "settings", None, QtGui.QApplication.UnicodeUTF8), self, triggered=self.openSetting)
+        self.quitAction = QtGui.QAction(tr("MainWindow", "exit", None, QtGui.QApplication.UnicodeUTF8), self, triggered=self.on_Quit)
 
     def createTrayIcon(self):
         if self.trayIcon and self.trayIcon.isVisible():
@@ -185,10 +187,10 @@ class MainWindow(QtGui.QMainWindow):
         self.trayIconMenu.addAction(self.reloadAction)
 
         if sys.platform.startswith('win'):
-            self.settingIEproxyMenu = self.trayIconMenu.addMenu(u'设置代理')
+            self.settingIEproxyMenu = self.trayIconMenu.addMenu(tr("MainWindow", "set_proxy", None, QtGui.QApplication.UnicodeUTF8))
             self.setIEProxyMenu()
 
-        advancedMenu = self.trayIconMenu.addMenu(u'高级')
+        advancedMenu = self.trayIconMenu.addMenu(tr("MainWindow", "advanced", None, QtGui.QApplication.UnicodeUTF8))
         advancedMenu.addAction(self.flushDNSAction)
         advancedMenu.addAction(self.remoteDNSAction)
 
@@ -208,11 +210,11 @@ class MainWindow(QtGui.QMainWindow):
 
         profile = [int(x) for x in self.conf.dget('fgfwproxy', 'profile', '13')]
         for i, p in enumerate(profile):
-            d = {0: u'直接连接',
-                 1: u'智能代理',
-                 2: u'全局加密',
-                 3: u'国内直连',
-                 4: u'全局代理',
+            d = {0: tr("MainWindow", "direct_access", None, QtGui.QApplication.UnicodeUTF8),
+                 1: tr("MainWindow", "auto_routing", None, QtGui.QApplication.UnicodeUTF8),
+                 2: tr("MainWindow", "encrypt_all", None, QtGui.QApplication.UnicodeUTF8),
+                 3: tr("MainWindow", "chnroute", None, QtGui.QApplication.UnicodeUTF8),
+                 4: tr("MainWindow", "global_mode", None, QtGui.QApplication.UnicodeUTF8),
                  }
             title = d[p] + str(self.port + i) if p in d else (u'127.0.0.1:%d profile%d' % ((self.port + i), p))
             if i < 6:
@@ -468,7 +470,7 @@ class RemoteResolve(QtGui.QWidget):
         self.trigger.connect(self.ui.resultTextEdit.setPlainText)
 
     def do_resolve(self):
-        self.ui.resultTextEdit.setPlainText('resolving...')
+        self.ui.resultTextEdit.setPlainText(tr("MainWindow", "resolving_notice", None, QtGui.QApplication.UnicodeUTF8))
         threading.Thread(target=self._do_resolve, args=(self.ui.hostLineEdit.text(), self.ui.serverlineEdit.text())).start()
 
     def _do_resolve(self, host, server):
@@ -511,7 +513,9 @@ class Settings(QtGui.QWidget):
         self.port = parent.port
         self.icon = parent
         setFont(self.ui.ssMethodBox)
-        header = [u'名称', u'地址', u'优先级']
+        header = [tr("MainWindow", "name", None, QtGui.QApplication.UnicodeUTF8),
+                  tr("MainWindow", "address", None, QtGui.QApplication.UnicodeUTF8),
+                  tr("MainWindow", "priority", None, QtGui.QApplication.UnicodeUTF8)]
         data = []
         self.table_model = MyTableModel(self, data, header)
         self.ui.tableView.setModel(self.table_model)
@@ -545,7 +549,7 @@ class Settings(QtGui.QWidget):
         if not sPriority:
             sPriority = 99
         if not all([sServer, sPort.isdigit(), sMethod, sPass]):
-            self.icon.showMessage(u'出错啦！')
+            self.icon.showMessage(tr("MainWindow", "error_notice", None, QtGui.QApplication.UnicodeUTF8))
             return
         data = json.dumps((sName, ('ss://%s:%s@%s:%s %s' % (urlquote(sMethod), urlquote(sPass), sServer, sPort, sPriority)))).encode()
         try:
@@ -589,7 +593,7 @@ class Settings(QtGui.QWidget):
         else:
             return self.showMessage('OS not recognised')
         subprocess.Popen('%s %s' % (cmd, path), shell=True)
-        self.icon.showMessage(u'新的设置将在重新载入后生效')
+        self.icon.showMessage(tr("MainWindow", "reload_notice", None, QtGui.QApplication.UnicodeUTF8))
 
 
 class MyTableModel(QtCore.QAbstractTableModel):

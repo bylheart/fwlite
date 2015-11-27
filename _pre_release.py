@@ -39,6 +39,13 @@ if raw_input('update ui? y/n: ').lower().startswith('y'):
         fname = f.replace('\\', '/').split('/')[-1].split('.')[0]
         os.system('pyside-uic %s -o ./fgfw-lite/ui_%s.py' % (f, fname))
 
+    for path in glob.glob('./fgfw-lite/ui_*.py'):
+        with open(path, 'r') as f:
+            data = f.read()
+        with open(path, 'w') as f:
+            f.write('# -*- coding: utf-8 -*-\nimport translate\ntr = translate.translate.translate\n')
+            f.write(data.replace('QtGui.QApplication.translate', 'tr'))
+
 
 BLOCKSIZE = 8192
 flist = ['./fgfw-lite/fgfw-lite.py',
@@ -54,6 +61,7 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          './fgfw-lite/streamcipher.py',
          './fgfw-lite/redirector.py',
          './fgfw-lite/resolver.py',
+         './fgfw-lite/translate.py',
          './fgfw-lite/parent_proxy.py',
          './fgfw-lite/get_proxy.py',
          './fgfw-lite/connection.py',
@@ -70,6 +78,9 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          ]
 
 for p in glob.glob('./fgfw-lite/ui_*.py'):
+    flist.append(p.replace('\\', '/'))
+
+for p in glob.glob('./fgfw-lite/lang/*.py'):
     flist.append(p.replace('\\', '/'))
 
 for p in glob.glob('./Python27/*.egg'):

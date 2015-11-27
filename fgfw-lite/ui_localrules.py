@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import translate
+tr = translate.translate.translate
+# -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\localrules.ui'
 #
-# Created: Thu Nov 26 00:13:13 2015
+# Created: Sat Nov 28 05:32:49 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -67,9 +70,9 @@ class Ui_LocalRules(object):
         QtCore.QMetaObject.connectSlotsByName(LocalRules)
 
     def retranslateUi(self, LocalRules):
-        LocalRules.setWindowTitle(QtGui.QApplication.translate("LocalRules", "Form", None, QtGui.QApplication.UnicodeUTF8))
-        self.label.setText(QtGui.QApplication.translate("LocalRules", "Add Rule", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_2.setText(QtGui.QApplication.translate("LocalRules", "Expires", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_3.setText(QtGui.QApplication.translate("LocalRules", "Minutes", None, QtGui.QApplication.UnicodeUTF8))
-        self.AddLocalRuleButton.setText(QtGui.QApplication.translate("LocalRules", "Add", None, QtGui.QApplication.UnicodeUTF8))
+        LocalRules.setWindowTitle(tr("LocalRules", "Form", None, QtGui.QApplication.UnicodeUTF8))
+        self.label.setText(tr("LocalRules", "Add Rule", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_2.setText(tr("LocalRules", "Expires", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_3.setText(tr("LocalRules", "Minutes", None, QtGui.QApplication.UnicodeUTF8))
+        self.AddLocalRuleButton.setText(tr("LocalRules", "Add", None, QtGui.QApplication.UnicodeUTF8))
 

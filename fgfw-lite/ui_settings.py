@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+import translate
+tr = translate.translate.translate
+# -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\settings.ui'
 #
-# Created: Thu Nov 26 00:13:16 2015
+# Created: Sat Nov 28 05:32:52 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -122,19 +125,19 @@ class Ui_Settings(object):
         QtCore.QMetaObject.connectSlotsByName(Settings)
 
     def retranslateUi(self, Settings):
-        Settings.setWindowTitle(QtGui.QApplication.translate("Settings", "设置", None, QtGui.QApplication.UnicodeUTF8))
-        self.parentRemoveButton.setText(QtGui.QApplication.translate("Settings", "Remove", None, QtGui.QApplication.UnicodeUTF8))
-        self.gfwlistToggle.setText(QtGui.QApplication.translate("Settings", "gfwlist", None, QtGui.QApplication.UnicodeUTF8))
-        self.updateToggle.setText(QtGui.QApplication.translate("Settings", "Auto Update", None, QtGui.QApplication.UnicodeUTF8))
-        self.groupBox_2.setTitle(QtGui.QApplication.translate("Settings", "Shadowsocks", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_3.setText(QtGui.QApplication.translate("Settings", "Hostname", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_4.setText(QtGui.QApplication.translate("Settings", "Port", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_5.setText(QtGui.QApplication.translate("Settings", "Encryption", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_6.setText(QtGui.QApplication.translate("Settings", "Password", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_7.setText(QtGui.QApplication.translate("Settings", "Name", None, QtGui.QApplication.UnicodeUTF8))
-        self.label_8.setText(QtGui.QApplication.translate("Settings", "Priority", None, QtGui.QApplication.UnicodeUTF8))
-        self.ssPriorityEdit.setText(QtGui.QApplication.translate("Settings", "99", None, QtGui.QApplication.UnicodeUTF8))
-        self.shadowsocksAddButton.setText(QtGui.QApplication.translate("Settings", "Add", None, QtGui.QApplication.UnicodeUTF8))
-        self.editConfButton.setText(QtGui.QApplication.translate("Settings", "Edit userconf.ini", None, QtGui.QApplication.UnicodeUTF8))
-        self.editLocalButton.setText(QtGui.QApplication.translate("Settings", "Edit local.txt", None, QtGui.QApplication.UnicodeUTF8))
+        Settings.setWindowTitle(tr("Settings", "设置", None, QtGui.QApplication.UnicodeUTF8))
+        self.parentRemoveButton.setText(tr("Settings", "Remove", None, QtGui.QApplication.UnicodeUTF8))
+        self.gfwlistToggle.setText(tr("Settings", "gfwlist", None, QtGui.QApplication.UnicodeUTF8))
+        self.updateToggle.setText(tr("Settings", "Auto Update", None, QtGui.QApplication.UnicodeUTF8))
+        self.groupBox_2.setTitle(tr("Settings", "Shadowsocks", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_3.setText(tr("Settings", "Hostname", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_4.setText(tr("Settings", "Port", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_5.setText(tr("Settings", "Encryption", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_6.setText(tr("Settings", "Password", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_7.setText(tr("Settings", "Name", None, QtGui.QApplication.UnicodeUTF8))
+        self.label_8.setText(tr("Settings", "Priority", None, QtGui.QApplication.UnicodeUTF8))
+        self.ssPriorityEdit.setText(tr("Settings", "99", None, QtGui.QApplication.UnicodeUTF8))
+        self.shadowsocksAddButton.setText(tr("Settings", "Add", None, QtGui.QApplication.UnicodeUTF8))
+        self.editConfButton.setText(tr("Settings", "Edit userconf.ini", None, QtGui.QApplication.UnicodeUTF8))
+        self.editLocalButton.setText(tr("Settings", "Edit local.txt", None, QtGui.QApplication.UnicodeUTF8))
 
