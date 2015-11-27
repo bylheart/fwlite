@@ -5,7 +5,7 @@
     "./Python27/geoip2.egg": "13cec5effa861725524c02342b476095b1475c55c6bd109ab9df930f39242d0f",
     "./Python27/maxminddb.egg": "94908e0f4b75f402bcb304f5da8e4bf46423800c87bc86b471c93eeaed853969",
     "./Python27/python27.zip": "a6d447d88ce00dd6c0fb5674a8605375640fecbc91fe8c9f5f1ff740ab50bb0f",
-    "./README.md": "3d931bdaa56a82f0a0dc0f74217ec1e1861e688857c013dd6ec35031ebc6cb3e",
+    "./README.md": "aff2ecd8d4a69d5bdbc08fe7b5ccf54b7402ad0d7c01ec0a5f78813cba1267d9",
     "./fgfw-lite/GeoLite2-Country.mmdb": "11795dfa4567cd409197b335b747a000a331ab925c054f7a7f577e9868594cb2",
     "./fgfw-lite/apfilter.py": "baca858695825b7d22c383711c5b61d8f48d755ab57de5c8ea8d54a98b8372ad",
     "./fgfw-lite/basesocket.py": "9db95271d06c37bde2109f37df266e5549a9562f7dc8e9bd663e08337508a5e6",
@@ -36,6 +36,6 @@
     "./fgfw-lite/ui_remoteresolver.py": "7ea70a10a421ea598daec138fac6ab2bad184e24dcc94f7ad0e247d5e46d93cf",
     "./fgfw-lite/ui_settings.py": "f7fe0b871a6a11187894176b6e5527d79de3f69ca68faed6121c7678a43e6962",
     "./fgfw-lite/util.py": "1186b2370b84be848aa37a2ecc817ddce4299a5861982028f1d99fbdc0feb38e",
-    "./release_note.txt": "f67ae7badea7b2cc616451049d7139a4a99433bd2eebd0a71eb5423e9450e036",
+    "./release_note.txt": "34ae768988be020affc8b61a1e6bebb83b218ff5e1e3cdd3688cd38f6dc0c2c8",
     "./userconf.sample.ini": "6e39909498e1c4a1843c20fbcb8521b88924545ae4a6a303971082232d2d2ced"
 }

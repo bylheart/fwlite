@@ -4,7 +4,7 @@ A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects 
 
 FW-Lite is Portable Software.
 
-Current Version: 4.9.6
+Current Version: 4.10
 
 Tested on Windows 7 and openSUSE.
 
