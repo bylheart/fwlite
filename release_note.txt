@@ -1,3 +1,8 @@
+2015.11.28 v4.10.1
+O(1) domain-endswith check, more speedy
+refine translate
+remove warning log on remote resolve
+
 2015.11.28 v4.10
 multi-language support
 fix remote resolver
