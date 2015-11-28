@@ -28,6 +28,7 @@ from ui_redirectorrules import Ui_RedirectorRules
 from ui_settings import Ui_Settings
 from util import SConfigParser, parse_hostport
 from resolver import tcp_dns_record
+from parent_proxy import ParentProxy
 import translate
 tr = translate.translate.translate
 try:
@@ -476,7 +477,7 @@ class RemoteResolve(QtGui.QWidget):
     def _do_resolve(self, host, server):
         try:
             # result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host.encode()).decode().strip('='), server), timeout=1).read().decode())
-            proxy = 'http://127.0.0.1:%d' % self.port
+            proxy = ParentProxy('foo', 'http://127.0.0.1:%d' % self.port)
             server = parse_hostport(server, 53)
             record = tcp_dns_record(host, 'ANY', server, proxy)
             if record is None:
