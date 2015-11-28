@@ -83,9 +83,7 @@ class ap_filter(object):
         self.excludes = []
         self.matches = []
         self.domains = set()
-        self.domain_endswith = tuple()
         self.exclude_domains = set()
-        self.exclude_domain_endswith = tuple()
         self.url_startswith = tuple()
         self.fast = defaultdict(list)
         self.rules = set()
@@ -134,16 +132,10 @@ class ap_filter(object):
     def _add_exclude_domain(self, rule):
         rule = rule.rstrip('/^')
         self.exclude_domains.add(rule[4:])
-        temp = set(self.exclude_domain_endswith)
-        temp.add('.' + rule[4:])
-        self.exclude_domain_endswith = tuple(temp)
 
     def _add_domain(self, rule):
         rule = rule.rstrip('/^')
         self.domains.add(rule[2:])
-        temp = set(self.domain_endswith)
-        temp.add('.' + rule[2:])
-        self.domain_endswith = tuple(temp)
 
     def match(self, url, host=None, domain_only=False):
         if host is None:
@@ -165,13 +157,10 @@ class ap_filter(object):
             return True
 
     def _domainmatch(self, host):
-        if host in self.exclude_domains:
+        lst = ['.'.join(host.split('.')[i:]) for i in range(len(host.split('.')))]
+        if any(host in self.exclude_domains for host in lst):
             return False
-        if host.endswith(self.exclude_domain_endswith):
-            return False
-        if host in self.domains:
-            return True
-        if host.endswith(self.domain_endswith):
+        if any(host in self.domains for host in lst):
             return True
 
     def _fastmatch(self, url):
@@ -192,15 +181,9 @@ class ap_filter(object):
             if rule.startswith('||') and '*' not in rule:
                 rule = rule.rstrip('/')
                 self.domains.discard(rule[2:])
-                temp = set(self.domain_endswith)
-                temp.discard('.' + rule[2:])
-                self.domain_endswith = tuple(temp)
             elif rule.startswith('@@||') and '*' not in rule:
                 rule = rule.rstrip('/')
                 self.exclude_domains.discard(rule[4:])
-                temp = set(self.exclude_domain_endswith)
-                temp.discard('.' + rule[4:])
-                self.exclude_domain_endswith = tuple(temp)
             elif rule.startswith(('|https://', '@', '/')):
                 lst = self.excludes if rule.startswith('@') else self.matches
                 for o in lst[:]:
@@ -243,9 +226,7 @@ if __name__ == "__main__":
         print(gfwlist.excludes)
         print(gfwlist.matches)
         print(gfwlist.domains)
-        print(gfwlist.domain_endswith)
         print(gfwlist.exclude_domains)
-        print(gfwlist.exclude_domain_endswith)
         print(gfwlist.url_startswith)
         print(gfwlist.fast)
     show()
