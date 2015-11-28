@@ -43,7 +43,7 @@ if raw_input('update ui? y/n: ').lower().startswith('y'):
         with open(path, 'r') as f:
             data = f.read()
         with open(path, 'w') as f:
-            f.write('# -*- coding: utf-8 -*-\nimport translate\ntr = translate.translate.translate\n')
+            f.write('# -*- coding: utf-8 -*-\nimport translate\ntr = translate.translate\n')
             f.write(data.replace('QtGui.QApplication.translate', 'tr'))
 
 

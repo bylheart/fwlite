@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import translate
-tr = translate.translate.translate
+tr = translate.translate
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\remoteresolver.ui'
 #
-# Created: Sat Nov 28 05:32:51 2015
+# Created: Sat Nov 28 22:47:17 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!

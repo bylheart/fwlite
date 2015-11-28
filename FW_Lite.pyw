@@ -30,7 +30,7 @@ from util import SConfigParser, parse_hostport
 from resolver import tcp_dns_record
 from parent_proxy import ParentProxy
 import translate
-tr = translate.translate.translate
+tr = translate.translate
 try:
     import httplib
     import urllib2
