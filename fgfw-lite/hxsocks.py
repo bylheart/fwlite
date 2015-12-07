@@ -206,16 +206,16 @@ class hxssocket(basesocket):
             self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, salt, ctx, 0)
 
             pt = struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data
-            if len(pt) > 65500:
-                pt, data_more = pt[:65500], pt[65500]
+            if len(pt) > self.bufsize:
+                pt, data_more = pt[:self.bufsize], pt[self.bufsize]
             ct, mac = self.cipher.encrypt(pt)
             self._sock.sendall(self.pskcipher.encrypt(chr(11) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
             if data and self._data_bak is None:
                 self._data_bak = data
             self.connected = 1
         else:
-            if len(data) > 65500:
-                data, data_more = data[:65500], data[65500:]
+            if len(data) > self.bufsize:
+                data, data_more = data[:self.bufsize], data[self.bufsize:]
 
             padding_len = random.randint(64, 255) if len(data) < 256 else 0
             padding = b'\x00' * padding_len

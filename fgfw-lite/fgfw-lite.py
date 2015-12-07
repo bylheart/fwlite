@@ -230,7 +230,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
 class ProxyHandler(HTTPRequestHandler):
     server_version = "FW-Lite/" + __version__
     protocol_version = "HTTP/1.1"
-    bufsize = 65500
+    bufsize = 8192
     timeout = 60
 
     def setup(self):
