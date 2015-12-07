@@ -215,10 +215,10 @@ class hxssocket(basesocket):
             self.connected = 1
         else:
             if len(data) > 65500:
-                data, data_more = data[:65500], data[65500]
+                data, data_more = data[:65500], data[65500:]
 
             padding_len = random.randint(64, 255) if len(data) < 256 else 0
-            padding = (b'\x00' * padding_len) if padding_len else b''
+            padding = b'\x00' * padding_len
             data = chr(padding_len) + data + padding
 
             ct, mac = self.cipher.encrypt(data)
