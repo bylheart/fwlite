@@ -49,7 +49,7 @@ except ImportError as e:
     print(repr(e))
 try:
     import pynotify
-    pynotify.init('FW-Lite Notify')
+    pynotify.init('FWLite Notify')
 except ImportError:
     pynotify = None
 

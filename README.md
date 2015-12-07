@@ -2,7 +2,7 @@
 
 A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects blocked sites automatically, apply parent proxy. And a lot more.
 
-FW-Lite is Portable Software.
+FWLite is Portable Software.
 
 Current Version: 4.10.1
 
