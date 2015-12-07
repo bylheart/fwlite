@@ -200,7 +200,7 @@ class MainWindow(QtGui.QMainWindow):
         self.trayIconMenu.addAction(self.quitAction)
 
         self.trayIcon = QtGui.QSystemTrayIcon(self)
-        self.trayIcon.setToolTip(u'FW-Lite')
+        self.trayIcon.setToolTip(u'FWLite')
         self.trayIcon.setContextMenu(self.trayIconMenu)
         self.trayIcon.setIcon(QtGui.QIcon(TRAY_ICON))
         self.trayIcon.activated.connect(self.on_trayActive)
@@ -257,14 +257,14 @@ class MainWindow(QtGui.QMainWindow):
 
     def showMessage(self, msg, timeout=None):
         if pynotify:
-            notification = pynotify.Notification('FW-Lite Notify', msg)
+            notification = pynotify.Notification('FWLite Notify', msg)
             notification.set_hint('x', 200)
             notification.set_hint('y', 400)
             if timeout:
                 notification.set_timeout(timeout)
             notification.show()
         else:
-            self.trayIcon.showMessage(u'FW-Lite', msg)
+            self.trayIcon.showMessage(u'FWLite', msg)
 
     def closeEvent(self, event):
         # hide mainwindow when close
