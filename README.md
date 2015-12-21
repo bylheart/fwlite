@@ -26,9 +26,9 @@ Set your browser's proxy setting to `http://127.0.0.1:8118`.
 On Windows, this should be done automatically.
 
 ####Start
-For Windows, run `FW_Lite.exe`
+For Windows, run `FWLite.exe`
 
-For Linux and Mac, run `FW_Lite.pyw`
+For Linux and Mac, run `FWLite.pyw`
 
 ####Requirements under openSUSE
 

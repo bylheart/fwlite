@@ -72,8 +72,8 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          './userconf.sample.ini',
          './Python27/python27.zip',
          './README.md',
-         './FW_Lite.exe',
-         './FW_Lite.pyw',
+         './FWLite.exe',
+         './FWLite.pyw',
          './release_note.txt',
          ]
 
