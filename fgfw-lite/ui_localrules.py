@@ -5,7 +5,7 @@ tr = translate.translate
 
 # Form implementation generated from reading ui file './fgfw-lite/ui\localrules.ui'
 #
-# Created: Sat Nov 28 22:47:14 2015
+# Created: Tue Dec 22 04:46:51 2015
 #      by: pyside-uic 0.2.15 running on PySide 1.2.2
 #
 # WARNING! All changes made in this file will be lost!

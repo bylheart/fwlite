@@ -70,7 +70,7 @@ from threading import Thread, Timer
 import logging
 import logging.handlers
 logging.basicConfig(level=logging.INFO,
-                    format='FW-Lite %(asctime)s %(levelname)s %(message)s',
+                    format='FWLite %(asctime)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S', filemode='a+')
 
 import config

@@ -130,7 +130,7 @@ class get_proxy(object):
         self.force = ap_filter()
         self.temp = []
         self.temp_rules = set()
-        self.ignore = []
+        self.ignore = []  # used by rules like "||twimg.com auto"
 
         for line in open('./fgfw-lite/local.txt'):
             rule, _, dest = line.strip().partition(' ')
@@ -180,6 +180,7 @@ class get_proxy(object):
         return self.conf.REDIRECTOR.bad302(uri)
 
     def add_ignore(self, rule):
+        '''called by redirector'''
         self.ignore.append(ap_rule(rule))
 
     def add_rule(self, line, force=False):
