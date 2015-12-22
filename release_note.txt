@@ -1,3 +1,9 @@
+2015.12.23 v4.11
+fix problem with hxsocks
+update translate
+change some filename
+refine get_proxy.py
+
 2015.11.28 v4.10.1
 O(1) domain-endswith check, more speedy
 refine translate

@@ -10,7 +10,6 @@ os.chdir(WORKINGDIR)
 sys.path += glob.glob('%s/Python27/*.egg' % WORKINGDIR)
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 import copy
-import datetime
 import shutil
 import threading
 import atexit

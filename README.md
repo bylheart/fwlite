@@ -4,7 +4,7 @@ A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects 
 
 FWLite is Portable Software.
 
-Current Version: 4.10.1
+Current Version: 4.11
 
 Tested on Windows 7 and openSUSE.
 
