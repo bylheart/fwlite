@@ -26,6 +26,7 @@ import urlparse
 from threading import Timer
 from collections import defaultdict
 from util import parse_hostport
+import config
 
 
 class ExpiredError(Exception):
@@ -215,6 +216,8 @@ class ap_filter(object):
                         break
             self.rules.discard(rule)
             del self.expire[rule]
+            config.conf.stdout()
+
 
 if __name__ == "__main__":
     gfwlist = ap_filter()
