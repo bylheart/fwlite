@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-data = {'user_rules': u"用户规则",
+data = {'user_rules': u"自定义规则",
         'redir_rules': u"重定向规则",
         'settings': u"设置",
         'show_toggle': u"显示/隐藏",
