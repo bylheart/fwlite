@@ -73,6 +73,8 @@ class ap_rule(object):
         return self._regex.search(uri)
 
     def __repr__(self):
+        if self.expire:
+            return '<ap_rule: %s exp @ %s>' % (self.rule, self.expire)
         return '<ap_rule: %s>' % self.rule
 
 
@@ -87,6 +89,7 @@ class ap_filter(object):
         self.url_startswith = tuple()
         self.fast = defaultdict(list)
         self.rules = set()
+        self.expire = {}
         if lst:
             for rule in lst:
                 self.add(rule)
@@ -110,6 +113,7 @@ class ap_filter(object):
         else:
             self._add_slow(rule)
         self.rules.add(rule)
+        self.expire[rule] = expire
         if expire:
             Timer(expire, self.remove, (rule, )).start()
 
@@ -210,6 +214,7 @@ class ap_filter(object):
                         lst.remove(o)
                         break
             self.rules.discard(rule)
+            del self.expire[rule]
 
 if __name__ == "__main__":
     gfwlist = ap_filter()

@@ -10,7 +10,7 @@ from threading import Timer
 
 from repoze.lru import lru_cache
 
-from apfilter import ap_rule, ap_filter, ExpiredError
+from apfilter import ap_rule, ap_filter
 from util import ip_to_country_code
 
 
@@ -127,25 +127,24 @@ class get_proxy(object):
 
     def config(self):
         self.gfwlist = ap_filter()
-        self.force = ap_filter()
-        self.temp = []
-        self.temp_rules = set()
-        self.ignore = []  # used by rules like "||twimg.com auto"
+        self.local = ap_filter()
+        self.ignore = ap_filter()  # used by rules like "||twimg.com auto"
 
         for line in open('./fgfw-lite/local.txt'):
             rule, _, dest = line.strip().partition(' ')
             if dest:  # |http://www.google.com/url forcehttps
                 self.add_redirect(rule, dest)
             else:
-                self.add_temp(line, quiet=True)
+                self.add_rule(line, local=True)
 
         if self.conf.rproxy is False:
+            # consider cloud.txt a part of gfwlist
             for line in open('./fgfw-lite/cloud.txt'):
                 rule, _, dest = line.strip().partition(' ')
                 if dest:  # |http://www.google.com/url forcehttps
                     self.add_redirect(rule, dest)
                 else:
-                    self.add_rule(line, force=True)
+                    self.add_rule(line)
 
             self.logger.info('loading  gfwlist...')
             try:
@@ -181,16 +180,12 @@ class get_proxy(object):
 
     def add_ignore(self, rule):
         '''called by redirector'''
-        self.ignore.append(ap_rule(rule))
+        self.ignore.add(ap_rule(rule))
 
-    def add_rule(self, line, force=False):
+    def add_rule(self, line, local=False):
         try:
-            if '||' in line:
-                self.force.add(line)
-            elif force:
-                self.force.add(line)
-            else:
-                self.gfwlist.add(line)
+            apfilter = self.local if local else self.gfwlist
+            apfilter.add(line)
         except ValueError as e:
             self.logger.debug('create autoproxy rule failed: %s' % e)
 
@@ -204,17 +199,6 @@ class get_proxy(object):
             return False
         except:
             pass
-
-    def if_temp(self, uri):
-        for rule in self.temp:
-            try:
-                if rule.match(uri):
-                    return not rule.override
-            except ExpiredError:
-                self.logger.info('%s expired' % rule.rule)
-                self.conf.stdout()
-                self.temp.remove(rule)
-                self.temp_rules.discard(rule.rule)
 
     def ifgfwed(self, uri, host, port, ip, level=1):
         if level == 0:
@@ -232,15 +216,11 @@ class get_proxy(object):
         if level == 4:
             return True
 
-        a = self.if_temp(uri)
+        a = self.local.match(uri, host)
         if a is not None:
             return a
 
-        a = self.force.match(uri, host)
-        if a is not None:
-            return a
-
-        if any(rule.match(uri) for rule in self.ignore):
+        if self.ignore.match(uri, host):
             return None
 
         if level == 2 and uri.startswith('http://'):
@@ -252,7 +232,7 @@ class get_proxy(object):
         if level == 3:
             return True
 
-        if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True) and self.gfwlist.match(uri):
+        if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True) and self.gfwlist.match(uri, host):
             return True
 
     def parentproxy(self, uri, host, command, ip, level=1):
@@ -262,9 +242,9 @@ class get_proxy(object):
                   'http://www.inxian.com'
             host: ('www.google.com', 443) (no port number is allowed)
             level: 0 -- direct
-                   1 -- auto:        proxy if force, direct if ip in region or override, proxy if gfwlist
-                   2 -- encrypt all: proxy if force or not https, direct if ip in region or override, proxy if gfwlist
-                   3 -- chnroute:    proxy if force, direct if ip in region or override, proxy if all
+                   1 -- auto:        proxy if local_rule, direct if ip in region or override, proxy if gfwlist
+                   2 -- encrypt all: proxy if local_rule or not https, direct if ip in region or override, proxy if gfwlist
+                   3 -- chnroute:    proxy if local_rule, direct if ip in region or override, proxy if all
                    4 -- global:      proxy if not local
         '''
         host, port = host
@@ -334,7 +314,7 @@ class get_proxy(object):
                     rule = '|https://%s' % requesthost[0]
                 else:
                     rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
-                if rule not in self.temp_rules:
+                if rule not in self.local.rules:
                     direct_sr = self.STATS.srbhp(requesthost[0], 'direct')
                     if direct_sr[1] < 2:
                         exp = 1
@@ -349,13 +329,6 @@ class get_proxy(object):
 
     def add_temp(self, rule, exp=None, quiet=False):
         rule = rule.strip()
-        if rule not in self.temp_rules:
-            try:
-                if not quiet:
-                    self.logger.info('add autoproxy rule: %s%s' % (rule, (' expire in %.1f min' % exp) if exp else ''))
-                self.temp.append(ap_rule(rule, expire=None if not exp else (time.time() + 60 * exp)))
-                self.temp_rules.add(rule)
-            except ValueError:
-                pass
-        else:
-            return 'already in there'
+        if rule not in self.local.rules:
+            self.local.add(rule, exp)
+            self.logger.info('add autoproxy rule: %s%s' % (rule, (' expire in %.1f min' % exp) if exp else ''))

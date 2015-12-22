@@ -155,7 +155,7 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
         self.PARENT_PROXY = get_proxy(self)
         self.resolver = resolver.get_resolver(self.localdns, self.remotedns,
                                               ParentProxy('self', 'http://127.0.0.1:%d' % self.listen[1]),
-                                              self.PARENT_PROXY.force)
+                                              [self.PARENT_PROXY.gfwlist, self.PARENT_PROXY.local])
 
     def reload(self):
         self.version.read('version.ini')

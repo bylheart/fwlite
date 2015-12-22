@@ -284,10 +284,10 @@ class Resolver(BaseResolver):
 
 
 class Anti_GFW_Resolver(BaseResolver):
-    def __init__(self, localdns, remotedns, proxy, apfilter):
+    def __init__(self, localdns, remotedns, proxy, apfilter_list):
         self.local = UDP_Resolver(localdns)
         self.remote = TCP_Resolver(remotedns, proxy)
-        self.apfilter = apfilter
+        self.apfilter_list = apfilter_list
         self.hostlock = defaultdict(RLock)
 
     def _record(self, domain, qtype):
@@ -299,8 +299,11 @@ class Anti_GFW_Resolver(BaseResolver):
         return self.remote.record(domain, qtype)
 
     def is_poisoned(self, domain):
-        if self.apfilter and self.apfilter.match(domain, domain, True):
-            return True
+        if not self.apfilter_list:
+            return
+        for apfilter in self.apfilter_list:
+            if apfilter and apfilter.match(domain, domain, True):
+                return True
 
 
 def get_resolver(localdns, remotedns=None, proxy=None, apfilter=None):
@@ -322,7 +325,7 @@ if __name__ == '__main__':
             if '||' in line:
                 apfilter.add(line)
     print(apfilter.match('twitter.com', 'twitter.com', True))
-    resolver = get_resolver(('223.5.5.5', 53), ('8.8.8.8', 53), 'http://127.0.0.1:8119', apfilter)
+    resolver = get_resolver(('223.5.5.5', 53), ('8.8.8.8', 53), 'http://127.0.0.1:8119', [apfilter, ])
     print(resolver.record('twitter.com', 'ANY'))
     print(resolver.resolve('twitter.com'))
     print(resolver.get_ip_address('twitter.com'))

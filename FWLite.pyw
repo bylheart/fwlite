@@ -325,13 +325,13 @@ class LocalRules(QtGui.QWidget):
             data = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=1).read().decode())
             lst = []
             self.ui.LocalRulesLayout.removeItem(self.spacer)
-            for rid, rule, exp in data:
+            for rule, exp in data:
                 if self.widgetlist:
                     w = self.widgetlist.pop(0)
-                    w.updaterule(rid, rule, exp)
+                    w.updaterule(rule, exp)
                     w.setVisible(True)
                 else:
-                    w = LocalRule(rid, rule, exp, self.port)
+                    w = LocalRule(rule, exp, self.port)
                     self.ui.LocalRulesLayout.addWidget(w)
                 lst.append(w)
             for w in self.widgetlist:
@@ -355,7 +355,7 @@ class LocalRules(QtGui.QWidget):
 
 
 class LocalRule(QtGui.QWidget):
-    def __init__(self, rid, rule, exp, port, parent=None):
+    def __init__(self, rule, exp, port, parent=None):
         super(LocalRule, self).__init__(parent)
         self.ui = Ui_LocalRule()
         self.ui.setupUi(self)
@@ -363,7 +363,7 @@ class LocalRule(QtGui.QWidget):
         self.ui.copyButton.clicked.connect(self.rulecopy)
         self.port = port
         self.rule = rule
-        self.updaterule(rid, rule, exp)
+        self.updaterule(rule, exp)
 
     def rulecopy(self):
         cb = QtGui.QApplication.clipboard()
@@ -372,13 +372,12 @@ class LocalRule(QtGui.QWidget):
 
     def delrule(self):
         conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
-        conn.request('DELETE', '/api/localrule/%d?rule=%s' % (self.rid, base64.urlsafe_b64encode(self.rule.encode())))
+        conn.request('DELETE', '/api/localrule/%s' % base64.urlsafe_b64encode(self.rule.encode()))
         resp = conn.getresponse()
         content = resp.read()
         print(content)
 
-    def updaterule(self, rid, rule, exp):
-        self.rid = rid
+    def updaterule(self, rule, exp):
         self.rule = rule
         self.exp = exp
         exp = datetime.datetime.fromtimestamp(float(exp)).strftime('%H:%M:%S') if exp else None

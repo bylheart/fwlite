@@ -851,7 +851,7 @@ class ProxyHandler(HTTPRequestHandler):
             body.write(data)
         body = body.getvalue()
         if parse.path == '/api/localrule' and self.command == 'GET':
-            data = json.dumps([(index, rule.rule, rule.expire) for index, rule in enumerate(self.conf.PARENT_PROXY.temp)])
+            data = json.dumps([(rule, self.conf.PARENT_PROXY.local.expire[rule]) for rule in self.conf.PARENT_PROXY.local.rules])
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/localrule' and self.command == 'POST':
             'accept a json encoded tuple: (str rule, int exp)'
@@ -861,14 +861,13 @@ class ProxyHandler(HTTPRequestHandler):
             return self.conf.stdout()
         elif parse.path.startswith('/api/localrule/') and self.command == 'DELETE':
             try:
-                rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
-                if rule:
-                    assert base64.urlsafe_b64decode(rule) == self.conf.PARENT_PROXY.temp[int(parse.path[15:])].rule
-                result = self.conf.PARENT_PROXY.temp.pop(int(parse.path[15:]))
-                self.conf.PARENT_PROXY.temp_rules.discard(result.rule)
-                self.write(200, json.dumps([int(parse.path[15:]), result.rule, result.expire]), 'application/json')
+                rule = base64.urlsafe_b64decode(parse.path[15:].encode('latin1'))
+                expire = self.conf.PARENT_PROXY.local.remove(rule)
+                self.write(200, json.dumps([rule, expire]), 'application/json')
                 return self.conf.stdout()
             except Exception as e:
+                sys.stderr.write(traceback.format_exc() + '\n')
+                sys.stderr.flush()
                 return self.send_error(404, repr(e))
         elif parse.path == '/api/redirector' and self.command == 'GET':
             data = json.dumps([(index, rule[0].rule, rule[1]) for index, rule in enumerate(self.conf.REDIRECTOR.redirlst)])
