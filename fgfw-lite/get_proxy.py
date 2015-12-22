@@ -330,5 +330,5 @@ class get_proxy(object):
     def add_temp(self, rule, exp=None, quiet=False):
         rule = rule.strip()
         if rule not in self.local.rules:
-            self.local.add(rule, exp)
+            self.local.add(rule, exp * 60)
             self.logger.info('add autoproxy rule: %s%s' % (rule, (' expire in %.1f min' % exp) if exp else ''))

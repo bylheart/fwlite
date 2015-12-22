@@ -380,8 +380,7 @@ class LocalRule(QtGui.QWidget):
     def updaterule(self, rule, exp):
         self.rule = rule
         self.exp = exp
-        exp = datetime.datetime.fromtimestamp(float(exp)).strftime('%H:%M:%S') if exp else None
-        text = '%s%s' % (self.rule, (' expire at %s' % exp if exp else ''))
+        text = '%s%s' % (self.rule, (' expire in %.1fs' % exp if exp else ''))
         self.ui.lineEdit.setText(text)
 
 
