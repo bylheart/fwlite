@@ -17,6 +17,7 @@ import base64
 import operator
 import json
 import subprocess
+import traceback
 from collections import deque
 from PySide import QtCore, QtGui
 from ui_mainwindow import Ui_MainWindow
@@ -480,10 +481,10 @@ class RemoteResolve(QtGui.QWidget):
             if record is None:
                 return []
             while len(record.rr) == 1 and record.rr[0].rtype == 5:
-                record = tcp_dns_record(str(record.rr[0].rdata), proxy, 'ANY', server)
+                record = tcp_dns_record(str(record.rr[0].rdata), 'ANY', server, proxy)
             result = [str(x.rdata) for x in record.rr if x.rtype in (1, 28)]
         except Exception as e:
-            result = [repr(e)]
+            result = [repr(e), traceback.format_exc()]
         self.trigger.emit('\n'.join(result))
 
     def closeEvent(self, event):

@@ -75,7 +75,7 @@ def do_tunnel(soc, netloc, pp):
 def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, parentproxy=None, tunnel=False):
     logger.debug('connection.create_connection: %r %r %r' % (netloc, parentproxy, tunnel))
     if parentproxy and not isinstance(parentproxy, ParentProxy):
-        logging.warning('parentproxy is not a ParentProxy instance, please check. %s' % parentproxy)
+        logging.warning('parentproxy is not a ParentProxy instance, please check.')
         parentproxy = ParentProxy(parentproxy, parentproxy)
     ctimeout = ctimeout or parentproxy.timeout
     via = parentproxy.get_via() if parentproxy else None
