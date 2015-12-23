@@ -16,7 +16,7 @@
     "./fgfw-lite/dnsserver.py": "fa318de4e07ef4acf0c45295b28690a0eee97d42fa2c76023c65bfd84da40812",
     "./fgfw-lite/encrypt.py": "417e9845e89d8f3d768c54ac85cd26b3aec23f7026d43706b45f81851038916f",
     "./fgfw-lite/fgfw-lite.py": "284a84a3b824c0e12ffab3be67412216e913bed70bf1e056ed6cf62a3dda2212",
-    "./fgfw-lite/get_proxy.py": "8c6d6b96215c22a8a0d1e192c6e645e5a01135b99acbec17e81f65e0f68bed07",
+    "./fgfw-lite/get_proxy.py": "0eea41a274b8c5a825c612e7a4d555df5fd211f22b88da4b5b8d4e5b4e3be60d",
     "./fgfw-lite/httputil.py": "4c248a3f5f916ac343621e768cdc1924266d9ce3629b5b614d51287ace984e9b",
     "./fgfw-lite/hxsocks.py": "decdbf135d687e940ca21e5532b091935400a041c1b3f4c2801038f229c152d1",
     "./fgfw-lite/lang/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
