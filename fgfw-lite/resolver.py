@@ -284,16 +284,21 @@ class Resolver(BaseResolver):
 
 
 class Anti_GFW_Resolver(BaseResolver):
-    def __init__(self, localdns, remotedns, proxy, apfilter_list):
+    def __init__(self, localdns, remotedns, proxy, apfilter_list, bad_ip):
         self.local = UDP_Resolver(localdns)
         self.remote = TCP_Resolver(remotedns, proxy)
         self.apfilter_list = apfilter_list
+        self.bad_ip = bad_ip
         self.hostlock = defaultdict(RLock)
 
     def _record(self, domain, qtype):
         try:
             if not self.is_poisoned(domain):
-                return self.local.record(domain, qtype)
+                record = self.local.record(domain, qtype)
+                if any([str(x.rdata) in self.bad_ip for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]):
+                    logging.warning('ip in bad_ip list, host: %s' % domain)
+                else:
+                    return record
         except:
             logging.info('resolve %s via udp failed!' % domain)
         return self.remote.record(domain, qtype)
@@ -306,11 +311,12 @@ class Anti_GFW_Resolver(BaseResolver):
                 return True
 
 
-def get_resolver(localdns, remotedns=None, proxy=None, apfilter=None):
+def get_resolver(localdns, remotedns=None, proxy=None, apfilter=None, bad_ip=None):
+    bad_ip = bad_ip or set()
     if not remotedns or localdns == remotedns:
         return Resolver(localdns)
     else:
-        return Anti_GFW_Resolver(localdns, remotedns, proxy, apfilter)
+        return Anti_GFW_Resolver(localdns, remotedns, proxy, apfilter, bad_ip)
 
 if __name__ == '__main__':
     from apfilter import ap_filter

@@ -150,12 +150,14 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
                     except Exception as e:
                         self.logger.warning('%s %s' % (e, line))
         self.localdns = parse_hostport(self.userconf.dget('dns', 'localdns', '8.8.8.8:53' if self.rproxy else '223.5.5.5:53'))
-        self.remotedns = self.localdns if self.rproxy else parse_hostport(self.userconf.dget('dns', 'remotedns', '208.67.222.222:5353'))
+        self.remotedns = self.localdns if self.rproxy else parse_hostport(self.userconf.dget('dns', 'remotedns', '208.67.222.222:53'))
         self.REDIRECTOR = redirector(self)
         self.PARENT_PROXY = get_proxy(self)
+        bad_ip = set(self.userconf.dget('dns', 'bad_ip', '').split('|'))
         self.resolver = resolver.get_resolver(self.localdns, self.remotedns,
-                                              ParentProxy('self', 'http://127.0.0.1:%d' % self.listen[1]),
-                                              [self.PARENT_PROXY.gfwlist, self.PARENT_PROXY.local])
+                                              proxy=ParentProxy('self', 'http://127.0.0.1:%d' % self.listen[1]),
+                                              apfilter=[self.PARENT_PROXY.gfwlist, self.PARENT_PROXY.local],
+                                              bad_ip=bad_ip)
 
     def reload(self):
         self.version.read('version.ini')
