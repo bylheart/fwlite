@@ -102,6 +102,7 @@ method_supported = {
     'rc4-md5': (16, 16),
     'salsa20': (32, 8),
     'chacha20': (32, 8),
+    'chacha20-ietf': (32, 12),
 }
 
 
@@ -120,7 +121,7 @@ def create_rc4_md5(method, key, iv, op):
 def get_cipher(key, method, op, iv):
     if method == 'rc4-md5':
         return create_rc4_md5(method, key, iv, op)
-    elif method in ('salsa20', 'chacha20'):
+    elif method in ('salsa20', 'chacha20', 'chacha20-ietf'):
         return Salsa20Crypto(method, key, iv, op)
     else:
         return Cipher(method.replace('-', '_'), key, iv, op)

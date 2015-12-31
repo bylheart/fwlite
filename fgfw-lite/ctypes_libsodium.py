@@ -26,7 +26,7 @@ from __future__ import absolute_import, division, print_function, \
 import os
 import logging
 from ctypes import CDLL, c_char_p, c_int, c_ulonglong, byref, \
-    create_string_buffer, c_void_p
+    create_string_buffer, c_void_p, c_ulong
 
 __all__ = ['ciphers']
 
@@ -66,6 +66,15 @@ def load_libsodium():
                                                         c_char_p, c_ulonglong,
                                                         c_char_p)
 
+    try:
+        libsodium.crypto_stream_chacha20_ietf_xor_ic.restype = c_int
+        libsodium.crypto_stream_chacha20_ietf_xor_ic.argtypes = (c_void_p, c_char_p,
+                                                                 c_ulonglong,
+                                                                 c_char_p, c_ulong,
+                                                                 c_char_p)
+    except:
+        pass
+
     libsodium.sodium_init()
 
     buf = create_string_buffer(buf_size)
@@ -84,6 +93,8 @@ class Salsa20Crypto(object):
             self.cipher = libsodium.crypto_stream_salsa20_xor_ic
         elif cipher_name == 'chacha20':
             self.cipher = libsodium.crypto_stream_chacha20_xor_ic
+        elif cipher_name == 'chacha20-ietf':
+            self.cipher = libsodium.crypto_stream_chacha20_ietf_xor_ic
         else:
             raise Exception('Unknown cipher')
         # byte counter, not block counter
