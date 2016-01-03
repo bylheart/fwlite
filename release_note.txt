@@ -1,3 +1,8 @@
+2016.1.4 v4.11.1
+handle isp censorship mentioned in https://www.v2ex.com/t/245963
+support chacha20-ietf
+some bug fix
+
 2015.12.23 v4.11
 fix problem with hxsocks
 update translate
