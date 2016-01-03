@@ -293,7 +293,6 @@ class Anti_GFW_Resolver(BaseResolver):
 
     def _record(self, domain, qtype):
         try:
-            if not self.is_poisoned(domain):
                 record = self.local.record(domain, qtype)
                 if any([str(x.rdata) in self.bad_ip for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]):
                     logging.warning('ip in bad_ip list, host: %s' % domain)
@@ -309,6 +308,26 @@ class Anti_GFW_Resolver(BaseResolver):
         for apfilter in self.apfilter_list:
             if apfilter and apfilter.match(domain, domain, True):
                 return True
+
+    def resolve(self, host):
+        try:
+            ip = ip_address(host)
+            return [(2 if ip._version == 4 else 10, host), ]
+        except:
+            pass
+        if not self.is_poisoned(host):
+            result = _resolver(host)
+            if not any([item[1] in self.bad_ip for item in result]):
+                return result
+        try:
+            record = self.record(host, 'ANY')
+            while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
+                record = self.record(str(record.rr[0].rdata), 'ANY')
+            return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
+        except Exception as e:
+            logging.warning('resolving %s: %r' % (host, e))
+            traceback.print_exc(file=sys.stderr)
+            return []
 
 
 def get_resolver(localdns, remotedns=None, proxy=None, apfilter=None, bad_ip=None):
