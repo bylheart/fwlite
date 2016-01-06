@@ -293,6 +293,7 @@ class Anti_GFW_Resolver(BaseResolver):
 
     def _record(self, domain, qtype):
         try:
+            if not self.is_poisoned(domain):
                 record = self.local.record(domain, qtype)
                 if any([str(x.rdata) in self.bad_ip for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]):
                     logging.warning('ip in bad_ip list, host: %s' % domain)

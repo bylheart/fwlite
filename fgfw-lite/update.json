@@ -24,7 +24,7 @@
     "./fgfw-lite/lang/zh_CN.py": "770fc5a6d4ab22e14eb7e84ccb128e63a017d92b58db3110dac9b0c35f05b6e8",
     "./fgfw-lite/parent_proxy.py": "9ae7a8b20391764c6f10bd86f800ae1b325b1be6df231a87ab7946cd4e47412f",
     "./fgfw-lite/redirector.py": "edef27480a8b89e2b65cec367b9c81592f3750eba48382b7e57c1fd33e8d9b57",
-    "./fgfw-lite/resolver.py": "11bda4a5ef8b1c34cdeaf172ac808b4b8b289837d3b6296a084d48b45c6e0548",
+    "./fgfw-lite/resolver.py": "aa64bbc424a9707dd9f82bf81a5c05e799e6f3c891c4f58ddc7bf3d11748223d",
     "./fgfw-lite/singleton.py": "2fc7ed8cfc47b001053a257f9e8ad521edcef446776adaee022122eb6dbda152",
     "./fgfw-lite/sssocket.py": "ca80e19e7e481f6321789c564534d38f6dbcce5baf2785bbee20874e4ae41401",
     "./fgfw-lite/streamcipher.py": "1a455f5c2806de4dbf788689259a3301ea3a91879027ba9b388c2ad8645cf05c",
