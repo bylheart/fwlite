@@ -12,7 +12,7 @@
     "./fgfw-lite/cloud.txt": "51b4f8ea55758b36733a7ad165b4f614e15459319bf1d334e5dad08538b5f6b6",
     "./fgfw-lite/config.py": "5ec74335a8d7a8ea3b86d45e577cf849709a5e2b07c2f51425535c4ac3a02484",
     "./fgfw-lite/connection.py": "23c7e650c30cec3a96901c710b2c20566b3fa2160aa624d73edfb14aa6933bb5",
-    "./fgfw-lite/ctypes_libsodium.py": "93784ce49f0b84521a349f57cf5c165f50536864f3193f48973e87c77b04abd9",
+    "./fgfw-lite/ctypes_libsodium.py": "6125ba3246cc867ad5d4a7db79026b8e1fb3f2340e1d38ec022fff2f807bcc12",
     "./fgfw-lite/dnsserver.py": "fa318de4e07ef4acf0c45295b28690a0eee97d42fa2c76023c65bfd84da40812",
     "./fgfw-lite/encrypt.py": "aacd5e51d5739b3d64bbb57edf76b1e1642bdbe4c0b1cd07d67ef036e5ece0f8",
     "./fgfw-lite/fgfw-lite.py": "3fcb94ce10a45e40e8059527981302e0e93da336fca02096dbeba62bfaddf413",
