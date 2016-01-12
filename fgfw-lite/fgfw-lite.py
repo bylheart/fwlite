@@ -1085,7 +1085,7 @@ def atexit_do():
 
 
 def main():
-    s = 'FW_Lite ' + __version__
+    s = 'FWLite ' + __version__
     if gevent:
         s += ' with gevent %s' % gevent.__version__
     logging.info(s)

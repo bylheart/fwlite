@@ -6,6 +6,7 @@ import socket
 import shutil
 import logging
 import logging.handlers
+import traceback
 from collections import defaultdict
 
 try:
@@ -128,6 +129,8 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
         self.maxretry = self.userconf.dgetint('fgfwproxy', 'maxretry', 4)
 
         def addhost(host, ip):
+            if isinstance(ip, bytes):
+                ip = unicode(ip)
             try:
                 ipo = ip_address(ip)
                 if isinstance(ipo, IPv4Address):
@@ -135,7 +138,9 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
                 else:
                     self.HOSTS[host].append((10, ip))
             except Exception:
-                self.logging.warning('unsupported host: %s' % ip)
+                self.logger.warning('unsupported host: %s' % ip)
+                sys.stderr.write(traceback.format_exc() + '\n')
+                sys.stderr.flush()
 
         for host, ip in self.userconf.items('hosts'):
             addhost(host, ip)
