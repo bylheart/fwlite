@@ -39,7 +39,6 @@ import logging
 logger = logging.getLogger('FW_Lite')
 
 DEFAULT_METHOD = 'rc4-md5'
-MAC_LEN = 16
 DEFAULT_HASH = 'sha256'
 SALT = b'G\x91V\x14{\x00\xd9xr\x9d6\x99\x81GL\xe6c>\xa9\\\xd2\xc6\xe0:\x9c\x0b\xefK\xd4\x9ccU'
 CTX = b'hxsocks'
@@ -78,7 +77,7 @@ class hxssocket(basesocket):
         self._data_bak = None
 
     def connect(self, address):
-        self._address = ('%s:%s' % address).encode()
+        self._address = address
         self._connect()
 
     def _connect(self):
@@ -191,7 +190,7 @@ class hxssocket(basesocket):
                 return b''
             ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
             ct = fp.read(ctlen)
-            mac = fp.read(MAC_LEN)
+            mac = fp.read(self.cipher.key_len)
             data = self.cipher.decrypt(ct, mac)
             data = data[1:0-ord(data[0])] if ord(data[0]) else data[1:]
             if not data:
@@ -212,26 +211,21 @@ class hxssocket(basesocket):
         if self.connected == 0:
             logger.debug('hxsocks send connect request')
             self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0)
-
-            pt = struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data
-            if len(pt) > self.bufsize:
-                pt, data_more = pt[:self.bufsize], pt[self.bufsize]
+            padding_len = random.randint(64, 255)
+            padding = b'\x00' * padding_len
+            pt = struct.pack('>I', int(time.time())) + chr(len(self._address[0])) + self._address[0] + struct.pack('>H', self._address[1]) + b'\x00' * padding_len
             ct, mac = self.cipher.encrypt(pt)
             self._sock.sendall(self.pskcipher.encrypt(chr(11) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
-            if data and self._data_bak is None:
-                self._data_bak = data
             self.connected = 1
-        else:
-            if len(data) > self.bufsize:
-                data, data_more = data[:self.bufsize], data[self.bufsize:]
+        if len(data) > self.bufsize:
+            data, data_more = data[:self.bufsize], data[self.bufsize:]
+        padding_len = random.randint(64, 255) if len(data) < 256 else 0
+        padding = b'\x00' * padding_len
+        data = chr(padding_len) + data + padding
 
-            padding_len = random.randint(64, 255) if len(data) < 256 else 0
-            padding = b'\x00' * padding_len
-            data = chr(padding_len) + data + padding
-
-            ct, mac = self.cipher.encrypt(data)
-            data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
-            self._sock.sendall(data)
+        ct, mac = self.cipher.encrypt(data)
+        data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
+        self._sock.sendall(data)
         if data_more:
             self.sendall(data_more)
 

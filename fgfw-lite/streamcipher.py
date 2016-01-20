@@ -16,9 +16,6 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, see <http://www.gnu.org/licenses>.
 
-
-import os
-
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
@@ -47,6 +44,4 @@ class StreamCipher(object):
             return Cipher(algorithms.AES(self.key), mode, default_backend())
         if self.method.startswith('camellia'):
             return Cipher(algorithms.Camellia(self.key), mode, default_backend())
-        if self.method.startswith('seed'):
-            return Cipher(algorithms.SEED(self.key), mode, default_backend())
         raise ValueError('crypto algorithm %s not supported!' % self.method)

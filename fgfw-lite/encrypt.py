@@ -91,9 +91,18 @@ method_supported = {
     'aes-128-cfb': (16, 16),
     'aes-192-cfb': (24, 16),
     'aes-256-cfb': (32, 16),
-    'aes-128-ofb': (16, 16),
-    'aes-192-ofb': (24, 16),
-    'aes-256-ofb': (32, 16),
+    # 'aes-128-ofb': (16, 16),
+    # 'aes-192-ofb': (24, 16),
+    # 'aes-256-ofb': (32, 16),
+    # 'aes-128-ctr': (16, 16),
+    # 'aes-192-ctr': (24, 16),
+    # 'aes-256-ctr': (32, 16),
+    'camellia-128-cfb': (16, 16),
+    'camellia-192-cfb': (24, 16),
+    'camellia-256-cfb': (32, 16),
+    # 'camellia-128-ofb': (16, 16),
+    # 'camellia-192-ofb': (24, 16),
+    # 'camellia-256-ofb': (32, 16),
     'rc4-md5': (16, 16),
     'salsa20': (32, 8),
     'chacha20': (32, 8),
@@ -233,14 +242,14 @@ class AEncryptor(object):
 
 if __name__ == '__main__':
     print('encrypt and decrypt 20MB data.')
-    s = os.urandom(10000)
+    s = os.urandom(10240)
     import time
     lst = sorted(method_supported.keys())
     for method in lst:
         try:
             cipher = Encryptor('123456', method)
             t = time.clock()
-            for _ in range(1049):
+            for _ in range(1024):
                 a = cipher.encrypt(s)
                 b = cipher.encrypt(s)
                 c = cipher.decrypt(a)
@@ -260,7 +269,7 @@ if __name__ == '__main__':
             cipher1 = AEncryptor(b'123456', method, 'salt', 'ctx', False)
             cipher2 = AEncryptor(b'123456', method, 'salt', 'ctx', True)
             t = time.clock()
-            for _ in range(1049):
+            for _ in range(1024):
                 a, b = cipher1.encrypt(s)
                 c, d = cipher1.encrypt(s)
                 cipher2.decrypt(a, b)
