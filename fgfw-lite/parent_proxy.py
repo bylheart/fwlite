@@ -5,7 +5,6 @@ import time
 import traceback
 import socket
 import logging
-from threading import Timer
 try:
     import urllib.parse as urlparse
     urlquote = urlparse.quote
@@ -19,10 +18,35 @@ except ImportError:
     from ipaddr import IPAddress as ip_address
 from util import ip_to_country_code
 
+ASIA = ('AE', 'AF', 'AL', 'AZ', 'BD', 'BH', 'BN', 'BT', 'CN', 'CY', 'HK', 'ID',
+        'IL', 'IN', 'IQ', 'IR', 'JO', 'JP', 'KH', 'KP', 'KR', 'KW', 'KZ', 'LA',
+        'LB', 'LU', 'MN', 'MO', 'MV', 'MY', 'NP', 'OM', 'PH', 'PK', 'QA', 'SA',
+        'SG', 'SY', 'TH', 'TJ', 'TM', 'TW', 'UZ', 'VN', 'YE')
+AFRICA = ('AO', 'BI', 'BJ', 'BW', 'CF', 'CG', 'CM', 'CV', 'DZ', 'EG', 'ET', 'GA', 'GH',
+          'GM', 'GN', 'GQ', 'KE', 'LY', 'MA', 'MG', 'ML', 'MR', 'MU', 'MZ', 'NA', 'NE',
+          'NG', 'RW', 'SD', 'SN', 'SO', 'TN', 'TZ', 'UG', 'ZA', 'ZM', 'ZR', 'ZW')
+NA = ('BM', 'BS', 'CA', 'CR', 'CU', 'GD', 'GT', 'HN', 'HT', 'JM', 'MX', 'NI', 'PA', 'US', 'VE')
+SA = ('AR', 'BO', 'BR', 'CL', 'CO', 'EC', 'GY', 'PE', 'PY', 'UY')
+EU = ('AT', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB',
+      'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LT', 'LV', 'MC', 'MD', 'MT', 'NL',
+      'NO', 'PL', 'PT', 'RO', 'RU', 'SE', 'SK', 'SM', 'UA', 'UK', 'VA', 'YU')
+PACIFIC = ('AU', 'CK', 'FJ', 'GU', 'NZ', 'PG', 'TO')
+
+continent_list = [ASIA, AFRICA, NA, SA, EU, PACIFIC]
+
+
+class default_0_dict(dict):
+    def __missing__(self, key):
+        return 0
+
 
 class ParentProxy(object):
     via = None
     DEFAULT_TIMEOUT = 8
+    avg_resp_time = 0
+    avg_resp_time_ts = 0
+    avg_resp_time_by_host = default_0_dict()
+    avg_resp_time_by_host_ts = default_0_dict()
 
     def __init__(self, name, proxy):
         '''
@@ -56,33 +80,71 @@ class ParentProxy(object):
             self.httppriority = -1
 
     def get_location(self):
+        if self.country_code:
+            return self.country_code
         if time.time() - self.last_ckeck < 60:
-            return
-        ip = ip_address(socket.getaddrinfo(self.parse.hostname, 0)[0][4][0])
+            return self.country_code
+        try:
+            self.last_ckeck = time.time()
+            ip = ip_address(socket.getaddrinfo(self.parse.hostname, 0)[0][4][0])
 
-        if ip.is_loopback or ip.is_private:
-            from connection import create_connection
-            from httputil import read_reaponse_line, read_headers
-            try:
-                soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=None, parentproxy=self)
-                soc.sendall(b'GET / HTTP/1.1\r\nConnection: close\r\nHost: bot.whatismyipaddress.com\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0\r\n\r\n')
-                f = soc.makefile()
-                line, version, status, reason = read_reaponse_line(f)
-                _, headers = read_headers(f)
-                assert status == 200
-                ip = soc.recv(int(headers['Content-Length']))
-                if not ip:
+            if ip.is_loopback or ip.is_private:
+                from connection import create_connection
+                from httputil import read_reaponse_line, read_headers
+                try:
+                    soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=None, parentproxy=self)
+                    soc.sendall(b'GET / HTTP/1.1\r\nConnection: close\r\nHost: bot.whatismyipaddress.com\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0\r\n\r\n')
+                    f = soc.makefile()
+                    line, version, status, reason = read_reaponse_line(f)
+                    _, headers = read_headers(f)
+                    assert status == 200
+                    ip = soc.recv(int(headers['Content-Length']))
+                    if not ip:
+                        soc.close()
+                        raise ValueError('%s: ip address is empty' % self.name)
+                    self.country_code = ip_to_country_code(ip)
                     soc.close()
-                    raise ValueError('%s: ip address is empty' % self.name)
+                except Exception:
+                    sys.stderr.write(traceback.format_exc())
+                    sys.stderr.flush()
+                    self.country_code = None
+            else:
                 self.country_code = ip_to_country_code(ip)
-                soc.close()
-            except Exception:
-                sys.stderr.write(traceback.format_exc())
-                sys.stderr.flush()
-                self.country_code = None
+        finally:
+            return self.country_code
+
+    def priority(self, method=None, host=None, country_code=None):
+        if any([host, country_code]) and not all([host, country_code]):
+            raise ValueError('host and country_code should be provided together.')
+        result = self.httpspriority if method is 'CONNECT' else self.httppriority
+        if country_code == self.get_location():
+            result -= 2
         else:
-            self.country_code = ip_to_country_code(ip)
-        self.last_ckeck = time.time()
+            for continent in continent_list:
+                if self.get_location() in continent and country_code in continent:
+                    result -= 1
+                    break
+        score = self.get_avg_resp_time() + self.get_avg_resp_time(host)
+        result += score * 5
+        logging.debug('proxy %s to %s response time penalty is %.3f' % (self.name, host, score * 5))
+        return result
+
+    def log(self, host, rtime):
+        self.avg_resp_time = 0.87 * self.get_avg_resp_time() + (1 - 0.87) * rtime
+        self.avg_resp_time_by_host[host] = 0.87 * self.get_avg_resp_time(host) + (1 - 0.87) * rtime
+        self.avg_resp_time_ts = self.avg_resp_time_by_host_ts[host] = time.time()
+        logging.debug('%s to %s: %.3fs %.3fs' % (self.name, host, rtime, self.avg_resp_time))
+
+    def get_avg_resp_time(self, host=None):
+        if host is None:
+            if time.time() - self.avg_resp_time_ts > 3600:
+                self.avg_resp_time = 0
+                self.avg_resp_time_ts = time.time()
+            return self.avg_resp_time
+        if time.time() - self.avg_resp_time_by_host_ts[host] > 3600:
+            self.avg_resp_time_by_host[host] = 0
+            self.avg_resp_time_by_host_ts[host] = time.time()
+        return self.avg_resp_time_by_host[host] or self.avg_resp_time
 
     @property
     def scheme(self):
@@ -126,7 +188,6 @@ class ParentProxyList(object):
         self.local = None
         self._httpparents = set()
         self._httpsparents = set()
-        self.badproxys = set()
         self.dict = {}
 
     def addstr(self, name, proxy):
@@ -160,15 +221,10 @@ class ParentProxyList(object):
         self._httpsparents.discard(a)
 
     def httpparents(self):
-        return list(self._httpparents - self.badproxys)
+        return list(self._httpparents)
 
     def httpsparents(self):
-        return list(self._httpsparents - self.badproxys)
-
-    def report_bad(self, ppname):
-        if ppname in self.dict:
-            self.badproxys.add(self.dict[ppname])
-            Timer(600, self.badproxys.discard, (self.dict[ppname], )).start()
+        return list(self._httpsparents)
 
     def get(self, key):
         return self.dict.get(key)

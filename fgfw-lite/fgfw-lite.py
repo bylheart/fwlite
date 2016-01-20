@@ -273,6 +273,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
+            self.pproxy = None
             return 1
         self.pproxy = self._proxylist.pop(0)
         self.ppname = self.pproxy.name
@@ -569,6 +570,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.wfile_write()
             self.phase = 'request finish'
             self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname, rtime)
+            self.pproxy.log(self.requesthost[0], rtime)
             if remote_close or is_connection_dropped([self.remotesoc]):
                 self.remotesoc.close()
             else:
@@ -582,6 +584,7 @@ class ProxyHandler(HTTPRequestHandler):
     def on_GET_Error(self, e):
         if self.ppname:
             self.logger.warning('{} {} via {} failed: {}! {}'.format(self.command, self.shortpath, self.ppname, self.phase, repr(e)))
+            self.pproxy.log(self.requesthost[0], 5)
             return self._do_GET(True)
         self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
         return self.send_error(504)
@@ -624,6 +627,7 @@ class ProxyHandler(HTTPRequestHandler):
     def _do_CONNECT(self, retry=False):
         if retry:
             self.failed_parents.append(self.ppname)
+            self.pproxy.log(self.requesthost[0], 5)
         if self.remotesoc:
             self.remotesoc.close()
         if not self.retryable or self.getparent():
@@ -690,6 +694,7 @@ class ProxyHandler(HTTPRequestHandler):
             return self._do_CONNECT(True)
         self.rbuffer = deque()
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
+        self.pproxy.log(self.requesthost[0], rtime)
         """forward socket"""
         try:
             fd = [self.connection, self.remotesoc]

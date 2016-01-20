@@ -1,103 +1,12 @@
 #!/usr/bin/env python
 # coding:utf-8
 import base64
-import datetime
-import sqlite3
-import logging
 import random
-import time
-from threading import Timer
 
 from repoze.lru import lru_cache
 
 from apfilter import ap_rule, ap_filter
 from util import ip_to_country_code
-
-
-class stats(object):
-    con = sqlite3.connect(":memory:", check_same_thread=False)
-    con.execute("create table log (ts real, date text, command text, hostname text, url text, ppname text, success integer, time real)")
-    logger = logging.getLogger('FW_Lite')
-
-    def __init__(self, conf):
-        self.conf = conf
-        Timer(3600, self._purge, ()).start()
-
-    def log(self, command, hostname, url, ppname, success, rtime):
-        with self.con:
-            self.con.execute('INSERT into log values (?,?,?,?,?,?,?,?)', (time.time(), datetime.date.today(), command, hostname, url, ppname, success, rtime))
-        if not success:
-            if self.is_bad_pp('direct') is False:  # if internet connection is good
-                if self.is_bad_pp(ppname):
-                    self.logger.info('Probable bad parent: %s, remove.' % ppname)
-                    self.conf.parentlist.report_bad(ppname)
-
-    def srbh(self, hostname, sincetime=None):
-        '''success rate by hostname'''
-        if sincetime is None:
-            sincetime = time.time() - 10 * 60
-        r = next(self.con.execute('SELECT count(*), sum(success) from log where hostname = (?) and ts >= (?)', (hostname, sincetime)))
-        if r[0] == 0:
-            return(1, 0)
-        return (r[1] / r[0], r[0])
-
-    def srbp(self, ppname, sincetime=None):
-        '''success rate by ppname'''
-        if sincetime is None:
-            sincetime = time.time() - 10 * 60
-        r = next(self.con.execute('SELECT count(*), sum(success) from log where ppname = (?) and ts >= (?)', (ppname, sincetime)))
-        if r[0] == 0:
-            return(1, 0)
-        return (r[1] / r[0], r[0])
-
-    def srbhp(self, hostname, ppname, sincetime=None):
-        '''success rate by hostname and ppname'''
-        if sincetime is None:
-            sincetime = time.time() - 30 * 60
-        r = next(self.con.execute('SELECT count(*), sum(success) from log where hostname = (?) and ppname = (?) and ts >= (?)', (hostname, ppname, sincetime)))
-        if r[0] == 0:
-            return(1, 0)
-        return (r[1] / r[0], r[0])
-
-    def srbhwp(self, hostname, sincetime=None):
-        '''success rate by hostname with a parentproxy'''
-        if sincetime is None:
-            sincetime = time.time() - 30 * 60
-        r = next(self.con.execute("SELECT count(*), sum(success) from log where hostname = (?) and ppname <> 'direct' and ts >= (?)", (hostname, sincetime)))
-        if r[0] == 0:
-            return(1, 0)
-        return (r[1] / r[0], r[0])
-
-    def avg_time(self, ppname, hostname=None):
-        sincetime = time.time() - 10 * 60
-        if hostname:
-            r = next(self.con.execute("SELECT count(*), sum(time) from log where hostname = (?) and ppname = (?) and ts >= (?) and success = 1 order by ts desc LIMIT 10", (hostname, ppname, sincetime)))
-        else:
-            r = next(self.con.execute("SELECT count(*), sum(time) from log where ppname = (?) and ts >= (?) and success = 1 order by ts desc LIMIT 50", (ppname, sincetime)))
-        if r[0] == 0:
-            return 1
-        logging.debug('avg time %s via %s: %.3f' % (hostname, ppname, r[1] / r[0]))
-        return r[1] / r[0]
-
-    def is_bad_pp(self, ppname):
-        '''if a given ppname is unavailable'''
-        sincetime = time.time() - 10 * 60
-        result = self.con.execute('SELECT success from log where ppname = (?) and ts >= (?) order by ts desc LIMIT 5', (ppname, sincetime))
-        rsum = count = 0
-        for s in result:
-            rsum += s[0]
-            count += 1
-        self.logger.debug('%s %s %s %r' % (ppname, count, rsum, not rsum if count >= 5 else None))
-        if count >= 5:
-            return not rsum
-        return None
-
-    def _purge(self, befortime=None):
-        if not befortime:
-            befortime = time.time() - 24 * 60 * 60
-        with self.con:
-            self.con.execute('DELETE from log where ts < (?)', (befortime, ))
-        Timer(3600, self._purge, ()).start()
 
 
 ASIA = ('AE', 'AF', 'AL', 'AZ', 'BD', 'BH', 'BN', 'BT', 'CN', 'CY', 'HK', 'ID',
@@ -123,7 +32,6 @@ class get_proxy(object):
         self.conf = conf
         self.logger = self.conf.logger
         self.config()
-        self.STATS = stats(self.conf)
 
     def config(self):
         self.gfwlist = ap_filter()
@@ -261,27 +169,10 @@ class get_proxy(object):
             parentlist.extend(parentlist[1:] if not ifgfwed else parentlist)
             parentlist = parentlist[:self.conf.maxretry]
 
+        location = ip_to_country_code(ip)
+
         def priority(parent):
-            priority = parent.httpspriority if command == 'CONNECT' else parent.httppriority
-            avg_time = self.STATS.avg_time(parent.name, host)
-            if not ip:
-                return priority + avg_time * 10
-            result = priority
-            if parent.country_code is None:
-                parent.get_location()
-            if parent.country_code is None:
-                result = priority + 3
-            parent_cc = parent.country_code
-            dest = ''
-            dest = ip_to_country_code(ip)
-            if parent_cc == dest:
-                result = priority - 3
-            else:
-                for continent in continent_list:
-                    if parent_cc in continent and dest in continent:
-                        result = priority - 1
-                        break
-            return result + avg_time * 10
+            return parent.priority(command, host, location)
 
         if len(parentlist) > 1:
             random.shuffle(parentlist)
@@ -305,29 +196,19 @@ class get_proxy(object):
         self.logger.debug('notify: %s %s %s, failed_parents: %r, final: %s' % (command, url, 'Success' if success else 'Failed', failed_parents, current_parent or 'None'))
         failed_parents = [k for k in failed_parents if 'pooled' not in k]
         if success:
-            for fpp in failed_parents:
-                self.STATS.log(command, requesthost[0], url, fpp, 0, 0)
-            if current_parent:
-                self.STATS.log(command, requesthost[0], url, current_parent, success, time)
             if 'direct' in failed_parents:
                 if command == 'CONNECT':
                     rule = '|https://%s' % requesthost[0]
                 else:
                     rule = '|http://%s' % requesthost[0] if requesthost[1] == 80 else '%s:%d' % requesthost
                 if rule not in self.local.rules:
-                    direct_sr = self.STATS.srbhp(requesthost[0], 'direct')
-                    if direct_sr[1] < 2:
-                        exp = 1
-                    elif direct_sr[0] < 0.1:
-                        exp = min(pow(direct_sr[1], 1.5), 60)
-                    elif direct_sr[0] < 0.5:
-                        exp = min(direct_sr[1], 10)
-                    else:
-                        exp = 1
-                    self.add_temp(rule, exp)
+                    resp_time = self.conf.parentlist.get('direct').get_avg_resp_time(requesthost[0])
+                    exp = resp_time ** 3 if resp_time > 1 else 1
+                    self.add_temp(rule, min(exp, 60))
                     self.conf.stdout()
 
     def add_temp(self, rule, exp=None, quiet=False):
+        # add temp rule for &exp minutes
         rule = rule.strip()
         if rule not in self.local.rules:
             self.local.add(rule, (exp * 60) if exp else None)
