@@ -33,7 +33,7 @@ For Linux and Mac, run `FWLite.pyw`
 ####Requirements under openSUSE
 
     zypper install python-repoze.lru python-ipaddr python-gevent
-    zypper install python-M2Crypto  # or python-cryptography, for shadowsocks
+    pip install geoip2 dnslib cryptography
     zypper install python-pyside  # for GUI
 
 ##Features

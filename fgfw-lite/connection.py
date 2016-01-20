@@ -26,11 +26,16 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
     for the socket to bind as a source address before making the connection.
     An host of '' or port 0 tells the OS to use the default.
     """
-    import config
     host, port = address
+    try:
+        import config
+        resolver = config.conf.resolver.resolve
+    except:
+        def resolver(host):
+            return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
     err = None
     if not iplist:
-        iplist = config.conf.resolver.resolve(host)
+        iplist = resolver(host)
     if len(iplist) > 1:
         random.shuffle(iplist)
         # ipv4 goes first

@@ -23,8 +23,7 @@ import time
 import random
 import hashlib
 import hmac
-import logging
-logger = logging.getLogger('FW_Lite')
+
 from collections import defaultdict
 from threading import RLock
 try:
@@ -34,37 +33,43 @@ except ImportError:
 from basesocket import basesocket
 from parent_proxy import ParentProxy
 import encrypt
-from encrypt import ECC
+from ecc import ECC
 
-default_method = 'rc4-md5'
+import logging
+logger = logging.getLogger('FW_Lite')
+
+DEFAULT_METHOD = 'rc4-md5'
+MAC_LEN = 16
+DEFAULT_HASH = 'sha256'
+SALT = b'G\x91V\x14{\x00\xd9xr\x9d6\x99\x81GL\xe6c>\xa9\\\xd2\xc6\xe0:\x9c\x0b\xefK\xd4\x9ccU'
+CTX = b'hxsocks'
+
 keys = {}
 newkey_lock = defaultdict(RLock)
-salt = b'G\x91V\x14{\x00\xd9xr\x9d6\x99\x81GL\xe6c>\xa9\\\xd2\xc6\xe0:\x9c\x0b\xefK\xd4\x9ccU'
-ctx = b'hxsocks'
-mac_len = 16
 known_hosts = {}
+
 # load known certs
 if not os.path.exists('./.hxs_known_hosts'):
     os.mkdir('./.hxs_known_hosts')
 for fname in os.listdir('./.hxs_known_hosts'):
     if fname.endswith('.cert') and os.path.isfile(os.path.join('./.hxs_known_hosts', fname)):
-        known_hosts[fname[:-5]] = open('./.hxs_known_hosts/' + fname).read()
+        known_hosts[fname[:-5]] = open('./.hxs_known_hosts/' + fname, 'rb').read()
 
 
 class hxssocket(basesocket):
-    def __init__(self, hxsServer=None, ctimeout=4, parentproxy=None):
+    def __init__(self, hxsServer, ctimeout=4, parentproxy=None):
         basesocket.__init__(self)
-        if hxsServer and not isinstance(hxsServer, ParentProxy):
+        if not isinstance(hxsServer, ParentProxy):
             hxsServer = ParentProxy(hxsServer, hxsServer)
         self.hxsServer = hxsServer
         self.timeout = ctimeout
         if parentproxy and not isinstance(parentproxy, ParentProxy):
             parentproxy = ParentProxy(parentproxy, parentproxy)
         self.parentproxy = parentproxy
-        if self.hxsServer:
-            self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
-            self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [default_method])[0].lower()
-            self.serverid = (self.hxsServer.username, self.hxsServer.hostname)
+        self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
+        self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [DEFAULT_METHOD])[0].lower()
+        self.hash_algo = urlparse.parse_qs(self.hxsServer.parse.query).get('hash', [DEFAULT_HASH])[0].upper()
+        self.serverid = (self.hxsServer.username, self.hxsServer.hostname)
         self.cipher = None
         self.connected = 0
         # value: 0: request not sent
@@ -100,7 +105,9 @@ class hxssocket(basesocket):
                     pubk = acipher.get_pub_key()
                     logger.debug('hxsocks send key exchange request')
                     ts = struct.pack('>I', int(time.time()))
-                    data = chr(10) + ts + chr(len(pubk)) + pubk + hmac.new(psw.encode(), ts + pubk + usn.encode(), hashlib.sha256).digest()
+                    padding_len = random.randint(64, 255)
+                    data = chr(10) + ts + chr(len(pubk)) + pubk + hmac.new(psw.encode(), ts + pubk + usn.encode(), hashlib.sha256).digest()\
+                        + chr(padding_len) + b'\x00' * padding_len
                     self._sock.sendall(self.pskcipher.encrypt(data))
                     fp = self._sock.makefile('rb', 0)
                     resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
@@ -112,9 +119,10 @@ class hxssocket(basesocket):
                         auth = self.pskcipher.decrypt(fp.read(32))
                         pklen = ord(self.pskcipher.decrypt(fp.read(1)))
                         server_cert = self.pskcipher.decrypt(fp.read(pklen))
-                        rlen = ord(self.pskcipher.decrypt(fp.read(1)))
-                        r = self.pskcipher.decrypt(fp.read(rlen))
-                        s = self.pskcipher.decrypt(fp.read(rlen))
+                        sig_len = ord(self.pskcipher.decrypt(fp.read(1)))
+                        signature = self.pskcipher.decrypt(fp.read(sig_len))
+                        pad_len = ord(self.pskcipher.decrypt(fp.read(1)))
+                        self.pskcipher.decrypt(fp.read(pad_len))
                         # TODO: ask user if a certificate should be accepted or not.
                         if host not in known_hosts:
                             logger.info('hxs: server %s new cert %s saved.' % (host, hashlib.sha256(server_cert).hexdigest()[:8]))
@@ -122,10 +130,10 @@ class hxssocket(basesocket):
                                 f.write(server_cert)
                                 known_hosts[host] = server_cert
                         elif known_hosts[host] != server_cert:
-                            logger.error('hxs: server %s certificate mismatch! PLEASE CHECK!')
+                            logger.error('hxs: server %s certificate mismatch! PLEASE CHECK!' % host)
                             raise OSError(0, 'hxs: bad certificate')
                         if auth == hmac.new(psw.encode(), pubk + server_key + usn.encode(), hashlib.sha256).digest():
-                            if ECC.verify_with_pub_key(server_cert, auth, r, s):
+                            if ECC.verify_with_pub_key(server_cert, auth, signature, self.hash_algo):
                                 shared_secret = acipher.get_dh_key(server_key)
                                 keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
                                 logger.debug('hxs key exchange success')
@@ -183,7 +191,7 @@ class hxssocket(basesocket):
                 return b''
             ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
             ct = fp.read(ctlen)
-            mac = fp.read(mac_len)
+            mac = fp.read(MAC_LEN)
             data = self.cipher.decrypt(ct, mac)
             data = data[1:0-ord(data[0])] if ord(data[0]) else data[1:]
             if not data:
@@ -203,7 +211,7 @@ class hxssocket(basesocket):
         data_more = None
         if self.connected == 0:
             logger.debug('hxsocks send connect request')
-            self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, salt, ctx, 0)
+            self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0)
 
             pt = struct.pack('>I', int(time.time())) + chr(len(self._address)) + self._address + data
             if len(pt) > self.bufsize:

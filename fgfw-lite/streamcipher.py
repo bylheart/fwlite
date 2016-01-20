@@ -39,54 +39,14 @@ class StreamCipher(object):
             mode = modes.CTR(self.iv)
         elif self.method.endswith('ofb'):
             mode = modes.OFB(self.iv)
-        elif self.method.endswith('cfb8'):
-            mode = modes.CFB8(self.iv)
-        else:
+        elif self.method.endswith('cfb'):
             mode = modes.CFB(self.iv)
+        else:
+            raise ValueError('operation mode %s not supported!' % self.method.upper())
         if self.method.startswith('aes'):
             return Cipher(algorithms.AES(self.key), mode, default_backend())
         if self.method.startswith('camellia'):
             return Cipher(algorithms.Camellia(self.key), mode, default_backend())
         if self.method.startswith('seed'):
             return Cipher(algorithms.SEED(self.key), mode, default_backend())
-        raise ValueError('crypto method %s not supported!' % self.method)
-
-
-def main():
-    key = b"_M\xcc;Z\xa7e\xd6\x1d\x83'\xde\xb8\x82\xcf\x99+\x95\x99\n\x91Q7J\xbd\x8f\xf8\xc5\xa7\xa0\xfe\x08"
-    iv = b'\xb7\xb47,\xdf\xbc\xb3\xd1j&1\xb5\x9bP\x9e\x94'
-    method = 'aes_256_cfb'
-    cipher = StreamCipher(method, key, iv, 1)
-    decipher = StreamCipher(method, key, iv, 0)
-    a = cipher.update(b'a long test string')
-    b = cipher.update(b'a long test string')
-    c = decipher.update(a)
-    d = decipher.update(b)
-    print(b == b'\xc9\xc1h\xe4u\x9b\xa7\x94\x0c\xa6 \xbf\xc7au\xb10\x8a')
-    print(repr(a))
-    print(repr(b))
-    print(repr(c))
-    print(repr(d))
-    print('encrypt and decrypt 20MB data with %s' % method)
-    s = os.urandom(1000)
-    import time
-    t = time.time()
-    for _ in range(10490):
-        a = cipher.update(s)
-        b = cipher.update(s)
-        c = decipher.update(a)
-        d = decipher.update(b)
-    print('StreamCipher %ss' % (time.time() - t))
-    import M2Crypto.EVP
-    cipher = M2Crypto.EVP.Cipher(method, key, iv, 1)
-    decipher = M2Crypto.EVP.Cipher(method, key, iv, 0)
-    t = time.time()
-    for _ in range(1049):
-        a = cipher.update(s)
-        b = cipher.update(s)
-        c = decipher.update(a)
-        d = decipher.update(b)
-    print('M2Crypto %ss' % (time.time() - t))
-
-if __name__ == "__main__":
-    main()
+        raise ValueError('crypto algorithm %s not supported!' % self.method)

@@ -7,7 +7,8 @@ import glob
 sys.dont_write_bytecode = True
 WORKINGDIR = os.path.dirname(os.path.abspath(__file__).replace('\\', '/'))
 os.chdir(WORKINGDIR)
-sys.path += glob.glob('%s/Python27/*.egg' % WORKINGDIR)
+if sys.platform.startswith('win'):
+    sys.path += glob.glob('%s/Python27/*.egg' % WORKINGDIR)
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')), 'fgfw-lite'))
 import copy
 import shutil
@@ -20,6 +21,7 @@ import subprocess
 import traceback
 from collections import deque
 from PySide import QtCore, QtGui
+import chardet
 from ui_mainwindow import Ui_MainWindow
 from ui_remoteresolver import Ui_remote_resolver
 from ui_localrules import Ui_LocalRules
@@ -142,7 +144,10 @@ class MainWindow(QtGui.QMainWindow):
 
     def newStderrInfo(self):
         freload = False
-        lines = str(self.runner.readAllStandardError()).strip().splitlines()
+        data = str(self.runner.readAllStandardError())
+        encoding = chardet.detect(data)['encoding'].lower() if chardet.detect(data)['encoding'] else 'ascii'
+        data = data.decode(encoding)
+        lines = data.strip().splitlines()
         for line in copy.copy(lines):
             if 'Update Completed' in line:
                 freload = True
