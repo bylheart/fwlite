@@ -1,3 +1,7 @@
+2016.1.20 v4.12
+switch to python-cryptography
+update libsodium
+
 2016.1.4 v4.11.1
 handle isp censorship mentioned in https://www.v2ex.com/t/245963
 support chacha20-ietf

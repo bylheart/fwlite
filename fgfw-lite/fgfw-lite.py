@@ -99,7 +99,7 @@ except ImportError:
     def on_finish(hdlr):
         pass
 
-__version__ = '4.11.1'
+__version__ = '4.12'
 
 if sys.platform.startswith('win'):
     PYTHON2 = '"./Python27/python27.exe"'

@@ -4,7 +4,7 @@ A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects 
 
 FWLite is Portable Software.
 
-Current Version: 4.11.1
+Current Version: 4.12
 
 Tested on Windows 7 and openSUSE.
 
@@ -34,7 +34,7 @@ For Linux and Mac, run `FWLite.pyw`
 
     zypper install python-repoze.lru python-ipaddr python-gevent
     pip install geoip2 dnslib cryptography
-    zypper install python-pyside  # for GUI
+    zypper install python-pyside python-chardet  # for GUI
 
 ##Features
 
