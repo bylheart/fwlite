@@ -169,7 +169,7 @@ class get_proxy(object):
             parentlist.extend(parentlist[1:] if not ifgfwed else parentlist)
             parentlist = parentlist[:self.conf.maxretry]
 
-        location = ip_to_country_code(ip)
+        location = ip_to_country_code(ip) or u'None'
 
         def priority(parent):
             return parent.priority(command, host, location)
