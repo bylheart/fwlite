@@ -48,27 +48,7 @@ if raw_input('update ui? y/n: ').lower().startswith('y'):
 
 
 BLOCKSIZE = 8192
-flist = ['./fgfw-lite/fgfw-lite.py',
-         './fgfw-lite/httputil.py',
-         './fgfw-lite/apfilter.py',
-         './fgfw-lite/config.py',
-         './fgfw-lite/encrypt.py',
-         './fgfw-lite/ecc.py',
-         './fgfw-lite/basesocket.py',
-         './fgfw-lite/dnsserver.py',
-         './fgfw-lite/sssocket.py',
-         './fgfw-lite/hxsocks.py',
-         './fgfw-lite/ctypes_libsodium.py',
-         './fgfw-lite/streamcipher.py',
-         './fgfw-lite/redirector.py',
-         './fgfw-lite/resolver.py',
-         './fgfw-lite/translate.py',
-         './fgfw-lite/parent_proxy.py',
-         './fgfw-lite/get_proxy.py',
-         './fgfw-lite/connection.py',
-         './fgfw-lite/util.py',
-         './fgfw-lite/singleton.py',
-         './fgfw-lite/cloud.txt',
+flist = ['./fgfw-lite/cloud.txt',
          './fgfw-lite/GeoLite2-Country.mmdb',
          './userconf.sample.ini',
          './Python27/python27.zip',
@@ -78,7 +58,9 @@ flist = ['./fgfw-lite/fgfw-lite.py',
          './release_note.txt',
          ]
 
-for p in glob.glob('./fgfw-lite/ui_*.py'):
+for p in glob.glob('./fgfw-lite/*.py'):
+    if p.endswith('_manager.py'):
+        continue
     flist.append(p.replace('\\', '/'))
 
 for p in glob.glob('./fgfw-lite/lang/*.py'):
