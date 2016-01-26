@@ -39,9 +39,13 @@
 import os
 import hashlib
 import hmac
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
 from repoze.lru import lru_cache
 from ctypes_libsodium import Salsa20Crypto
-from streamcipher import StreamCipher as Cipher
+
 try:
     from hmac import compare_digest
 except ImportError:
@@ -114,21 +118,38 @@ def get_cipher_len(method):
     return method_supported.get(method, None)
 
 
-def create_rc4_md5(method, key, iv, op):
-    md5 = hashlib.md5()
-    md5.update(key)
-    md5.update(iv)
-    rc4_key = md5.digest()
-    return Cipher('rc4', rc4_key, '', op)
-
-
 def get_cipher(key, method, op, iv):
-    if method == 'rc4-md5':
-        return create_rc4_md5(method, key, iv, op)
-    elif method in ('salsa20', 'chacha20', 'chacha20-ietf'):
+    if method in ('salsa20', 'chacha20', 'chacha20-ietf'):
         return Salsa20Crypto(method, key, iv, op)
+    elif method == 'rc4-md5':
+        md5 = hashlib.md5()
+        md5.update(key)
+        md5.update(iv)
+        key = md5.digest()
+        method = 'rc4'
+    cipher = None
+
+    if method.startswith('rc4'):
+        pass
+    elif method.endswith('ctr'):
+        mode = modes.CTR(iv)
+    elif method.endswith('ofb'):
+        mode = modes.OFB(iv)
+    elif method.endswith('cfb'):
+        mode = modes.CFB(iv)
     else:
-        return Cipher(method.replace('-', '_'), key, iv, op)
+        raise ValueError('operation mode "%s" not supported!' % method.upper())
+
+    if method.startswith('rc4'):
+        cipher = Cipher(algorithms.ARC4(key), None, default_backend())
+    elif method.startswith('aes'):
+        cipher = Cipher(algorithms.AES(key), mode, default_backend())
+    elif method.startswith('camellia'):
+        cipher = Cipher(algorithms.Camellia(key), mode, default_backend())
+    else:
+        raise ValueError('crypto algorithm "%s" not supported!' % method.upper())
+
+    return cipher.encryptor() if op else cipher.decryptor()
 
 
 class Encryptor(object):
