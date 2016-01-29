@@ -67,3 +67,12 @@ class sssocket(basesocket):
 
     def makefile(self, mode='rb', bufsize=0):
         return self
+
+if __name__ == '__main__':
+    s = sssocket('ss://aes-128-cfb:password@127.0.0.1:8138', 5)
+    s.connect(('www.baidu.com', 80))
+    s.sendall(b'GET / HTTP/1.0\r\n\r\n')
+    data = s.recv(1024)
+    while data:
+        print(repr(data))
+        data = s.recv(1024)

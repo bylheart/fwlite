@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
-# Copyright (C) 2013-2015 Jiang Chao <sgzz.cj@gmail.com>
+# Copyright (C) 2013-2016 Jiang Chao <sgzz.cj@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -156,6 +156,8 @@ class Encryptor(object):
     def __init__(self, password, method=None, servermode=False):
         if method not in method_supported:
             raise ValueError('encryption method not supported')
+        if not isinstance(password, bytes):
+            password = password.encode('utf8')
         self.key = password
         self.method = method
         self.servermode = servermode

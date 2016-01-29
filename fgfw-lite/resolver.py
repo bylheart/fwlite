@@ -13,15 +13,11 @@ from collections import defaultdict
 
 from repoze.lru import lru_cache
 try:
-    from ipaddress import ip_address as _ip_address
+    from ipaddr import IPAddress as ip_address
 except:
-    from ipaddr import IPAddress as _ip_address
+    from ipaddress import ip_address
 
 from connection import create_connection
-
-
-def ip_address(q):
-    return _ip_address(q)
 
 
 @lru_cache(1024, timeout=900)
