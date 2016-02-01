@@ -111,14 +111,21 @@ method_supported = {
     'salsa20': (32, 8),
     'chacha20': (32, 8),
     'chacha20-ietf': (32, 12),
+    'bypass': (16, 0),  # for testing only
 }
 
 
-def get_cipher_len(method):
-    return method_supported.get(method, None)
+class bypass(object):
+    def __init__(self):
+        pass
+
+    def update(self, buf):
+        return buf
 
 
 def get_cipher(key, method, op, iv):
+    if method == 'bypass':
+        return bypass()
     if method in ('salsa20', 'chacha20', 'chacha20-ietf'):
         return Salsa20Crypto(method, key, iv, op)
     elif method == 'rc4-md5':
@@ -161,14 +168,12 @@ class Encryptor(object):
         self.key = password
         self.method = method
         self.servermode = servermode
-        self.iv_len = 0
         self.iv_sent = False
-        self.cipher_iv = b''
         self.decipher = None
 
-        self.key_len, self.iv_len = get_cipher_len(method)
+        self.key_len, self.iv_len = method_supported.get(method)
         self.key = EVP_BytesToKey(password, self.key_len)
-        self.cipher_iv = random_string(self.iv_len)
+        self.cipher_iv = random_string(self.iv_len) if self.iv_len else b''
         self.cipher = get_cipher(self.key, method, 1, self.cipher_iv)
 
     def encrypt(self, buf):
@@ -221,14 +226,14 @@ class AEncryptor(object):
             raise ValueError('encryption method not supported')
         self.method = method
         self.servermode = servermode
-        self.key_len, self.iv_len = get_cipher_len(method)
+        self.key_len, self.iv_len = method_supported.get(method)
         if servermode:
             self.encrypt_key, self.auth_key, self.decrypt_key, self.de_auth_key = hkdf(key, salt, ctx, self.key_len)
         else:
             self.decrypt_key, self.de_auth_key, self.encrypt_key, self.auth_key = hkdf(key, salt, ctx, self.key_len)
         hfunc = key_len_to_hash[self.key_len]
         self.iv_sent = False
-        self.cipher_iv = random_string(self.iv_len)
+        self.cipher_iv = random_string(self.iv_len) if self.iv_len else b''
         self.cipher = get_cipher(self.encrypt_key, method, 1, self.cipher_iv)
         self.decipher = None
         self.enmac = hmac.new(self.auth_key, digestmod=hfunc)
@@ -270,7 +275,7 @@ if __name__ == '__main__':
     lst = sorted(method_supported.keys())
     for method in lst:
         try:
-            cipher = Encryptor('123456', method)
+            cipher = Encryptor(b'123456', method)
             t = time.clock()
             for _ in range(1024):
                 a = cipher.encrypt(s)
@@ -281,16 +286,16 @@ if __name__ == '__main__':
         except Exception as e:
             print(repr(e))
     print('test AE')
-    ae1 = AEncryptor(b'123456', 'aes-256-cfb', 'salt', 'ctx', False)
-    ae2 = AEncryptor(b'123456', 'aes-256-cfb', 'salt', 'ctx', True)
+    ae1 = AEncryptor(b'123456', 'aes-256-cfb', b'salt', b'ctx', False)
+    ae2 = AEncryptor(b'123456', 'aes-256-cfb', b'salt', b'ctx', True)
     a, b = ae1.encrypt(b'abcde')
     c, d = ae1.encrypt(b'fg')
     print(ae2.decrypt(a, b))
     print(ae2.decrypt(c, d))
     for method in lst:
         try:
-            cipher1 = AEncryptor(b'123456', method, 'salt', 'ctx', False)
-            cipher2 = AEncryptor(b'123456', method, 'salt', 'ctx', True)
+            cipher1 = AEncryptor(b'123456', method, b'salt', b'ctx', False)
+            cipher2 = AEncryptor(b'123456', method, b'salt', b'ctx', True)
             t = time.clock()
             for _ in range(1024):
                 a, b = cipher1.encrypt(s)
