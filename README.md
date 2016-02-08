@@ -111,9 +111,7 @@ Assign a parent proxy for certain sites
 
 GPLv2
 
-This Software shall be used for Good, Not for Evil.
-
-##Others
+##Related projects
 [COW]
 
 [GoAgent]
@@ -122,7 +120,10 @@ This Software shall be used for Good, Not for Evil.
 
 [pybuild]
 
+[hxsocks]
+
 [COW]:https://github.com/cyfdecyf/cow
 [GoAgent]:https://github.com/goagent/goagent
 [Shadowsocks]:https://github.com/clowwindy/shadowsocks
 [pybuild]:https://github.com/goagent/pybuild
+[hxsocks]:https://github.com/v3aqb/hxsocks
