@@ -135,6 +135,7 @@ class hxssocket(basesocket):
                             if ECC.verify_with_pub_key(server_cert, auth, signature, self.hash_algo):
                                 shared_secret = acipher.get_dh_key(server_key)
                                 keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
+                                self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0)
                                 logger.debug('hxs key exchange success')
                                 return
                             else:
@@ -146,6 +147,8 @@ class hxssocket(basesocket):
                         logger.error('hxs getKey Error. bad password or timestamp.')
                 else:
                     raise IOError(0, 'hxs getKey Error')
+            else:
+                self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0)
 
     def recv(self, size):
         if self.connected == 0:
@@ -210,7 +213,6 @@ class hxssocket(basesocket):
         data_more = None
         if self.connected == 0:
             logger.debug('hxsocks send connect request')
-            self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0)
             padding_len = random.randint(64, 255)
             padding = b'\x00' * padding_len
             pt = struct.pack('>I', int(time.time())) + chr(len(self._address[0])) + self._address[0] + struct.pack('>H', self._address[1]) + b'\x00' * padding_len
