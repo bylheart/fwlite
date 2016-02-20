@@ -4,7 +4,7 @@ A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects 
 
 FWLite is Portable Software.
 
-Current Version: 4.12
+Current Version: 4.13 final
 
 Tested on Windows 7 and openSUSE.
 
@@ -111,19 +111,25 @@ Assign a parent proxy for certain sites
 
 GPLv2
 
-##Related projects
+##Thanks
 [COW]
 
 [GoAgent]
 
 [Shadowsocks]
 
+[fqrouter]
+
 [pybuild]
+
+[gfwlist]
 
 [hxsocks]
 
 [COW]:https://github.com/cyfdecyf/cow
 [GoAgent]:https://github.com/goagent/goagent
 [Shadowsocks]:https://github.com/clowwindy/shadowsocks
+[fqrouter]:https://github.com/fqrouter/fqrouter
 [pybuild]:https://github.com/goagent/pybuild
 [hxsocks]:https://github.com/v3aqb/hxsocks
+[gfwlist]:https://github.com/gfwlist/gfwlist

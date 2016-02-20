@@ -1,3 +1,8 @@
+2016.1.20 v4.13 final
+upgrade hxsocks protocol
+new method prioritizing parent proxies
+minor bug fix
+
 2016.1.20 v4.12
 switch to python-cryptography
 update libsodium
