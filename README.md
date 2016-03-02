@@ -1,8 +1,6 @@
 #FWLite
 
-A HTTP proxy server designed to circumvent the Great Firewall (GFW). It detects blocked sites automatically, apply parent proxy. And a lot more.
-
-FWLite is Portable Software.
+A anti-censorship HTTP proxy with builtin shadowsocks support.
 
 Current Version: 4.13 final
 
@@ -19,6 +17,13 @@ It looks like this:
 
     [parents]
     shadowsocks = ss://aes-256-cfb:password@127.0.0.1:8388
+
+or this:
+
+    [parents]
+    proxy1 = http://127.0.0.1:8086
+    proxy2 = http://user:pass@127.0.0.1:8087
+    proxy3 = socks5://127.0.0.1:1080
 
 ####Set browser
 Set your browser's proxy setting to `http://127.0.0.1:8118`.
