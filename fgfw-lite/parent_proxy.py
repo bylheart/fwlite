@@ -137,12 +137,12 @@ class ParentProxy(object):
 
     def get_avg_resp_time(self, host=None):
         if host is None:
-            if time.time() - self.avg_resp_time_ts > 3600:
-                self.avg_resp_time = 0
+            if time.time() - self.avg_resp_time_ts > 360:
+                self.avg_resp_time *= 0.93
                 self.avg_resp_time_ts = time.time()
             return self.avg_resp_time
-        if time.time() - self.avg_resp_time_by_host_ts[host] > 3600:
-            self.avg_resp_time_by_host[host] = 0
+        if time.time() - self.avg_resp_time_by_host_ts[host] > 360:
+            self.avg_resp_time_by_host[host] *= 0.93
             self.avg_resp_time_by_host_ts[host] = time.time()
         return self.avg_resp_time_by_host[host] or self.avg_resp_time
 
