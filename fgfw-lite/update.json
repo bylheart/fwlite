@@ -16,7 +16,7 @@
     "./fgfw-lite/apfilter.py": "c7378e479d79497d2745aa52ba9ef896f7748469777431a32a6534e4907cfec1",
     "./fgfw-lite/basesocket.py": "9db95271d06c37bde2109f37df266e5549a9562f7dc8e9bd663e08337508a5e6",
     "./fgfw-lite/cloud.txt": "51b4f8ea55758b36733a7ad165b4f614e15459319bf1d334e5dad08538b5f6b6",
-    "./fgfw-lite/config.py": "a583c3781f3cfd4d058317f4913b8361d9933db3eb75e662729c88a697c9eeb6",
+    "./fgfw-lite/config.py": "5b035c6cba2e62555cfd671b5ce96d45c309b56f09775a49f4aec8ab63a5a143",
     "./fgfw-lite/connection.py": "2e3f95915f1ec4e0c65430bc8bed660abaf2dcb6c973d459ad1bfc1ee5e8d71e",
     "./fgfw-lite/ctypes_libsodium.py": "6125ba3246cc867ad5d4a7db79026b8e1fb3f2340e1d38ec022fff2f807bcc12",
     "./fgfw-lite/dnsserver.py": "fa318de4e07ef4acf0c45295b28690a0eee97d42fa2c76023c65bfd84da40812",
@@ -29,7 +29,7 @@
     "./fgfw-lite/lang/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "./fgfw-lite/lang/en_US.py": "1a651c8e191b7551f87f47f4fc3fc2ba87caea57af8f8273b0142c88bb99b1ee",
     "./fgfw-lite/lang/zh_CN.py": "770fc5a6d4ab22e14eb7e84ccb128e63a017d92b58db3110dac9b0c35f05b6e8",
-    "./fgfw-lite/parent_proxy.py": "3275f05e44e90f416ca646da584f6983b678242dca9cd51bd16b9fab3685ebd3",
+    "./fgfw-lite/parent_proxy.py": "09cc78f0a2b1bac559e52be349e7c74f4d696fe9487524f89ed0670afaed1549",
     "./fgfw-lite/redirector.py": "edef27480a8b89e2b65cec367b9c81592f3750eba48382b7e57c1fd33e8d9b57",
     "./fgfw-lite/resolver.py": "649dce333405fe069094bdeb0ade08b5cb09574c2bafc22d8750deb0d1a6b31f",
     "./fgfw-lite/singleton.py": "2fc7ed8cfc47b001053a257f9e8ad521edcef446776adaee022122eb6dbda152",
@@ -43,5 +43,5 @@
     "./fgfw-lite/ui_settings.py": "e2594ba419d52e757b11fecb012710b9072ba87a991bb4e8a3e22d45e0f421a8",
     "./fgfw-lite/util.py": "44acb4903009100261e32f560e22c286d410c112507e99060c2990e51b9de2d4",
     "./release_note.txt": "fbb6dfba031653a792086d7b05c8ea237fb0a73cfbf2fbff106c7890c36496ad",
-    "./userconf.sample.ini": "6ae5ba3e1d8abb8969c4c5cc587c9930723988b72d28bfc84c3d0455529610e4"
+    "./userconf.sample.ini": "851b773ccdc71c66b34c392ee9cafcb0222c68ce86e449303fef109b5bbae6d9"
 }
