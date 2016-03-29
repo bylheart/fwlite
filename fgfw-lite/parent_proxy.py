@@ -176,7 +176,7 @@ class ParentProxy(object):
         return self.via
 
     def __str__(self):
-        return self.name
+        return self.name or ('%s://%s:%s' % (self.parse.scheme, self.parse.hostname, self.parse.port))
 
     def __repr__(self):
         return '<ParentProxy: %s %s %s>' % (self.name or 'direct', self.httppriority, self.httpspriority)

@@ -1103,6 +1103,19 @@ def main():
         t = Thread(target=server.serve_forever)
         t.start()
 
+    for _, val in conf.userconf.items('port_forward'):
+        proxy, local, remote = re.match(r'(\S+) (\S+) (\S+)', val).groups()
+        if local.isdigit():
+            local = '127.0.0.1:' + local
+        if remote.isdigit():
+            remote = '127.0.0.1:' + remote
+        local = parse_hostport(local)
+        remote = parse_hostport(remote)
+        from tcp_tunnel import tcp_tunnel
+        server = tcp_tunnel(proxy, remote, local)
+        t = Thread(target=server.serve_forever)
+        t.start()
+
     if conf.userconf.dgetbool('dns', 'enable', False):
         try:
             listen = parse_hostport(conf.userconf.dget('dns', 'listen', '127.0.0.1:53'))
