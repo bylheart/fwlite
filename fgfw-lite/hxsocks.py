@@ -212,13 +212,21 @@ class hxssocket(basesocket):
     def sendall(self, data):
         data_more = None
         if self.connected == 0:
-            logger.debug('hxsocks send connect request')
-            padding_len = random.randint(64, 255)
-            padding = b'\x00' * padding_len
-            pt = struct.pack('>I', int(time.time())) + chr(len(self._address[0])) + self._address[0] + struct.pack('>H', self._address[1]) + b'\x00' * padding_len
-            ct, mac = self.cipher.encrypt(pt)
-            self._sock.sendall(self.pskcipher.encrypt(chr(11) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
-            self.connected = 1
+            for _ in range(2):
+                try:
+                    logger.debug('hxsocks send connect request')
+                    padding_len = random.randint(64, 255)
+                    padding = b'\x00' * padding_len
+                    pt = struct.pack('>I', int(time.time())) + chr(len(self._address[0])) + self._address[0] + struct.pack('>H', self._address[1]) + b'\x00' * padding_len
+                    ct, mac = self.cipher.encrypt(pt)
+                    self._sock.sendall(self.pskcipher.encrypt(chr(11) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
+                    self.connected = 1
+                    break
+                except KeyError:
+                    logger.warning('hxsocks: get public kay failed, key expired? try again...')
+                    self.getKey()
+            else:
+                raise IOError('hxsocks: send connect request failed!')
         if len(data) > self.bufsize:
             data, data_more = data[:self.bufsize], data[self.bufsize:]
         padding_len = random.randint(64, 255) if len(data) < 256 else 0
