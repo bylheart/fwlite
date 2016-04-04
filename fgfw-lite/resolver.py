@@ -22,6 +22,11 @@ from connection import create_connection
 
 @lru_cache(1024, timeout=900)
 def _resolver(host):
+    try:
+        ip = ip_address(host)
+        return [(2 if ip._version == 4 else 10, host), ]
+    except:
+        pass
     return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
 
 
