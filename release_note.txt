@@ -1,4 +1,9 @@
-2016.1.20 v4.13 final
+2016.4.4 v4.13.1
+fix: resolver
+fix: hxsocks KeyError
+new: port forward function
+
+2016.2.21 v4.13 final
 upgrade hxsocks protocol
 new method prioritizing parent proxies
 minor bug fix
