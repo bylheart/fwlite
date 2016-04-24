@@ -48,7 +48,6 @@ import subprocess
 import shlex
 import time
 import re
-import io
 import errno
 import atexit
 import base64
@@ -99,7 +98,7 @@ except ImportError:
     def on_finish(hdlr):
         pass
 
-__version__ = '4.13.1'
+__version__ = '4.13.2'
 
 if sys.platform.startswith('win'):
     PYTHON2 = '"./Python27/python27.exe"'
@@ -268,8 +267,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def getparent(self):
         if self._proxylist is None:
-            ip = self.conf.resolver.get_ip_address(self.requesthost[0])
-            self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, ip, self.server.proxy_level)
+            self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.rip, self.server.proxy_level)
             self.logger.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
@@ -283,10 +281,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.path = self.path.decode('latin1')
         if self.path.lower().startswith('ftp://'):
             return self.do_FTP()
-        if self.path == '/pac':
-            _ip = ip_address(parse_hostport(self.headers.get('Host', ''))[0])
-            if _ip.is_loopback or str(_ip) in self.conf.local_ip:
-                return self.write(msg=self.conf.PAC, ctype='application/x-ns-proxy-autoconfig')
+
         # transparent proxy
         if self.path.startswith('/'):
             if 'Host' not in self.headers:
@@ -302,6 +297,12 @@ class ProxyHandler(HTTPRequestHandler):
             self.headers['Host'] = parse.netloc
 
         self.requesthost = parse_hostport(self.headers['Host'], 80)
+        self.rip = self.conf.resolver.get_ip_address(self.requesthost[0])
+
+        if self.path == '/pac':
+            if self.rip.is_loopback or str(self.rip) in self.conf.local_ip:
+                return self.write(msg=self.conf.PAC, ctype='application/x-ns-proxy-autoconfig')
+
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
         # redirector
@@ -324,16 +325,14 @@ class ProxyHandler(HTTPRequestHandler):
             else:
                 return self.redirect(new_url)
 
-        ip = self.conf.resolver.get_ip_address(self.requesthost[0])
-
-        if ip.is_loopback or self.ssclient:
+        if self.rip.is_loopback or self.ssclient:
             if ip_address(self.client_address[0]).is_loopback:
                 if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
                     return self.api(parse)
             else:
                 return self.send_error(403, 'Go fuck yourself!')
 
-        if str(ip) == self.connection.getsockname()[0]:
+        if str(self.rip) == self.connection.getsockname()[0]:
             if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + len(self.conf.userconf.dget('fgfwproxy', 'profile', '134'))):
                 if self.conf.userconf.dgetbool('fgfwproxy', 'remoteapi', False):
                     return self.api(parse)
@@ -399,13 +398,13 @@ class ProxyHandler(HTTPRequestHandler):
             # Does the client want to close connection after this request?
             conntype = self.headers.get('Connection', "")
             if self.request_version >= b"HTTP/1.1":
-                client_close = 'close' in conntype.lower()
+                self.close_connection = 'close' in conntype.lower()
             else:
-                client_close = 'keep_alive' in conntype.lower()
+                self.close_connection = 'keep_alive' in conntype.lower()
             if 'Upgrade' in self.headers:
                 if 'websocket' in self.headers['Upgrade']:
                     self.headers['Upgrade'] = 'websocket'
-                    client_close = True
+                    self.close_connection = True
                 else:
                     self.logger.warning('Upgrade header found! (%s), FW-Lite do not support this...' % self.headers['Upgrade'])
                     del self.headers['Upgrade']
@@ -495,7 +494,7 @@ class ProxyHandler(HTTPRequestHandler):
             else:
                 remote_close = 'keep_alive' in conntype.lower()
             if 'Upgrade' in response_header:
-                remote_close = True
+                self.close_connection = remote_close = True
             if "Content-Length" in response_header:
                 if "," in response_header["Content-Length"]:
                     # Proxies sometimes cause Content-Length headers to get
@@ -509,13 +508,6 @@ class ProxyHandler(HTTPRequestHandler):
                 content_length = int(response_header["Content-Length"])
             else:
                 content_length = None
-            buf = io.BytesIO(header_data)
-            header_data = b''
-            for line in buf:
-                if line.startswith('Connection') and 'Upgrade' not in line:
-                    header_data += b'Connection: close\r\n' if client_close else b'Connection: keep_alive\r\n'
-                else:
-                    header_data += line
             self.wfile_write(response_line)
             self.wfile_write(header_data)
             # verify
@@ -572,10 +564,15 @@ class ProxyHandler(HTTPRequestHandler):
             self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname, rtime)
             self.pproxy.log(self.requesthost[0], rtime)
             if remote_close or is_connection_dropped([self.remotesoc]):
-                self.remotesoc.close()
+                try:
+                    self.remotesoc.close()
+                except:
+                    pass
             else:
                 self.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
             self.remotesoc = None
+            if self.close_connection:
+                self.connection.close()
         except ClientError as e:
             raise
         except NetWorkIOError as e:
@@ -612,9 +609,9 @@ class ProxyHandler(HTTPRequestHandler):
                 self._proxylist = [self.conf.parentlist.get(u) for u in new_url.split()]
                 random.shuffle(self._proxylist)
 
-        ip = self.conf.resolver.get_ip_address(self.requesthost[0])
+        self.rip = self.conf.resolver.get_ip_address(self.requesthost[0])
 
-        if ip.is_loopback or self.ssclient:
+        if self.rip.is_loopback or self.ssclient:
             if ip_address(self.client_address[0]).is_loopback:
                 if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
                     # prevent loop

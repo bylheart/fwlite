@@ -2,7 +2,7 @@
 
 A anti-censorship HTTP proxy with builtin shadowsocks support.
 
-Current Version: 4.13.1
+Current Version: 4.13.2
 
 Tested on Windows 7 and openSUSE.
 
@@ -117,6 +117,8 @@ Assign a parent proxy for certain sites
 GPLv2
 
 ##Thanks
+[翻墙路由器的原理与实现]
+
 [COW]
 
 [GoAgent]
@@ -138,3 +140,4 @@ GPLv2
 [pybuild]:https://github.com/goagent/pybuild
 [hxsocks]:https://github.com/v3aqb/hxsocks
 [gfwlist]:https://github.com/gfwlist/gfwlist
+[翻墙路由器的原理与实现]:https://docs.google.com/document/d/1mmMiMYbviMxJ-DhTyIGdK7OOg581LSD1CZV4XY1OMG8/pub

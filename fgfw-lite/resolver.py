@@ -82,8 +82,9 @@ def tcp_dns_record(host, qtype, server, proxy):
     query_data = query.pack()
     for _ in range(2):
         try:
-            sock = create_connection(server, ctimeout=5, parentproxy=proxy, tunnel=True)
+            sock = create_connection(server, ctimeout=2, parentproxy=proxy, tunnel=True)
             sock.send(struct.pack('>h', len(query_data)) + query_data)
+            sock.settimeout(2)
             rfile = sock.makefile('rb')
             reply_data_length = rfile.read(2)
             reply_data = rfile.read(struct.unpack('>h', reply_data_length)[0])
@@ -102,7 +103,7 @@ class BaseResolver(object):
         self.hostlock = defaultdict(RLock)
 
     def record(self, host, qtype):
-        with self.hostlock[(host, qtype)]:
+        # with self.hostlock[(host, qtype)]:
             return self._record(host, qtype)
 
     def _record(self, host, qtype):
@@ -317,10 +318,6 @@ class Anti_GFW_Resolver(BaseResolver):
             return [(2 if ip._version == 4 else 10, host), ]
         except:
             pass
-        if not self.is_poisoned(host):
-            result = _resolver(host)
-            if not any([item[1] in self.bad_ip for item in result]):
-                return result
         try:
             record = self.record(host, 'ANY')
             while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
