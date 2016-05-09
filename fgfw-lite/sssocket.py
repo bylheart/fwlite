@@ -2,6 +2,8 @@
 # coding:utf-8
 import struct
 import encrypt
+import hashlib
+import hmac
 import io
 from parent_proxy import ParentProxy
 from basesocket import basesocket
@@ -20,12 +22,17 @@ class sssocket(basesocket):
             parentproxy = ParentProxy(parentproxy, parentproxy)
         self.parentproxy = parentproxy
         self.crypto = None
+        self.__ota = False
+        self._ota_chunk_idx = 0
         self.connected = False
 
     def connect(self, address):
         self.__address = address
         sshost, ssport, ssmethod, sspassword = (self.ssServer.hostname, self.ssServer.port, self.ssServer.username.lower(), self.ssServer.password)
         from connection import create_connection
+        if ssmethod.endswith('-auth'):
+            self.__ota = True
+            ssmethod = ssmethod[:-5]
         self._sock = create_connection((sshost, ssport), self.timeout, parentproxy=self.parentproxy, tunnel=True)
         self.crypto = encrypt.Encryptor(sspassword, ssmethod)
 
@@ -55,15 +62,30 @@ class sssocket(basesocket):
 
     def sendall(self, data):
         if self.connected:
+            if self.__ota:
+                # modified from https://github.com/shadowsocks/shadowsocks/blob/master/shadowsocks/tcprelay.py
+                data_len = struct.pack(">H", len(data))
+                index = struct.pack('>I', self._ota_chunk_idx)
+                key = self.crypto.cipher_iv + index
+                sha110 = hmac.new(key, data, hashlib.sha1).digest()[:10]
+                self._ota_chunk_idx += 1
+                data = data_len + sha110 + data
             self._sock.sendall(self.crypto.encrypt(data))
         else:
+            # https://shadowsocks.org/en/spec/one-time-auth.html
             host, port = self.__address
-            self._sock.sendall(self.crypto.encrypt(b''.join([b'\x03',
-                                                   chr(len(host)).encode(),
-                                                   host.encode(),
-                                                   struct.pack(b">H", port),
-                                                   data])))
+            addrtype = 19 if self.__ota else 3
+            header = b''.join([chr(addrtype),
+                               chr(len(host)).encode(),
+                               host.encode(),
+                               struct.pack(b">H", port)])
+            if self.__ota:
+                key = self.crypto.cipher_iv + self.crypto.key
+                header += hmac.new(key, header, hashlib.sha1).digest()[:10]
+            self._sock.sendall(self.crypto.encrypt(header))
             self.connected = True
+            if data:
+                self.sendall(data)
 
     def makefile(self, mode='rb', bufsize=0):
         return self

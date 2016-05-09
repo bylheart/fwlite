@@ -1,3 +1,9 @@
+2016.4.4 v4.13.3
+support shadowsocks OTA
+
+2016.4.4 v4.13.2
+fix performance issue with remote resolve
+
 2016.4.4 v4.13.1
 fix: resolver
 fix: hxsocks KeyError

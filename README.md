@@ -2,7 +2,7 @@
 
 A anti-censorship HTTP proxy with builtin shadowsocks support.
 
-Current Version: 4.13.2
+Current Version: 4.13.3
 
 Tested on Windows 7 and openSUSE.
 
@@ -66,7 +66,7 @@ For Linux and Mac, run `FWLite.pyw`
   - HTTPS Proxy (HTTP Proxy over TLS)
   - Socks5 Proxy
   - SNI Proxy
-  - [Shadowsocks] by @clowwindy
+  - [Shadowsocks] by @clowwindy (with OTA support)
 - Prioritize parent proxies by location and response time
 - Redirector(some hidden function here)
 - Support PAC for WPAD
