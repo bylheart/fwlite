@@ -188,21 +188,26 @@ class hxssocket(basesocket):
         self._rbuffer = io.BytesIO()  # reset _rbuf.  we consume it via buf.
         if buf_len == 0:
             # Nothing in buffer? Try to read.
-            ctlen = fp.read(2)
-            if not ctlen:
-                return b''
-            ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
-            ct = fp.read(ctlen)
-            mac = fp.read(self.cipher.key_len)
-            data = self.cipher.decrypt(ct, mac)
-            data = data[1:0-ord(data[0])] if ord(data[0]) else data[1:]
-            if not data:
-                return b''
-            if len(data) <= size:
-                return data
-            buf_len = len(data)
-            buf.write(data)
-            del data  # explicit free
+            while 1:
+                ctlen = fp.read(2)
+                if not ctlen:
+                    return b''
+                ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
+                ct = fp.read(ctlen)
+                mac = fp.read(self.cipher.key_len)
+                data = self.cipher.decrypt(ct, mac)
+                pad_len = ord(data[0])
+                data = data[1:0-pad_len] if ord(data[0]) else data[1:]
+                if not data:
+                    return b''
+                if pad_len == 1:
+                    continue
+                if len(data) <= size:
+                    return data
+                buf_len = len(data)
+                buf.write(data)
+                del data  # explicit free
+                break
         buf.seek(0)
         rv = buf.read(size)
         if buf_len > size:
