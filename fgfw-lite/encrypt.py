@@ -50,6 +50,7 @@ try:
     from hmac import compare_digest
 except ImportError:
     def compare_digest(a, b):
+        # return a == b
         if isinstance(a, str):
             if len(a) != len(b):
                 return False
