@@ -10,10 +10,10 @@ import traceback
 from collections import defaultdict
 
 try:
-    from ipaddress import IPv4Address, ip_address
-except:
     from ipaddr import IPv4Address
     from ipaddr import IPAddress as ip_address
+except:
+    from ipaddress import IPv4Address, ip_address
 
 from parent_proxy import ParentProxyList, ParentProxy
 from get_proxy import get_proxy

@@ -274,13 +274,13 @@ class TCP_Resolver(BaseResolver):
 class Resolver(BaseResolver):
     def __init__(self, dnsserver, proxy=None):
         self.dnsserver = dnsserver
-        self.UDP_Resolver = BaseResolver(dnsserver)
+        self.UDP_Resolver = UDP_Resolver(dnsserver)
         self.TCP_Resolver = TCP_Resolver(dnsserver, proxy)
         self.hostlock = defaultdict(RLock)
 
     def _record(self, domain, qtype):
         record = self.UDP_Resolver.record(domain, qtype)
-        if not record or record.header.tc == 1:
+        if record and record.header.tc == 1:
             record = self.TCP_Resolver.record(domain, qtype)
         return record
 
