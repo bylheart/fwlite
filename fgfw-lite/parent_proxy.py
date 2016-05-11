@@ -74,7 +74,7 @@ class ParentProxy(object):
         self.httppriority = int(httppriority)
         self.httpspriority = int(httpspriority)
         self.timeout = int(timeout)
-        self.country_code = None
+        self.country_code = urlparse.parse_qs(self.parse.query).get('location', [''])[0] or None
         self.last_ckeck = 0
         if self.parse.scheme.lower() == 'sni':
             self.httppriority = -1
@@ -82,7 +82,7 @@ class ParentProxy(object):
     def get_location(self):
         if self.country_code:
             return self.country_code
-        if time.time() - self.last_ckeck < 60:
+        if time.time() - self.last_ckeck < 300:
             return self.country_code
         try:
             self.last_ckeck = time.time()
@@ -93,7 +93,7 @@ class ParentProxy(object):
                 from httputil import read_reaponse_line, read_headers
                 try:
                     soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=None, parentproxy=self)
-                    soc.sendall(b'GET / HTTP/1.1\r\nConnection: close\r\nHost: bot.whatismyipaddress.com\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0\r\n\r\n')
+                    soc.sendall(b'GET / HTTP/1.1\r\nConnection: keep_alive\r\nHost: bot.whatismyipaddress.com\r\nAccept-Encoding: identity\r\nUser-Agent: Python-urllib/2.7\r\n\r\n')
                     f = soc.makefile()
                     line, version, status, reason = read_reaponse_line(f)
                     _, headers = read_headers(f)
