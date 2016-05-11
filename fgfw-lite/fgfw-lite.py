@@ -127,11 +127,6 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
-    ssrealip = None
-    ssclient = ''
-    shortpath = ''
-    ppname = ''
-    retryable = True
     HTTPCONN_POOL = httpconn_pool()
 
     def __init__(self, request, client_address, server):
@@ -232,8 +227,15 @@ class ProxyHandler(HTTPRequestHandler):
     bufsize = 8192
     timeout = 60
 
+    def __init__(self, request, client_address, server):
+        self.ssrealip = None
+        self.shortpath = ''
+        self.ppname = ''
+        self.retryable = True
+        HTTPRequestHandler.__init__(self, request, client_address, server)
+
     def setup(self):
-        BaseHTTPRequestHandler.setup(self)
+        HTTPRequestHandler.setup(self)
         self.traffic_count = [0, 0]  # [read from client, write to client]
 
     def handle_one_request(self):
@@ -247,6 +249,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.failed_parents = []
         self.phase = ''
         self.path = ''
+        self.noxff = False
         self.count = 0
         self.traffic_count = [0, 0]  # [read from client, write to client]
         self.logmethod = self.logger.info
@@ -288,6 +291,7 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(403)
             self.path = 'http://%s%s' % (self.headers['Host'], self.path)
 
+        # fix request
         if self.path.startswith('http://http://'):
             self.path = self.path[7:]
 
@@ -296,6 +300,7 @@ class ProxyHandler(HTTPRequestHandler):
         if 'Host' not in self.headers:
             self.headers['Host'] = parse.netloc
 
+        # gather info
         self.requesthost = parse_hostport(self.headers['Host'], 80)
         self.rip = self.conf.resolver.get_ip_address(self.requesthost[0])
 
@@ -306,14 +311,14 @@ class ProxyHandler(HTTPRequestHandler):
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
         # redirector
-        noxff = False
         new_url = self.conf.PARENT_PROXY.redirect(self)
         if new_url:
             self.logger.debug('redirect %s, %s %s' % (new_url, self.command, self.shortpath or self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 return self.send_error(int(new_url))
-            elif new_url.lower() == 'noxff':
-                noxff = True
+            elif new_url.lower() == 'return':
+                # request handled by redirector, return
+                return
             elif new_url.lower() == 'reset':
                 self.close_connection = 1
                 return
@@ -321,16 +326,16 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.write(msg=FAKEGIF, ctype='image/gif')
             elif all(u in self.conf.parentlist.dict.keys() for u in new_url.split()):
                 self._proxylist = [self.conf.parentlist.get(u) for u in new_url.split()]
-                random.shuffle(self._proxylist)
+                # random.shuffle(self._proxylist)
             else:
                 return self.redirect(new_url)
 
-        if self.rip.is_loopback or self.ssclient:
+        if self.rip.is_loopback:
             if ip_address(self.client_address[0]).is_loopback:
                 if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
                     return self.api(parse)
             else:
-                return self.send_error(403, 'Go fuck yourself!')
+                return self.send_error(403)
 
         if str(self.rip) == self.connection.getsockname()[0]:
             if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + len(self.conf.userconf.dget('fgfwproxy', 'profile', '134'))):
@@ -338,13 +343,18 @@ class ProxyHandler(HTTPRequestHandler):
                     return self.api(parse)
                 return self.send_error(403)
 
-        if not self.ssclient and self.conf.xheaders:
-            ipl = [client_ip.strip() for client_ip in self.headers.get('X-Forwarded-For', '').split(',') if client_ip.strip()]
-            ipl.append(self.client_address[0])
-            self.headers['X-Forwarded-For'] = ', '.join(ipl)
+        if self.conf.xheaders:
+            iplst = [client_ip.strip() for client_ip in self.headers.get('X-Forwarded-For', '').split(',') if client_ip.strip()]
+            if not ip_address(self.client_address[0]).is_loopback:
+                iplst.append(self.client_address[0])
+            self.headers['X-Forwarded-For'] = ', '.join(iplst)
 
-        if noxff:
+        if self.noxff and 'X-Forwarded-For' in self.headers:
             del self.headers['X-Forwarded-For']
+
+        for h in ['Proxy-Connection', 'Proxy-Authenticate']:
+            if h in self.headers:
+                del self.headers[h]
 
         self._do_GET()
 
@@ -406,11 +416,11 @@ class ProxyHandler(HTTPRequestHandler):
                     self.headers['Upgrade'] = 'websocket'
                     self.close_connection = True
                 else:
-                    self.logger.warning('Upgrade header found! (%s), FW-Lite do not support this...' % self.headers['Upgrade'])
+                    self.logger.warning('unsupported Upgrade header found! (%s)' % self.headers['Upgrade'])
                     del self.headers['Upgrade']
             else:
                 self.headers['Connection'] = 'keep_alive'
-            del self.headers['Proxy-Connection']
+
             for k, v in self.headers.items():
                 if isinstance(v, bytes):
                     v = v.decode('latin1')
@@ -611,7 +621,7 @@ class ProxyHandler(HTTPRequestHandler):
 
         self.rip = self.conf.resolver.get_ip_address(self.requesthost[0])
 
-        if self.rip.is_loopback or self.ssclient:
+        if self.rip.is_loopback:
             if ip_address(self.client_address[0]).is_loopback:
                 if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
                     # prevent loop
@@ -728,10 +738,7 @@ class ProxyHandler(HTTPRequestHandler):
                     pass
 
     def on_conn_log(self):
-        if self.ssclient:
-            self.logmethod('{} {} via {} client: {} {}'.format(self.command, self.shortpath or self.path, self.ppname, self.ssclient, self.ssrealip))
-        else:
-            self.logmethod('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
+        self.logmethod('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
 
     def wfile_write(self, data=None):
         if data is None:
