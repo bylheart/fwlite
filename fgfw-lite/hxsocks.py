@@ -158,7 +158,6 @@ class hxssocket(basesocket):
                 fp = self._sock.makefile('rb', 0)
                 resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
                 # now don't need to worry pskcipher iv anymore.
-                logger.debug('resp_len: %d' % resp_len)
                 data = fp.read(resp_len)
                 d = ord(self.pskcipher.decrypt(data)) if data else None
                 if d == 0:
@@ -197,11 +196,15 @@ class hxssocket(basesocket):
                 mac = fp.read(self.cipher.key_len)
                 data = self.cipher.decrypt(ct, mac)
                 pad_len = ord(data[0])
+                if 0 < pad_len < 64:
+                    # fake chunk, drop
+                    if pad_len == 1:
+                        self.send_fake_chunk(2)
+                    # server should be sending another chunk right away
+                    continue
                 data = data[1:0-pad_len] if ord(data[0]) else data[1:]
                 if not data:
                     return b''
-                if pad_len == 1:
-                    continue
                 if len(data) <= size:
                     return data
                 buf_len = len(data)
@@ -213,6 +216,16 @@ class hxssocket(basesocket):
         if buf_len > size:
             self._rbuffer.write(buf.read())
         return rv
+
+    def send_fake_chunk(self, flag):
+        # if flag == 1, other side should respond a fake chunk
+        assert 0 < flag < 64
+        if flag == 1:
+            logger.warning('hxsocks client requesting fake chunk could cause trouble')
+        data = chr(flag) + b'\x00' * random.randint(64, 2048)
+        ct, mac = self.cipher.encrypt(data)
+        data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
+        self._sock.sendall(data)
 
     def sendall(self, data):
         data_more = None
