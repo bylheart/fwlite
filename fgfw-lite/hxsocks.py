@@ -56,6 +56,8 @@ for fname in os.listdir('./.hxs_known_hosts'):
 
 
 class hxssocket(basesocket):
+    bufsize = 8192
+
     def __init__(self, hxsServer, ctimeout=4, parentproxy=None):
         basesocket.__init__(self)
         if not isinstance(hxsServer, ParentProxy):
@@ -196,7 +198,7 @@ class hxssocket(basesocket):
                 mac = fp.read(self.cipher.key_len)
                 data = self.cipher.decrypt(ct, mac)
                 pad_len = ord(data[0])
-                if 0 < pad_len < 64:
+                if 0 < pad_len < 8:
                     # fake chunk, drop
                     if pad_len == 1:
                         self.send_fake_chunk(2)
@@ -222,7 +224,7 @@ class hxssocket(basesocket):
         assert 0 < flag < 64
         if flag == 1:
             logger.warning('hxsocks client requesting fake chunk could cause trouble')
-        data = chr(flag) + b'\x00' * random.randint(64, 2048)
+        data = chr(flag) + b'\x00' * random.randint(64, 512)
         ct, mac = self.cipher.encrypt(data)
         data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
         self._sock.sendall(data)
@@ -247,7 +249,7 @@ class hxssocket(basesocket):
                 raise IOError('hxsocks: send connect request failed!')
         if len(data) > self.bufsize:
             data, data_more = data[:self.bufsize], data[self.bufsize:]
-        padding_len = random.randint(64, 255)
+        padding_len = random.randint(8, 255)
         padding = b'\x00' * padding_len
         data = chr(padding_len) + data + padding
 
