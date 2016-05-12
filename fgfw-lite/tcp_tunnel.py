@@ -18,6 +18,7 @@ class tcp_tunnel(ThreadingTCPServer):
     def __init__(self, proxy, target, server_address):
         self.proxy = ParentProxy('', proxy)
         self.target = target
+        self.addr = server_address
         logging.info('starting tcp forward from %s(local) to %s(remote) via %s' % (server_address, target, self.proxy))
         ThreadingTCPServer.__init__(self, server_address, tcp_tunnel_handler)
 
@@ -26,6 +27,7 @@ class tcp_tunnel_handler(StreamRequestHandler):
     bufsize = 8196
 
     def handle(self):
+        logging.info('tcp forward from %s(local) to %s(remote) via %s' % (self.server.addr, self.server.target, self.server.proxy))
         self.remotesoc = create_connection(self.server.target, ctimeout=5, parentproxy=self.server.proxy, tunnel=True)
         try:
             fd = [self.connection, self.remotesoc]
