@@ -247,7 +247,7 @@ class hxssocket(basesocket):
                 raise IOError('hxsocks: send connect request failed!')
         if len(data) > self.bufsize:
             data, data_more = data[:self.bufsize], data[self.bufsize:]
-        padding_len = random.randint(64, 255) if len(data) < 256 else 0
+        padding_len = random.randint(64, 255)
         padding = b'\x00' * padding_len
         data = chr(padding_len) + data + padding
 
