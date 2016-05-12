@@ -53,7 +53,7 @@ def load_libsodium():
                 break
     if not libsodium_path:
         raise IOError(0, 'libsodium not found')
-    logging.info('loading libsodium from %s', libsodium_path)
+    logging.info('loading libsodium from %s' % libsodium_path)
     libsodium = CDLL(libsodium_path)
     libsodium.sodium_init.restype = c_int
     libsodium.crypto_stream_salsa20_xor_ic.restype = c_int
