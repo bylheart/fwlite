@@ -15,7 +15,12 @@ class basesocket(object):
     def read(self, size):
         data = b''
         while len(data) < size:
-            data += self.recv(size-len(data))
+            try:
+                data += self.recv(size-len(data))
+            except socket.error as e:
+                if e.args[0] == errno.EINTR:
+                    continue
+                raise
         return data
 
     def readline(self, size=-1):
