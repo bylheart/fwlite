@@ -36,6 +36,8 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
     err = None
     if not iplist:
         iplist = resolver(host)
+    if not iplist:
+        iplist = [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
     if len(iplist) > 1:
         random.shuffle(iplist)
         # ipv4 goes first

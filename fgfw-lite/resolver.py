@@ -180,14 +180,15 @@ class UDP_Resolver(BaseResolver):
             else:
                 request = dnslib.DNSRecord(q=dnslib.DNSQuestion(domain, qtype))
         data = request.pack()
-        self.sock.sendto(data, self.dnsserver)
+        for dnsserver in self.dnsserver:
+            self.sock.sendto(data, dnsserver)
         try:
             result = self.event_dict[request.header.id].wait(self.timeout)
+            del self.event_dict[request.header.id]
             assert isinstance(result, dnslib.DNSRecord)
         except Exception:
             traceback.print_exc(file=sys.stderr)
             sys.stderr.flush()
-        del self.event_dict[request.header.id]
         if result:
             return result
         raise IOError(0, 'udp_dns_record %s failed.' % domain)
@@ -201,7 +202,7 @@ class UDP_Resolver(BaseResolver):
                 if record.header.id in self.event_dict:
                     self.event_dict[record.header.id].set(record)
                 else:
-                    logging.warning('unexpected dns record:\n%s' % record)
+                    logging.debug('unexpected dns record:\n%s' % record)
             except:
                 pass
 
@@ -268,7 +269,7 @@ class TCP_Resolver(BaseResolver):
         self.hostlock = defaultdict(RLock)
 
     def _record(self, domain, qtype):
-        return tcp_dns_record(domain, qtype, self.dnsserver, self.proxy)
+        return tcp_dns_record(domain, qtype, self.dnsserver[0], self.proxy)
 
 
 class Resolver(BaseResolver):
