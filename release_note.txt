@@ -1,7 +1,13 @@
-2016.4.4 v4.13.3
+2016.5.18 v4.13.3
+update hxsocks protocol
+change dns behavior:
+change default dns to dnspot
+accept more than one local dns-server, accept the first response
+
+2016.5.10 v4.13.3
 support shadowsocks OTA
 
-2016.4.4 v4.13.2
+2016.4.24 v4.13.2
 fix performance issue with remote resolve
 
 2016.4.4 v4.13.1
