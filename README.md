@@ -17,6 +17,7 @@ It looks like this:
 
     [parents]
     shadowsocks = ss://aes-256-cfb:password@127.0.0.1:8388
+    shadowsocks_with_OTA = ss://aes-256-cfb-auth:password@127.0.0.1:8388
 
 or this:
 
@@ -24,6 +25,18 @@ or this:
     proxy1 = http://127.0.0.1:8086
     proxy2 = http://user:pass@127.0.0.1:8087
     proxy3 = socks5://127.0.0.1:1080
+
+####Set DNS
+
+For performance issue, FWLite does not use `getaddrinfo`, you may need to add proper DNS setting.
+
+    [dns]
+    localdns = DNS_provided_by_ISP
+
+If there are more than one DNS server, seperate them with `|`. This case, DNS query is sent to all DNS servers, and only the first response is accepted.
+
+    [dns]
+    localdns = DNS_1|DNS_2
 
 ####Set browser
 Set your browser's proxy setting to `http://127.0.0.1:8118`.
