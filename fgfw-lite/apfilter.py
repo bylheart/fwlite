@@ -22,11 +22,14 @@ from __future__ import print_function, division
 
 import re
 import time
-import urlparse
 from threading import Timer
 from collections import defaultdict
 from util import parse_hostport
 import config
+try:
+    import urlparse
+except ImportError:
+    import urllib.parse as urlparse
 
 
 class ExpiredError(Exception):
