@@ -36,12 +36,12 @@ import encrypt
 from ecc import ECC
 
 import logging
-logger = logging.getLogger('FW_Lite')
 
 DEFAULT_METHOD = 'rc4-md5'
 DEFAULT_HASH = 'sha256'
 SALT = b'G\x91V\x14{\x00\xd9xr\x9d6\x99\x81GL\xe6c>\xa9\\\xd2\xc6\xe0:\x9c\x0b\xefK\xd4\x9ccU'
 CTX = b'hxsocks'
+MAC_LEN = 16
 
 keys = {}
 newkey_lock = defaultdict(RLock)
@@ -95,58 +95,64 @@ class hxssocket(basesocket):
         with newkey_lock[self.serverid]:
             if self.serverid not in keys:
                 for _ in range(2):
-                    logger.debug('hxsocks getKey')
+                    logging.debug('hxsocks getKey')
                     host, port, usn, psw = (self.hxsServer.hostname, self.hxsServer.port, self.hxsServer.username, self.hxsServer.password)
                     if self._sock is None:
-                        logger.debug('hxsocks connect')
+                        logging.debug('hxsocks connect')
                         from connection import create_connection
                         self._sock = create_connection((host, port), self.timeout, parentproxy=self.parentproxy, tunnel=True)
                         self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
                     acipher = ECC(self.pskcipher.key_len)
                     pubk = acipher.get_pub_key()
-                    logger.debug('hxsocks send key exchange request')
+                    logging.debug('hxsocks send key exchange request')
                     ts = struct.pack('>I', int(time.time()))
                     padding_len = random.randint(64, 255)
-                    data = chr(10) + ts + chr(len(pubk)) + pubk + hmac.new(psw.encode(), ts + pubk + usn.encode(), hashlib.sha256).digest()\
-                        + chr(padding_len) + b'\x00' * padding_len
+                    data = ts + chr(len(pubk)) + pubk + hmac.new(psw.encode(), ts + pubk + usn.encode(), hashlib.sha256).digest()\
+                        + b'\x00' * padding_len
+                    data = chr(10) + struct.pack('>H', len(data)) + data
                     self._sock.sendall(self.pskcipher.encrypt(data))
                     fp = self._sock.makefile('rb', 0)
-                    resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
-                    resp = ord(self.pskcipher.decrypt(fp.read(resp_len)))
-                    if resp == 0:
-                        logger.debug('hxsocks read key exchange respond')
-                        pklen = ord(self.pskcipher.decrypt(fp.read(1)))
-                        server_key = self.pskcipher.decrypt(fp.read(pklen))
-                        auth = self.pskcipher.decrypt(fp.read(32))
-                        pklen = ord(self.pskcipher.decrypt(fp.read(1)))
-                        server_cert = self.pskcipher.decrypt(fp.read(pklen))
-                        sig_len = ord(self.pskcipher.decrypt(fp.read(1)))
-                        signature = self.pskcipher.decrypt(fp.read(sig_len))
-                        pad_len = ord(self.pskcipher.decrypt(fp.read(1)))
-                        self.pskcipher.decrypt(fp.read(pad_len))
+                    resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
+                    resp_len = self.pskcipher.decrypt(fp.read(resp_len))
+                    resp_len = struct.unpack('>H', resp_len)[0]
+                    data = self.pskcipher.decrypt(fp.read(resp_len))
+
+                    data = io.BytesIO(data)
+
+                    resp_code = ord(data.read(1))
+                    if resp_code == 0:
+                        logging.debug('hxsocks read key exchange respond')
+                        pklen = ord(data.read(1))
+                        scertlen = ord(data.read(1))
+                        siglen = ord(data.read(1))
+
+                        server_key = data.read(pklen)
+                        auth = data.read(32)
+                        server_cert = data.read(scertlen)
+                        signature = data.read(siglen)
+
                         # TODO: ask user if a certificate should be accepted or not.
                         if host not in known_hosts:
-                            logger.info('hxs: server %s new cert %s saved.' % (host, hashlib.sha256(server_cert).hexdigest()[:8]))
+                            logging.info('hxs: server %s new cert %s saved.' % (host, hashlib.sha256(server_cert).hexdigest()[:8]))
                             with open('./.hxs_known_hosts/' + host + '.cert', 'wb') as f:
                                 f.write(server_cert)
                                 known_hosts[host] = server_cert
                         elif known_hosts[host] != server_cert:
-                            logger.error('hxs: server %s certificate mismatch! PLEASE CHECK!' % host)
+                            logging.error('hxs: server %s certificate mismatch! PLEASE CHECK!' % host)
                             raise OSError(0, 'hxs: bad certificate')
                         if auth == hmac.new(psw.encode(), pubk + server_key + usn.encode(), hashlib.sha256).digest():
                             if ECC.verify_with_pub_key(server_cert, auth, signature, self.hash_algo):
                                 shared_secret = acipher.get_dh_key(server_key)
                                 keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
-                                self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0)
-                                logger.debug('hxs key exchange success')
+                                self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0, MAC_LEN)
+                                logging.debug('hxs key exchange success')
                                 return
                             else:
-                                logger.error('hxs getKey Error: server auth failed, bad signature')
+                                logging.error('hxs getKey Error: server auth failed, bad signature')
                         else:
-                            logger.error('hxs getKey Error: server auth failed, bad username or password')
+                            logging.error('hxs getKey Error: server auth failed, bad username or password')
                     else:
-                        fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
-                        logger.error('hxs getKey Error. bad password or timestamp.')
+                        logging.error('hxs getKey Error. bad password or timestamp.')
                 else:
                     raise IOError(0, 'hxs getKey Error')
             else:
@@ -158,29 +164,30 @@ class hxssocket(basesocket):
         if self.connected == 1:
             for i in range(2):
                 fp = self._sock.makefile('rb', 0)
-                resp_len = 1 if self.pskcipher.decipher else self.pskcipher.iv_len + 1
+                resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
                 # now don't need to worry pskcipher iv anymore.
-                data = fp.read(resp_len)
-                d = ord(self.pskcipher.decrypt(data)) if data else None
+                resp_len = self.pskcipher.decrypt(fp.read(resp_len))
+                resp_len = struct.unpack('>H', resp_len)[0]
+
+                resp = self.pskcipher.decrypt(fp.read(resp_len))
+
+                d = ord(resp[0]) if resp else None
                 if d == 0:
                     break
                 elif d == 2:
-                    logger.error('hxsocket Error: remote connect timed out.')
+                    logging.error('hxsocket Error: remote connect timed out.')
                     return b''
                 else:
                     if self.serverid in keys:
                         del keys[self.serverid]
                     if i:
-                        logger.error('hxsocket Error: invalid shared key.')
+                        logging.error('hxsocket Error: invalid shared key.')
                         return b''
-                    logger.debug('hxsocket Error: invalid shared key. try again.')
+                    logging.debug('hxsocket Error: invalid shared key. try again.')
                     if d is None:
                         self._sock = None
-                    else:
-                        fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
                     self._connect()
                     self.sendall(self._data_bak or b'')
-            fp.read(ord(self.pskcipher.decrypt(fp.read(1))))
             self.connected = 2
         fp = self._sock.makefile('rb', 0)
         buf = self._rbuffer
@@ -195,7 +202,7 @@ class hxssocket(basesocket):
                     return b''
                 ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
                 ct = fp.read(ctlen)
-                mac = fp.read(self.cipher.key_len)
+                mac = fp.read(MAC_LEN)
                 data = self.cipher.decrypt(ct, mac)
                 pad_len = ord(data[0])
                 if 0 < pad_len < 8:
@@ -221,9 +228,9 @@ class hxssocket(basesocket):
 
     def send_fake_chunk(self, flag):
         # if flag == 1, other side should respond a fake chunk
-        assert 0 < flag < 64
+        assert 0 < flag < 8
         if flag == 1:
-            logger.warning('hxsocks client requesting fake chunk could cause trouble')
+            logging.warning('hxsocks client requesting fake chunk could cause trouble')
         data = chr(flag) + b'\x00' * random.randint(64, 512)
         ct, mac = self.cipher.encrypt(data)
         data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
@@ -234,7 +241,7 @@ class hxssocket(basesocket):
         if self.connected == 0:
             for _ in range(2):
                 try:
-                    logger.debug('hxsocks send connect request')
+                    logging.debug('hxsocks send connect request')
                     padding_len = random.randint(64, 255)
                     padding = b'\x00' * padding_len
                     pt = struct.pack('>I', int(time.time())) + chr(len(self._address[0])) + self._address[0] + struct.pack('>H', self._address[1]) + b'\x00' * padding_len
@@ -243,7 +250,7 @@ class hxssocket(basesocket):
                     self.connected = 1
                     break
                 except KeyError:
-                    logger.warning('hxsocks: get public kay failed, key expired? try again...')
+                    logging.warning('hxsocks: get public kay failed, key expired? try again...')
                     self.getKey()
             else:
                 raise IOError('hxsocks: send connect request failed!')
@@ -263,7 +270,8 @@ class hxssocket(basesocket):
         return self
 
 if __name__ == '__main__':
-    hxs = hxssocket('hxs://user:pass@127.0.0.1:80')
+    logging.basicConfig(level=logging.DEBUG)
+    hxs = hxssocket('hxs://user:pass@127.0.0.1:9000')
     hxs.connect(('www.baidu.com', 80))
     hxs.sendall(b'GET / HTTP/1.0\r\n\r\n')
     data = hxs.recv(1024)

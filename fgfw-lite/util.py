@@ -25,8 +25,10 @@ try:
     import configparser
 except ImportError:
     import ConfigParser as configparser
-
-import geoip2.database
+try:
+    import geoip2.database
+except ImportError:
+    geoip2 = None
 
 configparser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
 logger = logging.getLogger('FW_Lite')
@@ -104,7 +106,7 @@ def sizeof_fmt(num):
     return "%.1f%s" % (num, 'TB')
 
 try:
-    GeoIP2 = geoip2.database.Reader('./fgfw-lite/GeoLite2-Country.mmdb', mode=geoip2.database.MODE_MEMORY)
+    GeoIP2 = geoip2.database.Reader('./fgfw-lite/GeoLite2-Country.mmdb', mode=geoip2.database.MODE_MEMORY) if geoip2 else None
 except:
     GeoIP2 = geoip2.database.Reader('./GeoLite2-Country.mmdb', mode=geoip2.database.MODE_MEMORY)
 
