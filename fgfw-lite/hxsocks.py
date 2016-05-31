@@ -156,7 +156,7 @@ class hxssocket(basesocket):
                 else:
                     raise IOError(0, 'hxs getKey Error')
             else:
-                self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0)
+                self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0, MAC_LEN)
 
     def recv(self, size):
         if self.connected == 0:

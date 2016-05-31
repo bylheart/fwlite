@@ -25,7 +25,7 @@
     "./fgfw-lite/fgfw-lite.py": "d7c4fb5eaa4dc8e1cf9102ce3294fbbb8cc8cf2b4769ccfbdede4aa9b219258e",
     "./fgfw-lite/get_proxy.py": "61dbc8688b06ad9fea18a3064327bca346837e6584a018b1ade04ddd89b8d288",
     "./fgfw-lite/httputil.py": "4c248a3f5f916ac343621e768cdc1924266d9ce3629b5b614d51287ace984e9b",
-    "./fgfw-lite/hxsocks.py": "08d400abbc6fb73b202fabc0d9987d79d0c8abd2c5b2cdc7f97a0bc31f62c85c",
+    "./fgfw-lite/hxsocks.py": "7d55eb1a07fdf507b22ca840a4fb89f471987c2375764d0ad62aef41f28d9561",
     "./fgfw-lite/lang/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "./fgfw-lite/lang/en_US.py": "c55a47aa3a71027b84a3095623e24c13e8586513c28ddfa358d291aa2e0e1920",
     "./fgfw-lite/lang/zh_CN.py": "e33f10e34b4ccf7250e3664e31e5d2d13cce4706696ce1add051d5374bfec062",
