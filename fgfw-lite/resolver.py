@@ -8,10 +8,10 @@ import select
 import traceback
 import logging
 import time
-from threading import Event, Thread, RLock
+import itertools
+from threading import Event, Timer, RLock, Thread
 from collections import defaultdict
 
-from repoze.lru import lru_cache
 try:
     from ipaddr import IPAddress as ip_address
 except:
@@ -20,17 +20,76 @@ except:
 from connection import create_connection
 
 
-@lru_cache(1024, timeout=900)
-def _resolver(host):
+NUM_CACHE = 12
+NUM_BAD_CACHE = 2
+CLEAN_INTV = 10
+
+
+class DNS_Cache(object):
+    def __init__(self):
+        self._cache = [{} for _ in range(NUM_CACHE)]
+        self._bad_cache = [{} for _ in range(NUM_BAD_CACHE)]
+        self._cache_iter = itertools.cycle(range(NUM_CACHE))
+        self._cache_id = next(self._cache_iter)
+        self._bad_cache_iter = itertools.cycle(range(NUM_BAD_CACHE))
+        self._bad_cache_id = next(self._bad_cache_iter)
+        self._lock = RLock()
+        Timer(CLEAN_INTV, self._sched_clean, ()).start()
+
+    def cache(self, host, qtype, result):
+        with self._lock:
+            if not result or isinstance(result, Exception):
+                self._bad_cache[self._bad_cache_id][(host, qtype)] = result
+            else:
+                self._cache[self._cache_id][(host, qtype)] = result
+
+    def query(self, host, qtype):
+        with self._lock:
+            for v in self._bad_cache:
+                if (host, qtype) in v:
+                    logging.debug('dns cache hit: bad result, {} {}'.format(host, qtype))
+                    return v[(host, qtype)]
+            for v in self._cache:
+                if (host, qtype) in v:
+                    logging.debug('dns cache hit: good result, {} {}'.format(host, qtype))
+                    return v[(host, qtype)]
+            logging.debug('dns cache hit: good result, {} {}'.format(host, qtype))
+
+    def clean(self):
+        with self._lock:
+            self._cache = [{} for _ in range(NUM_CACHE)]
+            self._bad_cache = [{} for _ in range(NUM_BAD_CACHE)]
+
+    def _sched_clean(self):
+        with self._lock:
+            self._cache_id = next(self._cache_iter)
+            self._bad_cache_id = next(self._bad_cache_iter)
+            self._cache[self._cache_id] = {}
+            self._bad_cache[self._bad_cache_id] = {}
+        Timer(CLEAN_INTV, self._sched_clean, ()).start()
+
+dns_cache = DNS_Cache()
+
+
+def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
+    result = dns_cache.query(host, (port, family, socktype, proto, flags))
+    if result:
+        if isinstance(result, Exception):
+            raise result
+        return result
     try:
-        ip = ip_address(host)
-        return [(2 if ip._version == 4 else 10, host), ]
-    except:
-        pass
-    return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
+        result = socket.getaddrinfo(host, port, family, socktype, proto, flags)
+        dns_cache.cache(host, (port, family, socktype, proto, flags), result)
+        return result
+    except Exception as e:
+        dns_cache.cache(host, (port, family, socktype, proto, flags), e)
+        raise e
 
 
-@lru_cache(1024, timeout=900)
+def _resolver(host):
+    return [(i[0], i[4][0]) for i in getaddrinfo(host, 0)]
+
+
 def _udp_dns_record(host, qtype, server):
     if isinstance(qtype, str):
         query = dnslib.DNSRecord.question(host, qtype=qtype)
@@ -45,7 +104,6 @@ def _udp_dns_record(host, qtype, server):
     return record
 
 
-@lru_cache(1024, timeout=900)
 def _udp_dns_records(host, qtype, server):
     if isinstance(qtype, str):
         query = dnslib.DNSRecord.question(host, qtype=qtype)
@@ -73,7 +131,6 @@ def _udp_dns_records(host, qtype, server):
     return record_list
 
 
-@lru_cache(1024, timeout=900)
 def tcp_dns_record(host, qtype, server, proxy):
     if isinstance(qtype, str):
         query = dnslib.DNSRecord.question(host, qtype=qtype)
@@ -99,15 +156,28 @@ def tcp_dns_record(host, qtype, server, proxy):
 
 
 class BaseResolver(object):
-    def __init__(self):
+    def __init__(self, dnsserver):
         self.hostlock = defaultdict(RLock)
+        self.dnsserver = tuple(dnsserver)
 
     def record(self, host, qtype):
-        # with self.hostlock[(host, qtype)]:
-            return self._record(host, qtype)
+        with self.hostlock[(host, qtype)]:
+            result = dns_cache.query(host, (qtype, self.dnsserver))
+            if result:
+                if isinstance(result, Exception):
+                    raise result
+                return result
+            try:
+                result = self._record(host, qtype)
+                dns_cache.cache(host, (host, (qtype, self.dnsserver)), result)
+                return result
+            except Exception as e:
+                dns_cache.cache(host, (host, (qtype, self.dnsserver)), e)
+                raise e
+                return self._record(host, qtype)
 
     def _record(self, host, qtype):
-        return _udp_dns_record(host, qtype, self.dnsserver)
+        return _udp_dns_record(host, qtype, self.dnsserver[0])
 
     def resolve(self, host):
         try:
@@ -115,15 +185,7 @@ class BaseResolver(object):
             return [(2 if ip._version == 4 else 10, host), ]
         except:
             pass
-        try:
-            record = self.record(host, 'ANY')
-            while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
-                record = self.record(str(record.rr[0].rdata), 'ANY')
-            return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
-        except Exception as e:
-            logging.warning('resolving %s: %r' % (host, e))
-            traceback.print_exc(file=sys.stderr)
-            return []
+        return _resolver(host)
 
     def get_ip_address(self, host):
         try:
@@ -160,7 +222,7 @@ class MEvent(object):
 
 class UDP_Resolver(BaseResolver):
     def __init__(self, dnsserver, timeout=3):
-        self.dnsserver = dnsserver
+        self.dnsserver = tuple(dnsserver)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.timeout = timeout
         self.event_dict = defaultdict(MEvent)
@@ -210,7 +272,7 @@ class UDP_Resolver(BaseResolver):
 class R_UDP_Resolver(BaseResolver):
     def __init__(self, dnsserver, timeout=1):
         # dnsserver should not be inside GFW
-        self.dnsserver = dnsserver
+        self.dnsserver = tuple(dnsserver)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.timeout = timeout
         self.event_dict = defaultdict(MEvent)
@@ -264,7 +326,7 @@ class R_UDP_Resolver(BaseResolver):
 
 class TCP_Resolver(BaseResolver):
     def __init__(self, dnsserver, proxy=None):
-        self.dnsserver = dnsserver
+        self.dnsserver = tuple(dnsserver)
         self.proxy = proxy
         self.hostlock = defaultdict(RLock)
 
@@ -319,10 +381,12 @@ class Anti_GFW_Resolver(BaseResolver):
             return [(2 if ip._version == 4 else 10, host), ]
         except:
             pass
+        if not self.is_poisoned(host):
+            return _resolver(host)
         try:
-            record = self.record(host, 'ANY')
+            record = self.remote.record(host, 'ANY')
             while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
-                record = self.record(str(record.rr[0].rdata), 'ANY')
+                record = self.remote.record(str(record.rr[0].rdata), 'ANY')
             return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
         except Exception as e:
             logging.warning('resolving %s: %r' % (host, e))

@@ -55,7 +55,7 @@ class httpconn_pool(object):
     def __init__(self):
         self.POOL = defaultdict(deque)  # {upstream_name: [(soc, ppname), ...]}
         self.socs = {}  # keep track of sock info
-        self.timerwheel = defaultdict(set)  # a list of socket object
+        self.timerwheel = [set() for _ in range(10)]  # a list of socket object
         self.timerwheel_iter = itertools.cycle(range(10))
         self.timerwheel_index = next(self.timerwheel_iter)
         self.lock = RLock()
