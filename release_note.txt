@@ -1,4 +1,8 @@
-2016.5.18 v4.13.3
+2016.6.3 v4.14.1
+update hxsocks protocol
+add dns cache and change dns behavior
+
+2016.5.18 v4.14
 update hxsocks protocol
 change dns behavior:
 change default dns to dnspot
