@@ -72,7 +72,6 @@ class hxssocket(basesocket):
         self.hash_algo = urlparse.parse_qs(self.hxsServer.parse.query).get('hash', [DEFAULT_HASH])[0].upper()
         self.serverid = (self.hxsServer.username, self.hxsServer.hostname)
         self.cipher = None
-        self.connected = 0
         # value: 0: request not sent
         #        1: request sent, no server response received
         #        2: server response received
@@ -80,16 +79,34 @@ class hxssocket(basesocket):
 
     def connect(self, address):
         self._address = address
-        self._connect()
-
-    def _connect(self):
-        self.connected = 0
         self.getKey()
         if self._sock is None:
             from connection import create_connection
             host, port = self.hxsServer.hostname, self.hxsServer.port
             self._sock = create_connection((host, port), self.timeout, parentproxy=self.parentproxy, tunnel=True)
             self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+        logging.debug('hxsocks send connect request')
+        padding_len = random.randint(64, 255)
+        pt = struct.pack('>I', int(time.time())) + chr(len(self._address[0])) + self._address[0] + struct.pack('>H', self._address[1]) + b'\x00' * padding_len
+        ct, mac = self.cipher.encrypt(pt)
+        self._sock.sendall(self.pskcipher.encrypt(chr(11) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
+
+        fp = self._sock.makefile('rb', 0)
+        resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
+        resp_len = self.pskcipher.decrypt(fp.read(resp_len))
+        resp_len = struct.unpack('>H', resp_len)[0]
+
+        resp = self.pskcipher.decrypt(fp.read(resp_len))
+
+        d = ord(resp[0]) if resp else None
+        if d == 0:
+            return
+        elif d == 2:
+            raise IOError(0, 'hxsocket Error: remote connect timed out. code 2')
+        else:
+            if self.serverid in keys:
+                del keys[self.serverid]
+            raise IOError(0, 'hxsocket Error: invalid shared key. code %d' % d)
 
     def getKey(self):
         with newkey_lock[self.serverid]:
@@ -159,36 +176,6 @@ class hxssocket(basesocket):
                 self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0, MAC_LEN)
 
     def recv(self, size):
-        if self.connected == 0:
-            self.sendall(b'')
-        if self.connected == 1:
-            for i in range(2):
-                fp = self._sock.makefile('rb', 0)
-                resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
-                # now don't need to worry pskcipher iv anymore.
-                resp_len = self.pskcipher.decrypt(fp.read(resp_len))
-                resp_len = struct.unpack('>H', resp_len)[0]
-
-                resp = self.pskcipher.decrypt(fp.read(resp_len))
-
-                d = ord(resp[0]) if resp else None
-                if d == 0:
-                    break
-                elif d == 2:
-                    logging.error('hxsocket Error: remote connect timed out.')
-                    return b''
-                else:
-                    if self.serverid in keys:
-                        del keys[self.serverid]
-                    if i:
-                        logging.error('hxsocket Error: invalid shared key.')
-                        return b''
-                    logging.debug('hxsocket Error: invalid shared key. try again.')
-                    if d is None:
-                        self._sock = None
-                    self._connect()
-                    self.sendall(self._data_bak or b'')
-            self.connected = 2
         fp = self._sock.makefile('rb', 0)
         buf = self._rbuffer
         buf.seek(0, 2)  # seek end
@@ -238,22 +225,6 @@ class hxssocket(basesocket):
 
     def sendall(self, data):
         data_more = None
-        if self.connected == 0:
-            for _ in range(2):
-                try:
-                    logging.debug('hxsocks send connect request')
-                    padding_len = random.randint(64, 255)
-                    padding = b'\x00' * padding_len
-                    pt = struct.pack('>I', int(time.time())) + chr(len(self._address[0])) + self._address[0] + struct.pack('>H', self._address[1]) + b'\x00' * padding_len
-                    ct, mac = self.cipher.encrypt(pt)
-                    self._sock.sendall(self.pskcipher.encrypt(chr(11) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
-                    self.connected = 1
-                    break
-                except KeyError:
-                    logging.warning('hxsocks: get public kay failed, key expired? try again...')
-                    self.getKey()
-            else:
-                raise IOError('hxsocks: send connect request failed!')
         if len(data) > self.bufsize:
             data, data_more = data[:self.bufsize], data[self.bufsize:]
         padding_len = random.randint(8, 255)
