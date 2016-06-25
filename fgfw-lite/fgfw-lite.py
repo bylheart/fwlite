@@ -715,7 +715,6 @@ class ProxyHandler(HTTPRequestHandler):
                         self.remotesoc.sendall(data)
                     else:
                         fd.remove(self.connection)
-                        self.remotesoc.shutdown(socket.SHUT_WR)
                 if self.remotesoc in ins:
                     data = self.remotesoc.recv(self.bufsize)
                     if data:
@@ -736,6 +735,7 @@ class ProxyHandler(HTTPRequestHandler):
                     sock.close()
                 except NetWorkIOError:
                     pass
+            self.remotesoc = None
 
     def on_conn_log(self):
         self.logmethod('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))

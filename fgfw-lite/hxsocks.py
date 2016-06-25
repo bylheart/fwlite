@@ -23,15 +23,17 @@ import time
 import random
 import hashlib
 import hmac
+import socket
 
 from collections import defaultdict
-from threading import RLock
+from threading import RLock, Thread
 try:
     import urllib.parse as urlparse
 except ImportError:
     import urlparse
 from basesocket import basesocket
 from parent_proxy import ParentProxy
+from httputil import httpconn_pool
 import encrypt
 from ecc import ECC
 
@@ -55,7 +57,21 @@ for fname in os.listdir('./.hxs_known_hosts'):
         known_hosts[fname[:-5]] = open('./.hxs_known_hosts/' + fname, 'rb').read()
 
 
-class hxssocket(basesocket):
+POOL = httpconn_pool()
+
+
+def hxssocket(hxsServer, ctimeout=4, parentproxy=None):
+    if not isinstance(hxsServer, ParentProxy):
+        hxsServer = ParentProxy(hxsServer, hxsServer)
+    result = POOL.get(hxsServer.parse.hostname)
+    if result:
+        logging.debug('hxsocks reusing connection, ' + result[1])
+        result[0].pooled = 0
+        return result[0]
+    return _hxssocket(hxsServer, ctimeout, parentproxy)
+
+
+class _hxssocket(basesocket):
     bufsize = 8192
 
     def __init__(self, hxsServer, ctimeout=4, parentproxy=None):
@@ -72,10 +88,10 @@ class hxssocket(basesocket):
         self.hash_algo = urlparse.parse_qs(self.hxsServer.parse.query).get('hash', [DEFAULT_HASH])[0].upper()
         self.serverid = (self.hxsServer.username, self.hxsServer.hostname)
         self.cipher = None
-        # value: 0: request not sent
-        #        1: request sent, no server response received
-        #        2: server response received
         self._data_bak = None
+        self.readable = 0
+        self.writeable = 0
+        self.pooled = 0
 
     def connect(self, address):
         self._address = address
@@ -100,6 +116,9 @@ class hxssocket(basesocket):
 
         d = ord(resp[0]) if resp else None
         if d == 0:
+            logging.debug('hxsocks connected')
+            self.readable = 1
+            self.writeable = 1
             return
         elif d == 2:
             raise IOError(0, 'hxsocket Error: remote connect timed out. code 2')
@@ -176,13 +195,16 @@ class hxssocket(basesocket):
                 self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0, MAC_LEN)
 
     def recv(self, size):
+        logging.debug('hxsocks recv')
+        # if not self.readable:
+        #     return b''
         fp = self._sock.makefile('rb', 0)
         buf = self._rbuffer
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
         self._rbuffer = io.BytesIO()  # reset _rbuf.  we consume it via buf.
         if buf_len == 0:
-            # Nothing in buffer? Try to read.
+            logging.debug('Nothing in buffer. Try to read.')
             while 1:
                 ctlen = fp.read(2)
                 if not ctlen:
@@ -193,13 +215,16 @@ class hxssocket(basesocket):
                 data = self.cipher.decrypt(ct, mac)
                 pad_len = ord(data[0])
                 if 0 < pad_len < 8:
-                    # fake chunk, drop
+                    logging.debug('Fake chunk, drop')
                     if pad_len == 1:
+                        logging.debug('sending fake chunk')
                         self.send_fake_chunk(2)
                     # server should be sending another chunk right away
                     continue
                 data = data[1:0-pad_len] if ord(data[0]) else data[1:]
                 if not data:
+                    logging.debug('hxsocks recv closed gracefully')
+                    self.readable = 0
                     return b''
                 if len(data) <= size:
                     return data
@@ -224,6 +249,9 @@ class hxssocket(basesocket):
         self._sock.sendall(data)
 
     def sendall(self, data):
+        if not data:
+            logging.warning('no data!!!')
+        logging.debug('hxsocks send data')
         data_more = None
         if len(data) > self.bufsize:
             data, data_more = data[:self.bufsize], data[self.bufsize:]
@@ -236,9 +264,75 @@ class hxssocket(basesocket):
         self._sock.sendall(data)
         if data_more:
             self.sendall(data_more)
+        logging.debug('hxsocks send data completed')
 
     def makefile(self, mode='rb', bufsize=0):
         return self
+
+    def shutdown(self, how):
+        if how == socket.SHUT_WR:
+            logging.debug('hxsocks shutdown write')
+            padding_len = random.randint(8, 255)
+            data = chr(padding_len) + b'\x00' * padding_len
+
+            ct, mac = self.cipher.encrypt(data)
+            data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
+            self._sock.sendall(data)
+            self.writeable = 0
+
+    def close(self):
+        logging.debug('hxsocks close, readable %s, writeable %s' % (self.readable, self.writeable))
+        if self.pooled:
+            self._sock.close()
+            return
+        if self.writeable:
+            logging.debug('hxsocks shutdown write, close')
+            padding_len = random.randint(8, 255)
+            data = chr(padding_len) + b'\x01' * padding_len
+
+            ct, mac = self.cipher.encrypt(data)
+            data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
+            self._sock.sendall(data)
+            self.writeable = 0
+        if self.readable:
+            t = Thread(target=self._wait_close)
+            t.daemon = True
+            t.start()
+        logging.debug('hxsocks add to pool')
+        self.pooled = 1
+        POOL.put(self.hxsServer.parse.hostname, self, self.hxsServer.name)
+
+    def _wait_close(self):
+        logging.debug('hxsocks _wait_close')
+        self.settimeout(8)
+        while 1:
+            try:
+                fp = self._sock.makefile('rb', 0)
+                ctlen = fp.read(2)
+                if not ctlen:
+                    raise IOError(0, '')
+                ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
+                ct = fp.read(ctlen)
+                mac = fp.read(MAC_LEN)
+                data = self.cipher.decrypt(ct, mac)
+                pad_len = ord(data[0])
+                if 0 < pad_len < 8:
+                    # fake chunk, drop
+                    if pad_len == 1:
+                        self.send_fake_chunk(2)
+                    # server should be sending another chunk right away
+                    continue
+                data = data[1:0-pad_len] if ord(data[0]) else data[1:]
+                if not data:
+                    logging.debug('hxsocks add to pool')
+                    self.pooled = 1
+                    POOL.put(self.hxsServer.parse.hostname, self, self.hxsServer.name)
+                    self.readable = 0
+                    break
+            except Exception:
+                self._sock.close()
+                return
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
