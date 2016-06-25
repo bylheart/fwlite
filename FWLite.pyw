@@ -128,6 +128,8 @@ class MainWindow(QtGui.QMainWindow):
         self.createActions()
         self.createTrayIcon()
         self.createProcess()
+        if sys.platform.startswith('win') and self.conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
+            setIEproxy(1, u'127.0.0.1:%d' % self.port)
 
     def killProcess(self):
         if self.runner.state() == QtCore.QProcess.ProcessState.Running:
@@ -226,8 +228,6 @@ class MainWindow(QtGui.QMainWindow):
             if i < 6:
                 self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=getattr(self, 'set_ie_p%d' % i)))
         self.settingIEproxyMenu.addAction(self.setIENoneAction)
-        if self.conf.dgetbool('FGFW_Lite', 'setIEProxy', True):
-            setIEproxy(1, u'127.0.0.1:%d' % self.port)
 
     def set_ie_p0(self):
         setIEproxy(1, u'127.0.0.1:%d' % self.port)
