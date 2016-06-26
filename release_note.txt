@@ -1,3 +1,6 @@
+2016.6.26 v4.15
+update hxsocks protocol, support connection reuse
+
 2016.6.3 v4.14.1
 update hxsocks protocol
 add dns cache and change dns behavior
