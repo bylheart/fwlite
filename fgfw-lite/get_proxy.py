@@ -2,6 +2,7 @@
 # coding:utf-8
 import base64
 import random
+import logging
 
 from repoze.lru import lru_cache
 
@@ -28,9 +29,16 @@ continent_list = [ASIA, AFRICA, NA, SA, EU, PACIFIC]
 
 class get_proxy(object):
     """docstring for parent_proxy"""
+    logger = logging.getLogger('get_proxy')
+    logger.setLevel(logging.INFO)
+    hdr = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                                  datefmt='%H:%M:%S')
+    hdr.setFormatter(formatter)
+    logger.addHandler(hdr)
+
     def __init__(self, conf):
         self.conf = conf
-        self.logger = self.conf.logger
         self.config()
 
     def config(self):

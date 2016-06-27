@@ -16,10 +16,13 @@ except ImportError:
     from SocketServer import ThreadingMixIn, UDPServer, TCPServer, BaseRequestHandler
 import logging
 
-logging.basicConfig(level=logging.INFO,
-                    format='DNSServer %(asctime)s %(levelname)s %(message)s',
-                    datefmt='%H:%M:%S', filemode='a+')
-logger = logging.getLogger('DNSServer')
+logger = logging.getLogger('DNS_Server')
+logger.setLevel(logging.INFO)
+hdr = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                              datefmt='%H:%M:%S')
+hdr.setFormatter(formatter)
+logger.addHandler(hdr)
 
 
 class UDPDNSServer(ThreadingMixIn, UDPServer):
@@ -84,7 +87,7 @@ class DNSHandler(BaseRequestHandler):
 
             return rdata
         except Exception as e:
-            logging.error(repr(e))
+            logger.error(repr(e))
 
 
 class Resolver(BaseResolver):
@@ -94,7 +97,7 @@ class Resolver(BaseResolver):
 
     def resolve(self, request, handler):
         if len(request.questions) != 1:
-            logging('more than one request question, abort.')
+            logger('more than one request question, abort.')
             reply = request.reply()
             reply.header.rcode = getattr(dnslib.RCODE, 'FORMERR')
             return reply

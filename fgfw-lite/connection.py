@@ -11,7 +11,6 @@ from sssocket import sssocket
 from hxsocks import hxssocket
 from parent_proxy import ParentProxy
 from httputil import read_reaponse_line, read_header_data
-logger = logging.getLogger('FW_Lite')
 
 
 def _create_connection(address, timeout=object(), source_address=None, iplist=None):
@@ -80,7 +79,6 @@ def do_tunnel(soc, netloc, pp):
 
 
 def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, parentproxy=None, tunnel=False):
-    logger.debug('connection.create_connection: %r %r %r' % (netloc, parentproxy, tunnel))
     if parentproxy and not isinstance(parentproxy, ParentProxy):
         logging.warning('parentproxy is not a ParentProxy instance, please check.')
         parentproxy = ParentProxy(parentproxy, parentproxy)

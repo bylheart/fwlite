@@ -35,7 +35,14 @@ if not os.path.isfile('./fgfw-lite/local.txt'):
 
 class Config(object):
     def __init__(self):
-        self.logger = logging.getLogger('FW_Lite')
+        self.logger = logging.getLogger('config')
+        self.logger.setLevel(logging.INFO)
+        hdr = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                                      datefmt='%H:%M:%S')
+        hdr.setFormatter(formatter)
+        self.logger.addHandler(hdr)
+
         self.version = SConfigParser()
         self.userconf = SConfigParser()
         self.reload()

@@ -20,6 +20,15 @@ except:
 from connection import create_connection
 
 
+logger = logging.getLogger('resolver')
+logger.setLevel(logging.INFO)
+hdr = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                              datefmt='%H:%M:%S')
+hdr.setFormatter(formatter)
+logger.addHandler(hdr)
+
+
 NUM_CACHE = 12
 NUM_BAD_CACHE = 2
 CLEAN_INTV = 10
@@ -47,13 +56,13 @@ class DNS_Cache(object):
         with self._lock:
             for v in self._bad_cache:
                 if (host, qtype) in v:
-                    logging.debug('dns cache hit: bad result, {} {}'.format(host, qtype))
+                    logger.debug('dns cache hit: bad result, {} {}'.format(host, qtype))
                     return v[(host, qtype)]
             for v in self._cache:
                 if (host, qtype) in v:
-                    logging.debug('dns cache hit: good result, {} {}'.format(host, qtype))
+                    logger.debug('dns cache hit: good result, {} {}'.format(host, qtype))
                     return v[(host, qtype)]
-            logging.debug('dns cache hit: good result, {} {}'.format(host, qtype))
+            logger.debug('dns cache hit: good result, {} {}'.format(host, qtype))
 
     def clean(self):
         with self._lock:
@@ -149,7 +158,7 @@ def tcp_dns_record(host, qtype, server, proxy):
             sock.close()
             return record
         except Exception as e:
-            logging.warning('tcp_dns_record %s failed. %r' % (host, e))
+            logger.warning('tcp_dns_record %s failed. %r' % (host, e))
             traceback.print_exc(file=sys.stderr)
             sys.stderr.flush()
     raise IOError(0, 'tcp_dns_record %s failed.' % host)
@@ -264,7 +273,7 @@ class UDP_Resolver(BaseResolver):
                 if record.header.id in self.event_dict:
                     self.event_dict[record.header.id].set(record)
                 else:
-                    logging.debug('unexpected dns record:\n%s' % record)
+                    logger.debug('unexpected dns record:\n%s' % record)
             except:
                 pass
 
@@ -319,7 +328,7 @@ class R_UDP_Resolver(BaseResolver):
                 if (reply_address, record.header.id) in self.event_dict:
                     self.event_dict[(reply_address, record.header.id)].set(record)
                 else:
-                    logging.warning('unexpected dns record:\n%s' % record)
+                    logger.warning('unexpected dns record:\n%s' % record)
             except:
                 pass
 
@@ -361,11 +370,11 @@ class Anti_GFW_Resolver(BaseResolver):
             if not self.is_poisoned(domain):
                 record = self.local.record(domain, qtype)
                 if any([str(x.rdata) in self.bad_ip for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]):
-                    logging.warning('ip in bad_ip list, host: %s' % domain)
+                    logger.warning('ip in bad_ip list, host: %s' % domain)
                 else:
                     return record
         except:
-            logging.info('resolve %s via udp failed!' % domain)
+            logger.info('resolve %s via udp failed!' % domain)
         return self.remote.record(domain, qtype)
 
     def is_poisoned(self, domain):
@@ -389,7 +398,7 @@ class Anti_GFW_Resolver(BaseResolver):
                 record = self.remote.record(str(record.rr[0].rdata), 'ANY')
             return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
         except Exception as e:
-            logging.warning('resolving %s: %r' % (host, e))
+            logger.warning('resolving %s: %r' % (host, e))
             traceback.print_exc(file=sys.stderr)
             return []
 

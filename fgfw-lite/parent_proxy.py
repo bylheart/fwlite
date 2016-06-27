@@ -34,6 +34,14 @@ PACIFIC = ('AU', 'CK', 'FJ', 'GU', 'NZ', 'PG', 'TO')
 
 continent_list = [ASIA, AFRICA, NA, SA, EU, PACIFIC]
 
+logger = logging.getLogger('parent_proxy')
+logger.setLevel(logging.INFO)
+hdr = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                              datefmt='%H:%M:%S')
+hdr.setFormatter(formatter)
+logger.addHandler(hdr)
+
 
 class default_0_dict(dict):
     def __missing__(self, key):
@@ -126,14 +134,14 @@ class ParentProxy(object):
                     break
         score = self.get_avg_resp_time() + self.get_avg_resp_time(host)
         result += score * 5
-        logging.debug('proxy %s to %s response time penalty is %.3f' % (self.name, host, score * 5))
+        logger.debug('proxy %s to %s response time penalty is %.3f' % (self.name, host, score * 5))
         return result
 
     def log(self, host, rtime):
         self.avg_resp_time = 0.87 * self.get_avg_resp_time() + (1 - 0.87) * rtime
         self.avg_resp_time_by_host[host] = 0.87 * self.get_avg_resp_time(host) + (1 - 0.87) * rtime
         self.avg_resp_time_ts = self.avg_resp_time_by_host_ts[host] = time.time()
-        logging.debug('%s to %s: %.3fs %.3fs' % (self.name, host, rtime, self.avg_resp_time))
+        logger.debug('%s to %s: %.3fs %.3fs' % (self.name, host, rtime, self.avg_resp_time))
 
     def get_avg_resp_time(self, host=None):
         if host is None:
@@ -198,7 +206,7 @@ class ParentProxyList(object):
             s = '%s://%s:%s' % (parentproxy.parse.scheme, parentproxy.parse.hostname, parentproxy.parse.port)
         else:
             s = 'None'
-        logging.info('add parent: %s: %s' % (parentproxy.name, s))
+        logger.info('add parent: %s: %s' % (parentproxy.name, s))
         assert isinstance(parentproxy, ParentProxy)
         self.dict[parentproxy.name] = parentproxy
         if parentproxy.name == 'direct':

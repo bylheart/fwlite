@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: UTF-8
 import re
+import logging
 try:
     import urllib.parse as urlparse
     urlquote = urlparse.quote
@@ -21,7 +22,13 @@ except ImportError:
 class redirector(object):
     def __init__(self, conf):
         self.conf = conf
-        self.logger = conf.logger
+        self.logger = logging.getLogger('redirector')
+        self.logger.setLevel(logging.INFO)
+        hdr = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                                      datefmt='%H:%M:%S')
+        hdr.setFormatter(formatter)
+        self.logger.addHandler(hdr)
         self._bad302 = ap_filter()
         self.adblock = ap_filter()
         self.redirlst = []

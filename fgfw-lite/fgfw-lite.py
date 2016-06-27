@@ -24,12 +24,6 @@ import sys
 import os
 import glob
 
-sys.dont_write_bytecode = True
-WORKINGDIR = '/'.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')).split('/')[:-1])
-os.chdir(WORKINGDIR)
-sys.path.append(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')))
-if sys.platform.startswith('win'):
-    sys.path += glob.glob('%s/Python27/*.egg' % WORKINGDIR)
 gevent = None
 try:
     import gevent
@@ -56,6 +50,7 @@ import ftplib
 import random
 import select
 import socket
+import logging
 import traceback
 try:
     from cStringIO import StringIO
@@ -65,11 +60,13 @@ except ImportError:
     except ImportError:
         from io import BytesIO as StringIO
 from threading import Thread, Timer
-import logging
-import logging.handlers
-logging.basicConfig(level=logging.INFO,
-                    format='FWLite %(asctime)s %(levelname)s %(message)s',
-                    datefmt='%H:%M:%S', filemode='a+')
+
+sys.dont_write_bytecode = True
+WORKINGDIR = '/'.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')).split('/')[:-1])
+os.chdir(WORKINGDIR)
+sys.path.append(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')))
+if sys.platform.startswith('win'):
+    sys.path += glob.glob('%s/Python27/*.egg' % WORKINGDIR)
 
 import config
 from util import parse_hostport, is_connection_dropped, sizeof_fmt
@@ -121,7 +118,13 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True, level=1, conf=None):
         self.proxy_level = level
         self.conf = conf
-        self.logger = self.conf.logger
+        self.logger = logging.getLogger(str(server_address[1]))
+        self.logger.setLevel(logging.INFO)
+        hdr = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                                      datefmt='%H:%M:%S')
+        hdr.setFormatter(formatter)
+        self.logger.addHandler(hdr)
         self.logger.info('starting server at %s:%s, level %d' % (server_address[0], server_address[1], level))
         HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
@@ -944,15 +947,23 @@ class ProxyHandler(HTTPRequestHandler):
 
 def updater(conf):
     lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
+
+    logger = logging.getLogger('updater')
+    logger.setLevel(logging.INFO)
+    hdr = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                                  datefmt='%H:%M:%S')
+    hdr.setFormatter(formatter)
+    logger.addHandler(hdr)
     if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
         try:
-            update(conf, auto=True)
+            update(conf, logger, auto=True)
         except:
-            conf.logger.error(traceback.format_exc())
-    Timer(random.randint(600, 3600), updater, (conf, )).start()
+            logger.error(traceback.format_exc())
+    Timer(random.randint(600, 3600), updater, (conf, logger)).start()
 
 
-def update(conf, auto=False):
+def update(conf, logger, auto=False):
     if auto and not conf.userconf.dgetbool('FGFW_Lite', 'autoupdate'):
         return
     gfwlist_url = conf.userconf.dget('fgfwproxy', 'gfwlist_url', 'https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt')
@@ -972,9 +983,9 @@ def update(conf, auto=False):
             r = urllib2.urlopen(req)
         except Exception as e:
             if isinstance(e, urllib2.HTTPError):
-                conf.logger.info('%s NOT updated: %s' % (path, e.reason))
+                logger.info('%s NOT updated: %s' % (path, e.reason))
             else:
-                conf.logger.info('%s NOT updated: %r' % (path, e))
+                logger.info('%s NOT updated: %r' % (path, e))
         else:
             data = r.read()
             if r.getcode() == 200 and data:
@@ -984,15 +995,15 @@ def update(conf, auto=False):
                 if etag:
                     conf.version.set('Update', path.replace('./', '').replace('/', '-'), etag)
                     conf.confsave()
-                conf.logger.info('%s Updated.' % path)
+                logger.info('%s Updated.' % path)
             else:
-                conf.logger.info('{} NOT updated: {}'.format(path, str(r.getcode())))
+                logger.info('{} NOT updated: {}'.format(path, str(r.getcode())))
     branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
     count = 0
     try:
         r = json.loads(urllib2.urlopen('https://github.com/v3aqb/fwlite/raw/%s/fgfw-lite/update.json' % branch).read())
     except Exception as e:
-        conf.logger.info('read update.json failed: %r' % e)
+        logger.info('read update.json failed: %r' % e)
     else:
         import hashlib
         update = {}
@@ -1000,20 +1011,20 @@ def update(conf, auto=False):
         for path, v, in r.items():
             try:
                 if v == conf.version.dget('Update', path.replace('./', '').replace('/', '-'), ''):
-                    conf.logger.debug('{} Not Modified'.format(path))
+                    logger.debug('{} Not Modified'.format(path))
                     continue
-                conf.logger.info('Update: Downloading %s...' % path)
+                logger.info('Update: Downloading %s...' % path)
                 fdata = urllib2.urlopen('https://github.com/v3aqb/fwlite/raw/%s%s' % (branch, path[1:])).read()
                 h = hashlib.new("sha256", fdata).hexdigest()
                 if h != v:
-                    conf.logger.warning('%s NOT updated: hash mismatch. %s %s' % (path, h, v))
+                    logger.warning('%s NOT updated: hash mismatch. %s %s' % (path, h, v))
                     success = 0
                     break
                 update[path] = (fdata, h)
-                conf.logger.info('%s Downloaded.' % path)
+                logger.info('%s Downloaded.' % path)
             except Exception as e:
                 success = 0
-                conf.logger.error('update failed: %r\n%s' % (e, traceback.format_exc()))
+                logger.error('update failed: %r\n%s' % (e, traceback.format_exc()))
                 break
         if success:
             for path, v in update.items():
@@ -1023,7 +1034,7 @@ def update(conf, auto=False):
                         os.mkdir(os.path.dirname(path))
                     with open(path, 'wb') as localfile:
                         localfile.write(fdata)
-                    conf.logger.info('%s Updated.' % path)
+                    logger.info('%s Updated.' % path)
                     conf.version.set('Update', path.replace('./', '').replace('/', '-'), h)
                     if not path.endswith(('txt', 'ini')):
                         count += 1
@@ -1031,27 +1042,32 @@ def update(conf, auto=False):
                     sys.stderr.write(traceback.format_exc() + '\n')
                     sys.stderr.flush()
         else:
-            conf.logger.error('update failed!')
+            logger.error('update failed!')
         conf.version.set('Update', 'LastUpdate', str(time.time()))
     conf.confsave()
     if not conf.GUI:
-        for item in FGFWProxyHandler.ITEMS:
+        for item in subprocess_handler.ITEMS:
             item.restart()
     conf.PARENT_PROXY.config()
     if count:
-        conf.logger.info('Update Completed, %d file Updated.' % count)
+        logger.info('Update Completed, %d file Updated.' % count)
     if conf.userconf.dget('FGFW_Lite', 'updatecmd', ''):
         subprocess.Popen(shlex.split(conf.userconf.dget('FGFW_Lite', 'updatecmd', '')))
 
 
-class FGFWProxyHandler(object):
-    """docstring for FGFWProxyHandler"""
+class subprocess_handler(object):
+    """docstring for subprocess_handler"""
     ITEMS = []
+    logger = logging.getLogger('subprocess_handler')
+    logger.setLevel(logging.INFO)
+    hdr = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                                  datefmt='%H:%M:%S')
+    hdr.setFormatter(formatter)
+    logger.addHandler(hdr)
 
-    def __init__(self, conf):
-        FGFWProxyHandler.ITEMS.append(self)
-        self.conf = conf
-        self.logger = self.conf.logger
+    def __init__(self):
+        subprocess_handler.ITEMS.append(self)
         self.subpobj = None
         self.cmd = ''
         self.cwd = ''
@@ -1089,7 +1105,7 @@ class FGFWProxyHandler(object):
 
 @atexit.register
 def atexit_do():
-    for item in FGFWProxyHandler.ITEMS:
+    for item in subprocess_handler.ITEMS:
         item.stop()
 
 
@@ -1097,8 +1113,16 @@ def main():
     s = 'FWLite ' + __version__
     if gevent:
         s += ' with gevent %s' % gevent.__version__
-    logging.info(s)
     conf = config.conf
+    logger = logging.getLogger('FW_Lite')
+    logger.setLevel(logging.INFO)
+    hdr = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                                  datefmt='%H:%M:%S')
+    hdr.setFormatter(formatter)
+    logger.addHandler(hdr)
+
+    logger.info(s)
     Timer(10, updater, (conf, )).start()
     d = {'http': '127.0.0.1:%d' % conf.listen[1], 'https': '127.0.0.1:%d' % conf.listen[1]}
     urllib2.install_opener(urllib2.build_opener(urllib2.ProxyHandler(d)))
@@ -1132,8 +1156,8 @@ def main():
             t2 = Thread(target=server.serve_forever)
             t2.start()
         except Exception as e:
-            logging.error(repr(e))
-            logging.error(traceback.format_exc() + '\n')
+            logger.error(repr(e))
+            logger.error(traceback.format_exc() + '\n')
     conf.stdout()
     t.join()
 

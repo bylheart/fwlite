@@ -20,7 +20,6 @@
 
 import re
 import select
-import logging
 try:
     import configparser
 except ImportError:
@@ -31,7 +30,6 @@ except ImportError:
     geoip2 = None
 
 configparser.RawConfigParser.OPTCRE = re.compile(r'(?P<option>[^=\s][^=]*)\s*(?P<vi>[=])\s*(?P<value>.*)$')
-logger = logging.getLogger('FW_Lite')
 
 
 class SConfigParser(configparser.ConfigParser):
@@ -115,6 +113,5 @@ def ip_to_country_code(ip):
     try:
         resp = GeoIP2.country(str(ip))
         return resp.country.iso_code
-    except Exception as e:
-        logging.error(repr(e))
+    except Exception:
         return u''

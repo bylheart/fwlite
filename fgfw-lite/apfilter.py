@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #
-# FGFW_Lite.py A Proxy Server help go around the Great Firewall
+# apfilter.py
 #
 # Copyright (C) 2014 - 2015 Jiang Chao <sgzz.cj@gmail.com>
 #

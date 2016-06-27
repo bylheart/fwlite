@@ -28,6 +28,14 @@ import logging
 from ctypes import CDLL, c_char_p, c_int, c_ulonglong, byref, \
     create_string_buffer, c_void_p, c_ulong
 
+logger = logging.getLogger('ctypes_libsodium')
+logger.setLevel(logging.INFO)
+hdr = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                              datefmt='%H:%M:%S')
+hdr.setFormatter(formatter)
+logger.addHandler(hdr)
+
 __all__ = ['ciphers']
 
 libsodium = None
@@ -53,7 +61,7 @@ def load_libsodium():
                 break
     if not libsodium_path:
         raise IOError(0, 'libsodium not found')
-    logging.info('loading libsodium from %s' % libsodium_path)
+    logger.info('loading libsodium from %s' % libsodium_path)
     libsodium = CDLL(libsodium_path)
     libsodium.sodium_init.restype = c_int
     libsodium.crypto_stream_salsa20_xor_ic.restype = c_int

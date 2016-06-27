@@ -59,7 +59,14 @@ class httpconn_pool(object):
         self.timerwheel_iter = itertools.cycle(range(10))
         self.timerwheel_index = next(self.timerwheel_iter)
         self.lock = RLock()
-        self.logger = logging.getLogger('FW_Lite')
+        self.logger = logging.getLogger('httpconn_pool')
+        self.logger.setLevel(logging.INFO)
+        hdr = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                                      datefmt='%H:%M:%S')
+        hdr.setFormatter(formatter)
+        self.logger.addHandler(hdr)
+
         Timer(30, self._purge, ()).start()
 
     def put(self, upstream_name, soc, ppname):
