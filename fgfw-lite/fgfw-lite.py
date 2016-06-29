@@ -250,7 +250,6 @@ class ProxyHandler(HTTPRequestHandler):
         self.wbuffer_size = 0
         self.shortpath = None
         self.failed_parents = []
-        self.phase = ''
         self.path = ''
         self.noxff = False
         self.count = 0
@@ -389,12 +388,10 @@ class ProxyHandler(HTTPRequestHandler):
                 iplist = self.conf.HOSTS.get(self.requesthost[0])
                 self._proxylist.insert(0, self.pproxy)
             self.set_timeout()
-            self.phase = 'http_connect_via_proxy'
             self.remotesoc = self._http_connect_via_proxy(self.requesthost, iplist)
             self.wbuffer = deque()
             self.wbuffer_size = 0
             # send request header
-            self.phase = 'sending request header'
             s = []
             if self.pproxy.proxy.startswith('http'):
                 path = self.path
@@ -451,7 +448,6 @@ class ProxyHandler(HTTPRequestHandler):
                         skip = True
             # send request body
             if not skip:
-                self.phase = 'sending request body'
                 content_length = int(self.headers.get('Content-Length', 0))
                 if self.headers.get("Transfer-Encoding") and self.headers.get("Transfer-Encoding") != "identity":
                     if self.rbuffer:
@@ -491,7 +487,6 @@ class ProxyHandler(HTTPRequestHandler):
                         self.remotesoc.sendall(data)
                 # read response line
                 timelog = time.clock()
-                self.phase = 'reading response_line'
                 response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
                 rtime = time.clock() - timelog
             # read response headers
@@ -499,7 +494,6 @@ class ProxyHandler(HTTPRequestHandler):
                 hdata = read_header_data(remoterfile)
                 self._wfile_write(response_line + hdata)
                 response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
-            self.phase = 'reading response header'
             header_data, response_header = read_headers(remoterfile)
             conntype = response_header.get('Connection', "")
             if protocol_version >= b"HTTP/1.1":
@@ -527,7 +521,6 @@ class ProxyHandler(HTTPRequestHandler):
             if response_status in (301, 302) and self.conf.PARENT_PROXY.bad302(response_header.get('Location')):
                 raise IOError(0, 'Bad 302!')
             # read response body
-            self.phase = 'reading response body'
             if self.command == 'HEAD' or response_status in (204, 205, 304):
                 pass
             elif response_header.get("Transfer-Encoding") and response_header.get("Transfer-Encoding") != "identity":
@@ -573,7 +566,6 @@ class ProxyHandler(HTTPRequestHandler):
                             fd.remove(self.remotesoc)
                             self.connection.shutdown(socket.SHUT_WR)
             self.wfile_write()
-            self.phase = 'request finish'
             self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname, rtime)
             self.pproxy.log(self.requesthost[0], rtime)
             if remote_close or is_connection_dropped([self.remotesoc]):
@@ -593,7 +585,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def on_GET_Error(self, e):
         if self.ppname:
-            self.logger.warning('{} {} via {} failed: {}! {}'.format(self.command, self.shortpath, self.ppname, self.phase, repr(e)))
+            self.logger.warning('{} {} via {} failed: {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
             self.pproxy.log(self.requesthost[0], 5)
             return self._do_GET(True)
         self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
@@ -635,6 +627,7 @@ class ProxyHandler(HTTPRequestHandler):
         self._do_CONNECT()
 
     def _do_CONNECT(self, retry=False):
+        self.logger.debug('_do_CONNECT')
         if retry:
             self.failed_parents.append(self.ppname)
             self.pproxy.log(self.requesthost[0], 5)
@@ -648,33 +641,38 @@ class ProxyHandler(HTTPRequestHandler):
             iplist = self.conf.HOSTS.get(self.requesthost[0])
             self._proxylist.insert(0, self.pproxy)
         self.set_timeout()
-        self.phase = 'connect'
+        self.logger.debug('create connection')
         try:
             self.remotesoc = self._connect_via_proxy(self.requesthost, iplist, tunnel=True)
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
             self.logger.warning('%s %s via %s failed on connect! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT(True)
+        self.logger.debug('%s connected' % self.path)
         count = 0
         if self.rbuffer:
-            self.logger.debug('remote write rbuffer')
+            self.logger.debug('write rbuffer')
             self.remotesoc.sendall(b''.join(self.rbuffer))
             count = 1
             timelog = time.clock()
         rtime = 0
-        while 1:
+        fds = [self.connection, self.remotesoc]
+        while self.retryable:
             try:
                 reason = ''
-                (ins, _, _) = select.select([self.connection, self.remotesoc], [], [], self.conf.timeout)
+                (ins, _, _) = select.select(fds, [], [], self.conf.timeout)
                 if not ins:
+                    self.logger.debug('timeout, break')
                     reason = 'timeout'
                     break
                 if self.connection in ins:
-                    self.phase = 'read from client'
+                    self.logger.debug('read from client')
                     data = self.connection_recv(self.bufsize)
                     if not data:
+                        self.logger.debug('client closed')
                         reason = 'client closed'
                         self.remotesoc.shutdown(socket.SHUT_WR)
+                        fds.remove(self.connection)
                         break
                     self.remotesoc.sendall(data)
                     # Now remotesoc is connected, set read timeout
@@ -684,32 +682,35 @@ class ProxyHandler(HTTPRequestHandler):
                     if self.retryable:
                         self.rbuffer.append(data)
                 if self.remotesoc in ins:
-                    self.phase = 'read from remote'
+                    self.logger.debug('read from remote')
                     data = self.remotesoc.recv(self.bufsize)
                     if not data:  # remote connection closed
+                        self.logger.debug('remote closed')
                         reason = 'remote closed'
+                        fds.remove(self.remotesoc)
                         break
                     rtime = time.clock() - timelog
                     self._wfile_write(data)
             except NetWorkIOError as e:
-                self.logger.warning('do_CONNECT error: %r on %s %s' % (e, self.phase, count))
+                self.logger.warning('do_CONNECT error: %r on %s %s' % (e, reason, count))
                 break
-        if self.rbuffer and self.rbuffer[0].startswith((b'\x16\x03\x00', b'\x16\x03\x01', b'\x16\x03\x02', b'\x16\x03\x03')) and count < 2:
-            if reason != 'client closed' and self.phase != 'read from client':
-                self.logger.warning('TLS key exchange failed? hostname: %s, %s %s %s' % (self.requesthost[0], self.phase, count, reason))
+        self.logger.debug('retryable? %s' % self.retryable)
         if self.retryable:
             reason = reason or "don't know why"
-            if reason != 'client closed' and self.phase != 'read from client':
-                self.logger.warning('%s %s via %s failed on %s! %s' % (self.command, self.path, self.ppname, self.phase, reason))
-            return self._do_CONNECT(True)
+            self.logger.warning('%s %s via %s failed! %s' % (self.command, self.path, self.ppname, reason))
+            if reason != 'client closed':
+                return self._do_CONNECT(True)
+            else:
+                self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
+                return
+        # not retryable, clear rbuffer
         self.rbuffer = deque()
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
         self.pproxy.log(self.requesthost[0], rtime)
         """forward socket"""
         try:
-            fd = [self.connection, self.remotesoc]
-            while fd:
-                ins, _, _ = select.select(fd, [], [], 60)
+            while fds:
+                ins, _, _ = select.select(fds, [], [], 60)
                 if not ins:
                     break
                 if self.connection in ins:
@@ -717,13 +718,13 @@ class ProxyHandler(HTTPRequestHandler):
                     if data:
                         self.remotesoc.sendall(data)
                     else:
-                        fd.remove(self.connection)
+                        fds.remove(self.connection)
                 if self.remotesoc in ins:
                     data = self.remotesoc.recv(self.bufsize)
                     if data:
                         self._wfile_write(data)
                     else:
-                        fd.remove(self.remotesoc)
+                        fds.remove(self.remotesoc)
                         self.connection.shutdown(socket.SHUT_WR)
         except socket.timeout:
             pass
