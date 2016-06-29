@@ -76,6 +76,7 @@ def hxssocket(hxsServer, ctimeout=4, parentproxy=None):
     if result:
         logger.debug('hxsocks reusing connection, ' + result[1])
         result[0].pooled = 0
+        result[0].settimeout(ctimeout)
         return result[0]
     return _hxssocket(hxsServer, ctimeout, parentproxy)
 
@@ -118,7 +119,10 @@ class _hxssocket(basesocket):
 
         fp = self._sock.makefile('rb', 0)
         resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
-        resp_len = self.pskcipher.decrypt(fp.read(resp_len))
+        data = fp.read(resp_len)
+        if not data:
+            raise IOError(0, 'hxsocks Error: connection closed.')
+        resp_len = self.pskcipher.decrypt(data)
         resp_len = struct.unpack('>H', resp_len)[0]
 
         resp = self.pskcipher.decrypt(fp.read(resp_len))
@@ -130,11 +134,11 @@ class _hxssocket(basesocket):
             self.writeable = 1
             return
         elif d == 2:
-            raise IOError(0, 'hxsocket Error: remote connect timed out. code 2')
+            raise IOError(0, 'hxsocks Error: remote connect timed out. code 2')
         else:
             if self.serverid in keys:
                 del keys[self.serverid]
-            raise IOError(0, 'hxsocket Error: invalid shared key. code %d' % d)
+            raise IOError(0, 'hxsocks Error: invalid shared key. code %d' % d)
 
     def getKey(self):
         with newkey_lock[self.serverid]:
