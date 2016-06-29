@@ -160,8 +160,6 @@ def tcp_dns_record(host, qtype, server, proxy):
             return record
         except Exception as e:
             logger.warning('tcp_dns_record %s failed. %r' % (host, e))
-            traceback.print_exc(file=sys.stderr)
-            sys.stderr.flush()
     raise IOError(0, 'tcp_dns_record %s failed.' % host)
 
 
@@ -184,7 +182,6 @@ class BaseResolver(object):
             except Exception as e:
                 dns_cache.cache(host, (host, (qtype, self.dnsserver)), e)
                 raise e
-                return self._record(host, qtype)
 
     def _record(self, host, qtype):
         return _udp_dns_record(host, qtype, self.dnsserver[0])
@@ -399,7 +396,7 @@ class Anti_GFW_Resolver(BaseResolver):
                 record = self.remote.record(str(record.rr[0].rdata), 'ANY')
             return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
         except Exception as e:
-            logger.warning('resolving %s: %r' % (host, e))
+            logger.warning('resolving %s failed: %r' % (host, e))
             traceback.print_exc(file=sys.stderr)
             return []
 
