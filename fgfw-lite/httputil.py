@@ -76,8 +76,8 @@ class httpconn_pool(object):
             self.timerwheel[self.timerwheel_index].add(soc)
 
     def get(self, upstream_name):
-        lst = self.POOL.get(upstream_name)
         with self.lock:
+            lst = self.POOL.get(upstream_name)
             while lst:
                 sock, pproxy = lst.popleft()
                 if is_connection_dropped([sock]):
