@@ -292,7 +292,10 @@ class _hxssocket(basesocket):
     def close(self):
         logger.debug('hxsocks close, readable %s, writeable %s' % (self.readable, self.writeable))
         if self.pooled:
-            self._sock.close()
+            try:
+                self._sock.close()
+            except Exception:
+                pass
             return
         if self.writeable:
             logger.debug('hxsocks shutdown write, close')
