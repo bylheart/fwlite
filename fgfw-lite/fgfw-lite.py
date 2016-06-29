@@ -95,7 +95,7 @@ except ImportError:
     def on_finish(hdlr):
         pass
 
-__version__ = '4.15.1'
+__version__ = '4.15.2'
 
 if sys.platform.startswith('win'):
     PYTHON2 = '"./Python27/python27.exe"'
@@ -961,7 +961,7 @@ def updater(conf):
             update(conf, logger, auto=True)
         except:
             logger.error(traceback.format_exc())
-    Timer(random.randint(600, 3600), updater, (conf, logger)).start()
+    Timer(random.randint(600, 3600), updater, (conf, )).start()
 
 
 def update(conf, logger, auto=False):

@@ -1,3 +1,7 @@
+2016.6.29 v4.15.2
+bug fix
+Improve performance
+
 2016.6.29 v4.15.1
 refine logging
 resolver, hxsocks bug fix

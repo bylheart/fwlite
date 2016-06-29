@@ -2,7 +2,7 @@
 
 A anti-censorship HTTP proxy with builtin shadowsocks support.
 
-Current Version: 4.15.1
+Current Version: 4.15.2
 
 Tested on Windows 7 and openSUSE.
 
