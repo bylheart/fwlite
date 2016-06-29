@@ -149,7 +149,8 @@ def tcp_dns_record(host, qtype, server, proxy):
     for _ in range(2):
         try:
             sock = create_connection(server, ctimeout=2, parentproxy=proxy, tunnel=True)
-            sock.send(struct.pack('>h', len(query_data)) + query_data)
+            data = struct.pack('>h', len(query_data)) + query_data
+            sock.sendall(bytes(data))
             sock.settimeout(2)
             rfile = sock.makefile('rb')
             reply_data_length = rfile.read(2)
