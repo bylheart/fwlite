@@ -6,14 +6,23 @@ import base64
 import struct
 import logging
 import random
+import time
 
 from sssocket import sssocket
 from hxsocks import hxssocket
 from parent_proxy import ParentProxy
 from httputil import read_reaponse_line, read_header_data
 
+logger = logging.getLogger('conn')
+logger.setLevel(logging.INFO)
+hdr = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                              datefmt='%H:%M:%S')
+hdr.setFormatter(formatter)
+logger.addHandler(hdr)
 
-def _create_connection(address, timeout=object(), source_address=None, iplist=None):
+
+def _create_connection(address, timeout=None, source_address=None, iplist=None):
     """Connect to *address* and return the socket object.
 
     Convenience function.  Connect to *address* (a 2-tuple ``(host,
@@ -35,18 +44,18 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
     err = None
     if not iplist:
         iplist = resolver(host)
-    if not iplist:
-        iplist = [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
     if len(iplist) > 1:
         random.shuffle(iplist)
         # ipv4 goes first
         iplist = sorted(iplist, key=lambda item: item[0])
+
+    t = time.time() - 0.2
     for res in iplist:
         af, addr = res
         sock = None
         try:
             sock = socket.socket(af)
-            if timeout is not object():
+            if timeout:
                 sock.settimeout(timeout)
             if source_address:
                 sock.bind(source_address)
@@ -57,7 +66,10 @@ def _create_connection(address, timeout=object(), source_address=None, iplist=No
             err = _
             if sock is not None:
                 sock.close()
-
+        if timeout and time.time() - t > timeout:
+            if err:
+                raise err
+            raise socket.error("connect timed out")
     if err is not None:
         raise err
     else:
@@ -80,7 +92,7 @@ def do_tunnel(soc, netloc, pp):
 
 def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, parentproxy=None, tunnel=False):
     if parentproxy and not isinstance(parentproxy, ParentProxy):
-        logging.warning('parentproxy is not a ParentProxy instance, please check.')
+        logger.warning('parentproxy is not a ParentProxy instance, please check.')
         parentproxy = ParentProxy(parentproxy, parentproxy)
     ctimeout = ctimeout or parentproxy.timeout
     via = parentproxy.get_via() if parentproxy else None
