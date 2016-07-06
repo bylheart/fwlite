@@ -286,16 +286,16 @@ if __name__ == '__main__':
         except Exception as e:
             print(repr(e))
     print('test AE')
-    ae1 = AEncryptor(b'123456', 'aes-256-cfb', b'salt', b'ctx', False)
-    ae2 = AEncryptor(b'123456', 'aes-256-cfb', b'salt', b'ctx', True)
+    ae1 = AEncryptor(b'123456', 'aes-256-cfb', b'salt', b'ctx', False, 16)
+    ae2 = AEncryptor(b'123456', 'aes-256-cfb', b'salt', b'ctx', True, 16)
     a, b = ae1.encrypt(b'abcde')
     c, d = ae1.encrypt(b'fg')
     print(ae2.decrypt(a, b))
     print(ae2.decrypt(c, d))
     for method in lst:
         try:
-            cipher1 = AEncryptor(b'123456', method, b'salt', b'ctx', False)
-            cipher2 = AEncryptor(b'123456', method, b'salt', b'ctx', True)
+            cipher1 = AEncryptor(b'123456', method, b'salt', b'ctx', False, 16)
+            cipher2 = AEncryptor(b'123456', method, b'salt', b'ctx', True, 16)
             t = time.clock()
             for _ in range(1024):
                 a, b = cipher1.encrypt(s)
