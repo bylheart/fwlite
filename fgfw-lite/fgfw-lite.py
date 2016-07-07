@@ -394,11 +394,6 @@ class ProxyHandler(HTTPRequestHandler):
             # send request header
             s = []
             if self.pproxy.proxy.startswith('http'):
-                path = self.path
-                if iplist:
-                    path = self.path.split('/')
-                    path[2] = '%s%s' % (iplist[0][1], ((':%d' % self.requesthost[1]) if self.requesthost[1] != 80 else ''))
-                    path = ''.join(path)
                 s.append('%s %s %s\r\n' % (self.command, self.path, self.request_version))
                 if self.pproxy.username:
                     a = '%s:%s' % (self.pproxy.username, self.pproxy.password)
