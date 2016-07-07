@@ -258,7 +258,7 @@ if __name__ == "__main__":
                 # if line.startswith('||'):
                 try:
                     gfwlist.add(line)
-                except:
+                except Exception:
                     pass
             del data
     print('loading: %fs' % (time.clock() - t))

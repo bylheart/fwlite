@@ -90,7 +90,7 @@ def is_connection_dropped(lst):  # modified from urllib3
     """
     try:
         return select.select(lst, [], [], 0.0)[0]
-    except:
+    except Exception:
         return lst
 
 
@@ -105,7 +105,7 @@ def sizeof_fmt(num):
 
 try:
     GeoIP2 = geoip2.database.Reader('./fgfw-lite/GeoLite2-Country.mmdb', mode=geoip2.database.MODE_MEMORY) if geoip2 else None
-except:
+except Exception:
     GeoIP2 = geoip2.database.Reader('./GeoLite2-Country.mmdb', mode=geoip2.database.MODE_MEMORY)
 
 

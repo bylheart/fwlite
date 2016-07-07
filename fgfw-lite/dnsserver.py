@@ -139,7 +139,7 @@ def start_dns_server(server_address, localserver=('223.5.5.5', 53), remoteserver
             if '||' in line:
                 try:
                     af.add(line)
-                except:
+                except Exception:
                     pass
     r = get_resolver(localserver, remoteserver, proxy, af)
     resolver = Resolver(r)

@@ -7,7 +7,7 @@ import errno
 import logging
 try:
     from socketserver import ThreadingTCPServer, StreamRequestHandler
-except:
+except ImportError:
     from SocketServer import ThreadingTCPServer, StreamRequestHandler
 
 from parent_proxy import ParentProxy

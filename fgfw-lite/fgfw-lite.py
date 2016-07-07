@@ -366,7 +366,7 @@ class ProxyHandler(HTTPRequestHandler):
                 if self.remotesoc:
                     try:
                         self.remotesoc.close()
-                    except:
+                    except Exception:
                         pass
                     self.remotesoc = None
                 self.failed_parents.append(self.ppname)
@@ -571,7 +571,7 @@ class ProxyHandler(HTTPRequestHandler):
             if remote_close or is_connection_dropped([self.remotesoc]):
                 try:
                     self.remotesoc.close()
-                except:
+                except Exception:
                     pass
             else:
                 self.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
@@ -959,7 +959,7 @@ def updater(conf):
     if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
         try:
             update(conf, logger, auto=True)
-        except:
+        except Exception:
             logger.error(traceback.format_exc())
     Timer(random.randint(600, 3600), updater, (conf, )).start()
 
@@ -1039,7 +1039,7 @@ def update(conf, logger, auto=False):
                     conf.version.set('Update', path.replace('./', '').replace('/', '-'), h)
                     if not path.endswith(('txt', 'ini')):
                         count += 1
-                except:
+                except Exception:
                     sys.stderr.write(traceback.format_exc() + '\n')
                     sys.stderr.flush()
         else:
@@ -1098,7 +1098,7 @@ class subprocess_handler(object):
     def stop(self):
         try:
             self.subpobj.terminate()
-        except:
+        except Exception:
             pass
         finally:
             self.subpobj = None

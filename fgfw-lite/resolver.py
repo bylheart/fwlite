@@ -14,7 +14,7 @@ from collections import defaultdict
 
 try:
     from ipaddr import IPAddress as ip_address
-except:
+except ImportError:
     from ipaddress import ip_address
 
 from connection import create_connection
@@ -135,7 +135,7 @@ def _udp_dns_records(host, qtype, server):
                     break
                 reply_data, reply_address = sock.recvfrom(8192)
                 record_list.append(dnslib.DNSRecord.parse(reply_data))
-            except:
+            except Exception:
                 break
     return record_list
 
@@ -190,14 +190,14 @@ class BaseResolver(object):
         try:
             ip = ip_address(host)
             return [(2 if ip._version == 4 else 10, host), ]
-        except:
+        except Exception:
             pass
         return _resolver(host)
 
     def get_ip_address(self, host):
         try:
             return ip_address(unicode(host))
-        except:
+        except Exception:
             try:
                 return ip_address(unicode(self.resolve(host)[0][1]))
             except Exception:
@@ -272,7 +272,7 @@ class UDP_Resolver(BaseResolver):
                     self.event_dict[record.header.id].set(record)
                 else:
                     logger.debug('unexpected dns record:\n%s' % record)
-            except:
+            except Exception:
                 pass
 
 
@@ -327,7 +327,7 @@ class R_UDP_Resolver(BaseResolver):
                     self.event_dict[(reply_address, record.header.id)].set(record)
                 else:
                     logger.warning('unexpected dns record:\n%s' % record)
-            except:
+            except Exception:
                 pass
 
 
@@ -371,7 +371,7 @@ class Anti_GFW_Resolver(BaseResolver):
                     logger.warning('ip in bad_ip list, host: %s' % domain)
                 else:
                     return record
-        except:
+        except Exception:
             logger.info('resolve %s via udp failed!' % domain)
         return self.remote.record(domain, qtype)
 
@@ -386,7 +386,7 @@ class Anti_GFW_Resolver(BaseResolver):
         try:
             ip = ip_address(host)
             return [(2 if ip._version == 4 else 10, host), ]
-        except:
+        except Exception:
             pass
         if not self.is_poisoned(host):
             return _resolver(host)

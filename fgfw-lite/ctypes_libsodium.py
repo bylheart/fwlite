@@ -81,7 +81,7 @@ def load_libsodium():
                                                                  c_ulonglong,
                                                                  c_char_p, c_ulong,
                                                                  c_char_p)
-    except:
+    except Exception:
         pass
 
     libsodium.sodium_init()

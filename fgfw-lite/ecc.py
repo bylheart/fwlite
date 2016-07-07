@@ -54,7 +54,7 @@ class ECC(object):
         try:
             verifier.verify()
             return 1
-        except:
+        except Exception:
             return 0
 
     @staticmethod
@@ -68,7 +68,7 @@ class ECC(object):
         try:
             verifier.verify()
             return 1
-        except:
+        except Exception:
             return 0
 
     @staticmethod

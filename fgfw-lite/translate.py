@@ -4,12 +4,12 @@ import importlib
 
 try:
     lang = importlib.import_module('lang.%s' % locale.getdefaultlocale()[0])
-except:
+except Exception:
     lang = importlib.import_module('lang.en_US')
 
 
 def translate(location, string, dontknowwhat, format):
     try:
         return lang.data[string]
-    except:
+    except KeyError:
         return string

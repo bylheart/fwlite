@@ -38,7 +38,7 @@ def _create_connection(address, timeout=None, source_address=None, iplist=None):
     try:
         import config
         resolver = config.conf.resolver.resolve
-    except:
+    except Exception:
         def resolver(host):
             return [(i[0], i[4][0]) for i in socket.getaddrinfo(host, 0)]
     err = None

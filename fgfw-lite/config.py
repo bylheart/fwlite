@@ -12,7 +12,7 @@ from collections import defaultdict
 try:
     from ipaddr import IPv4Address
     from ipaddr import IPAddress as ip_address
-except:
+except ImportError:
     from ipaddress import IPv4Address, ip_address
 
 from parent_proxy import ParentProxyList, ParentProxy
@@ -62,7 +62,7 @@ class Config(object):
 
         try:
             self.local_ip = set(socket.gethostbyname_ex(socket.gethostname())[2])
-        except:
+        except Exception:
             try:
                 csock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 csock.connect(('8.8.8.8', 53))
