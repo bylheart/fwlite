@@ -282,6 +282,9 @@ class MainWindow(QtGui.QMainWindow):
             self.showToggle()
 
     def on_Quit(self):
+        if sys.platform.startswith('win'):
+            setIEproxy(0)
+        self.killProcess()
         QtGui.qApp.quit()
 
     def openSetting(self):
