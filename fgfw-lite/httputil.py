@@ -88,10 +88,13 @@ class httpconn_pool(object):
                 return (sock, pproxy)
 
     def _remove(self, soc):
-        twindex, ppn, upsname = self.socs.pop(soc)
-        self.timerwheel[twindex].discard(soc)
-        if (soc, ppn) in self.POOL[upsname]:
-            self.POOL[upsname].remove((soc, ppn))
+        try:
+            twindex, ppn, upsname = self.socs.pop(soc)
+            self.timerwheel[twindex].discard(soc)
+            if (soc, ppn) in self.POOL[upsname]:
+                self.POOL[upsname].remove((soc, ppn))
+        except KeyError:
+            pass
 
     def _purge(self):
         pcount = 0
