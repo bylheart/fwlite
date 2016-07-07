@@ -200,8 +200,8 @@ class BaseResolver(object):
         except:
             try:
                 return ip_address(unicode(self.resolve(host)[0][1]))
-            except:
-                return ip_address(u'8.8.8.8')
+            except Exception:
+                return ip_address(u'0.0.0.0')
 
 
 class MEvent(object):

@@ -123,7 +123,7 @@ class get_proxy(object):
         if self.conf.rproxy:
             return None
 
-        if ip is None:
+        if int(ip) == 0:
             return True
 
         if ip and any((ip.is_loopback, ip.is_private)):
