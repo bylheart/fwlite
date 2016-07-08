@@ -8,8 +8,6 @@ import logging
 import random
 import time
 
-from sssocket import sssocket
-from hxsocks import hxssocket
 from parent_proxy import ParentProxy
 from httputil import read_reaponse_line, read_header_data
 
@@ -110,9 +108,11 @@ def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, p
         if tunnel:
             do_tunnel(s, netloc, parentproxy)
     elif parentproxy.scheme == 'ss':
+        from sssocket import sssocket
         s = sssocket(parentproxy, ctimeout, via)
         s.connect(netloc)
     elif parentproxy.scheme == 'hxs':
+        from hxsocks import hxssocket
         s = hxssocket(parentproxy, ctimeout, via)
         s.connect(netloc)
     elif parentproxy.scheme == 'sni':
