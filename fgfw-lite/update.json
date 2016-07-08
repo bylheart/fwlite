@@ -1,6 +1,6 @@
 {
     "./FWLite.exe": "0ab5b34ee662b71b1dccd5ed0f4c81eea62665cb29f4634fc0ae227e4b3e2929",
-    "./FWLite.pyw": "0daa3902f8fe59f8822c4e87442c87d88708ca1ddc745dd28909d7c22bd68f5d",
+    "./FWLite.pyw": "761f10406915115d2de9927bd7aeb8ee37c275f6597406c9bedfd7a441c94287",
     "./Python27/cffi.egg": "76194f025bfc41e787454fe9dc059f65f591a50dde13fffecd9eafc8f03e8e5c",
     "./Python27/chardet.egg": "eb7e0dc5af24c5ab55fd929449c87bd52f9fa8920983d3b9380ffbbc1d0940c2",
     "./Python27/cryptography.egg": "dd5c209b5dde1b4ee47acec68e893dd31b30c54251a498d873543c71635b1c4e",
@@ -17,7 +17,7 @@
     "./fgfw-lite/basesocket.py": "0de8136b3f8d399ee563b4cc8aa5ae58e5b54b8b217a9b2dac9e4e0373cdc818",
     "./fgfw-lite/cloud.txt": "51b4f8ea55758b36733a7ad165b4f614e15459319bf1d334e5dad08538b5f6b6",
     "./fgfw-lite/config.py": "78932f02b1598d522e20236ddede8318091126f84a7f3a765edfea714f20f1c5",
-    "./fgfw-lite/connection.py": "6cf4c95dd34561c35574efd36a7f7e307d67b6e85c1b924f8736eeac3f5a03b7",
+    "./fgfw-lite/connection.py": "b8d2f248d0c5925527d54cbb648e2c41afeda801545168714afcb18b99ab6c76",
     "./fgfw-lite/ctypes_libsodium.py": "e9e8ab9d439af5fa1bc28572fc696ee6826f341270931de59aebd960ce4e21ce",
     "./fgfw-lite/dnsserver.py": "fa23e00a7a7b8ec23b3108db5348273a9ca95ca28438947688db94ffa679f7a7",
     "./fgfw-lite/ecc.py": "265d5f78569ace48a0a838f85ef131118c2de7661de2a6a44e9b455b54324289",
