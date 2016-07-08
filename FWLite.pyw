@@ -346,7 +346,7 @@ class LocalRules(QtGui.QWidget):
                 w.setVisible(False)
             self.ui.LocalRulesLayout.addItem(self.spacer)
             self.widgetlist = lst
-        except:
+        except Exception:
             pass
 
     def addLocalRule(self):
@@ -355,7 +355,7 @@ class LocalRules(QtGui.QWidget):
         data = json.dumps((rule, exp)).encode()
         try:
             urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, data, timeout=1)
-        except:
+        except Exception:
             self.icon.showMessage('add localrule %s failed!' % rule)
         else:
             self.ui.LocalRuleEdit.clear()
@@ -425,7 +425,7 @@ class RedirectorRules(QtGui.QWidget):
                 w.setVisible(False)
             self.ui.RedirectorRulesLayout.addItem(self.spacer)
             self.widgetlist = lst
-        except:
+        except Exception:
             pass
 
     def addRedirRule(self):
@@ -434,7 +434,7 @@ class RedirectorRules(QtGui.QWidget):
         data = json.dumps((rule, dest)).encode()
         try:
             urllib2.urlopen('http://127.0.0.1:%d/api/redirector' % self.port, data, timeout=1)
-        except:
+        except Exception:
             self.icon.showMessage('add redirrule %s %s failed!' % (rule, dest))
         else:
             self.ui.RuleEdit.clear()
@@ -540,7 +540,7 @@ class Settings(QtGui.QWidget):
             self.ui.tableView.resizeColumnsToContents()
             self.ui.gfwlistToggle.setCheckState(QtCore.Qt.CheckState.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/gfwlist' % self.port, timeout=1).read().decode()) else QtCore.Qt.CheckState.Unchecked)
             self.ui.updateToggle.setCheckState(QtCore.Qt.CheckState.Checked if json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/autoupdate' % self.port, timeout=1).read().decode()) else QtCore.Qt.CheckState.Unchecked)
-        except:
+        except Exception:
             pass
 
     def addSS(self):
@@ -563,7 +563,7 @@ class Settings(QtGui.QWidget):
         data = json.dumps((sName, ('ss://%s:%s@%s:%s %s' % (urlquote(sMethod), urlquote(sPass), sServer, sPort, sPriority)))).encode()
         try:
             urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, data, timeout=1).read()
-        except:
+        except Exception:
             self.icon.showMessage('add parent %s failed!' % sName)
         else:
             self.ui.ssNameEdit.clear()
@@ -574,18 +574,27 @@ class Settings(QtGui.QWidget):
             self.ui.ota_checkBox.setCheckState(QtCore.Qt.CheckState.Unchecked)
 
     def gfwlistToggle(self):
-        urllib2.urlopen('http://127.0.0.1:%d/api/gfwlist' % self.port, json.dumps(self.ui.gfwlistToggle.isChecked()).encode(), timeout=1).read()
+        try:
+            urllib2.urlopen('http://127.0.0.1:%d/api/gfwlist' % self.port, json.dumps(self.ui.gfwlistToggle.isChecked()).encode(), timeout=1).read()
+        except Exception:
+            pass
 
     def autoUpdateToggle(self):
-        urllib2.urlopen('http://127.0.0.1:%d/api/autoupdate' % self.port, json.dumps(self.ui.updateToggle.isChecked()).encode(), timeout=1).read()
+        try:
+            urllib2.urlopen('http://127.0.0.1:%d/api/autoupdate' % self.port, json.dumps(self.ui.updateToggle.isChecked()).encode(), timeout=1).read()
+        except Exception:
+            pass
 
     def delParent(self):
         index = self.ui.tableView.currentIndex().row()
-        conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
-        conn.request('DELETE', '/api/parent/%s' % (self.table_model.mylist[index][0]))
-        resp = conn.getresponse()
-        content = resp.read()
-        print(content)
+        try:
+            conn = httplib.HTTPConnection('127.0.0.1', self.port, timeout=1)
+            conn.request('DELETE', '/api/parent/%s' % (self.table_model.mylist[index][0]))
+            resp = conn.getresponse()
+            content = resp.read()
+            print(content)
+        except Exception:
+            pass
 
     def openlocal(self):
         self.openfile('./fgfw-lite/local.txt')
