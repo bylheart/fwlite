@@ -46,6 +46,8 @@ def _create_connection(address, timeout=None, source_address=None, iplist=None):
         random.shuffle(iplist)
         # ipv4 goes first
         iplist = sorted(iplist, key=lambda item: item[0])
+        if timeout:
+            timeout = max(timeout / 2, 2)
 
     t = time.time() - 0.2
     for res in iplist:
