@@ -28,9 +28,7 @@ from ui_localrules import Ui_LocalRules
 from ui_localrule import Ui_LocalRule
 from ui_redirectorrules import Ui_RedirectorRules
 from ui_settings import Ui_Settings
-from util import SConfigParser, parse_hostport
-from resolver import tcp_dns_record
-from parent_proxy import ParentProxy
+from util import SConfigParser
 import translate
 tr = translate.translate
 try:
@@ -482,15 +480,8 @@ class RemoteResolve(QtGui.QWidget):
 
     def _do_resolve(self, host, server):
         try:
-            # result = json.loads(urllib2.urlopen('http://155.254.32.50/dns?q=%s&server=%s' % (base64.urlsafe_b64encode(host.encode()).decode().strip('='), server), timeout=1).read().decode())
-            proxy = ParentProxy('foo', 'http://127.0.0.1:%d' % self.port)
-            server = parse_hostport(server, 53)
-            record = tcp_dns_record(host, 'ANY', server, proxy)
-            if record is None:
-                return []
-            while len(record.rr) == 1 and record.rr[0].rtype == 5:
-                record = tcp_dns_record(str(record.rr[0].rdata), 'ANY', server, proxy)
-            result = [str(x.rdata) for x in record.rr if x.rtype in (1, 28)]
+            data = json.dumps((host, server)).encode()
+            result = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/remotedns' % self.port, data, timeout=1).read().decode())
         except Exception as e:
             result = [repr(e), traceback.format_exc()]
         self.trigger.emit('\n'.join(result))

@@ -71,6 +71,8 @@ if sys.platform.startswith('win'):
 import config
 from util import parse_hostport, is_connection_dropped, sizeof_fmt
 from connection import create_connection
+from resolver import TCP_Resolver
+from parent_proxy import ParentProxy
 from httputil import read_reaponse_line, read_headers, read_header_data, httpconn_pool
 try:
     import urllib.request as urllib2
@@ -936,6 +938,15 @@ class ProxyHandler(HTTPRequestHandler):
             self.conf.confsave()
             self.write(200, data, 'application/json')
             return self.conf.stdout()
+        elif parse.path == '/api/remotedns' and self.command == 'POST':
+            'accept a json encoded tuple: (str host, str server)'
+            host, server = json.loads(body)
+            server = parse_hostport(server, 53)
+            port = self.conf.userconf.dget('fgfwproxy', 'listen', '8118')
+            resolver = TCP_Resolver(server, 'http://127.0.0.1:%s' % port)
+            result = resolver.resolve(host)
+            result = [r[1] for r in result]
+            self.write(200, json.dumps(result), 'application/json')
         elif parse.path == '/' and self.command == 'GET':
             return self.write(200, 'Hello World !', 'text/html')
         self.send_error(404)
