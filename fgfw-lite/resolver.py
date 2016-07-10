@@ -181,7 +181,7 @@ class BaseResolver(object):
     def _record(self, host, qtype):
         return _udp_dns_record(host, qtype, self.dnsserver[0])
 
-    def resolve(self, host):
+    def resolve(self, host, dirty=False):
         try:
             ip = ip_address(host)
             return [(2 if ip._version == 4 else 10, host), ]
@@ -194,7 +194,7 @@ class BaseResolver(object):
             return ip_address(unicode(host))
         except Exception:
             try:
-                return ip_address(unicode(self.resolve(host)[0][1]))
+                return ip_address(unicode(self.resolve(host, dirty=True)[0][1]))
             except Exception:
                 return ip_address(u'0.0.0.0')
 
@@ -377,7 +377,7 @@ class Anti_GFW_Resolver(BaseResolver):
             if apfilter and apfilter.match(domain, domain, True):
                 return True
 
-    def resolve(self, host):
+    def resolve(self, host, dirty=False):
         try:
             ip = ip_address(host)
             return [(2 if ip._version == 4 else 10, host), ]
@@ -385,6 +385,8 @@ class Anti_GFW_Resolver(BaseResolver):
             pass
         if not self.is_poisoned(host):
             return _resolver(host)
+        if dirty:
+            return []
         try:
             record = self.remote.record(host, 'ANY')
             while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
