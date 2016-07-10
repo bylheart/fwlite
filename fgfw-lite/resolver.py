@@ -146,21 +146,16 @@ def tcp_dns_record(host, qtype, server, proxy):
     else:
         query = dnslib.DNSRecord(q=dnslib.DNSQuestion(host, qtype))
     query_data = query.pack()
-    for _ in range(2):
-        try:
-            sock = create_connection(server, ctimeout=2, parentproxy=proxy, tunnel=True)
-            data = struct.pack('>h', len(query_data)) + query_data
-            sock.sendall(bytes(data))
-            sock.settimeout(2)
-            rfile = sock.makefile('rb')
-            reply_data_length = rfile.read(2)
-            reply_data = rfile.read(struct.unpack('>h', reply_data_length)[0])
-            record = dnslib.DNSRecord.parse(reply_data)
-            sock.close()
-            return record
-        except Exception as e:
-            logger.warning('tcp_dns_record %s failed. %r' % (host, e))
-    raise IOError(0, 'tcp_dns_record %s failed.' % host)
+    sock = create_connection(server, ctimeout=5, parentproxy=proxy, tunnel=True)
+    data = struct.pack('>h', len(query_data)) + query_data
+    sock.sendall(bytes(data))
+    sock.settimeout(5)
+    rfile = sock.makefile('rb')
+    reply_data_length = rfile.read(2)
+    reply_data = rfile.read(struct.unpack('>h', reply_data_length)[0])
+    record = dnslib.DNSRecord.parse(reply_data)
+    sock.close()
+    return record
 
 
 class BaseResolver(object):
