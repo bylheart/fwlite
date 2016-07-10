@@ -187,7 +187,15 @@ class BaseResolver(object):
             return [(2 if ip._version == 4 else 10, host), ]
         except Exception:
             pass
-        return _resolver(host)
+        try:
+            record = self.record(host, 'ANY')
+            while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
+                record = self.record(str(record.rr[0].rdata), 'ANY')
+            return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
+        except Exception as e:
+            logger.warning('resolving %s failed: %r' % (host, e))
+            traceback.print_exc(file=sys.stderr)
+            return []
 
     def get_ip_address(self, host):
         try:

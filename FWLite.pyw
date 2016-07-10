@@ -481,7 +481,7 @@ class RemoteResolve(QtGui.QWidget):
     def _do_resolve(self, host, server):
         try:
             data = json.dumps((host, server)).encode()
-            result = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/remotedns' % self.port, data, timeout=1).read().decode())
+            result = json.loads(urllib2.urlopen('http://127.0.0.1:%d/api/remotedns' % self.port, data, timeout=10).read().decode())
         except Exception as e:
             result = [repr(e), traceback.format_exc()]
         self.trigger.emit('\n'.join(result))

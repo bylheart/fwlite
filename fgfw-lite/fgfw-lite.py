@@ -940,13 +940,18 @@ class ProxyHandler(HTTPRequestHandler):
             return self.conf.stdout()
         elif parse.path == '/api/remotedns' and self.command == 'POST':
             'accept a json encoded tuple: (str host, str server)'
-            host, server = json.loads(body)
-            server = parse_hostport(server, 53)
-            port = self.conf.userconf.dget('fgfwproxy', 'listen', '8118')
-            resolver = TCP_Resolver(server, 'http://127.0.0.1:%s' % port)
-            result = resolver.resolve(host)
-            result = [r[1] for r in result]
-            self.write(200, json.dumps(result), 'application/json')
+            try:
+                host, server = json.loads(body)
+                server = [parse_hostport(server.encode(), 53)]
+                port = self.conf.listen[1]
+                proxy = ParentProxy('foo', 'http://127.0.0.1:%d' % port)
+                resolver = TCP_Resolver(server, proxy)
+                result = resolver.resolve(host)
+                result = [r[1] for r in result]
+                self.write(200, json.dumps(result), 'application/json')
+            except Exception:
+                result = traceback.format_exc()
+                self.write(200, json.dumps(result), 'application/json')
         elif parse.path == '/' and self.command == 'GET':
             return self.write(200, 'Hello World !', 'text/html')
         self.send_error(404)
