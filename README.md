@@ -4,7 +4,7 @@ A anti-censorship HTTP proxy with builtin shadowsocks support.
 
 Current Version: 4.15.3
 
-Tested on Windows 7 and openSUSE.
+Tested on Windows 7 and Windows 10.
 
 [Download](https://github.com/v3aqb/fwlite/archive/master.zip)
 
@@ -36,17 +36,30 @@ For Windows, run `FWLite.exe`
 
 For Linux and Mac, run `FWLite.pyw`
 
-####Requirements under openSUSE
+####Instruction under openSUSE
 
-    zypper install python-repoze.lru python-ipaddr python-gevent
-    pip install geoip2 dnslib cryptography
-    zypper install python-pyside python-chardet  # for GUI
+    sudo zypper install python-virtualenv
+
+	# create virtualenv
+	virtualenv env
+
+	# install requirements
+	sudo zypper install gcc python-devel libffi-devel
+	./env/bin/python -m pip install repoze.lru ipaddr dnslib chardet geoip2
+	./env/bin/python -m pip install gevent cryptography
+
+	# install requirements for GUI. It's gonna take a while.
+	sudo zypper in libqt4-devel
+    ./env/bin/python -m pip install pyside
+
+	# run fwlite GUI
+	./env/bin/python path_to/FWLite.pyw
 
 ##Features
 
 - Set IE proxy automatically (windows)
 - URL Search (if your browser doesn't support this well)
-- Detect blocked sites
+- Detect blocked sites automatically
   - autoproxy-gfwlist
   - user-defined rules
   - connect timeout
