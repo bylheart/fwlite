@@ -1,6 +1,6 @@
 {
     "./FWLite.exe": "0ab5b34ee662b71b1dccd5ed0f4c81eea62665cb29f4634fc0ae227e4b3e2929",
-    "./FWLite.pyw": "7b3ec5340672a89ee877d2386444180c4c4db280245a63bccede6d8c3c7680e1",
+    "./FWLite.pyw": "504e297924dcef0ded201ae278dc36f37d086292fcd1831ecf145e01c227549e",
     "./Python27/cffi.egg": "76194f025bfc41e787454fe9dc059f65f591a50dde13fffecd9eafc8f03e8e5c",
     "./Python27/chardet.egg": "eb7e0dc5af24c5ab55fd929449c87bd52f9fa8920983d3b9380ffbbc1d0940c2",
     "./Python27/cryptography.egg": "dd5c209b5dde1b4ee47acec68e893dd31b30c54251a498d873543c71635b1c4e",
@@ -11,7 +11,7 @@
     "./Python27/pyasn1.egg": "2f96ed5a0c329ca16230b326ca12b7461ec8f65e0be3e4f997516f36bf82a345",
     "./Python27/python27.zip": "e948e8e22b1a9b1cf40339c411440e494a8a638b46f9b648a993946be1125361",
     "./Python27/six.egg": "4de2d949366eb2e17c13b96f8dba2ff3ec622fa815f5066559acd041ea2013e1",
-    "./README.md": "c369d87cb91c13c7c9ae36fcf04d679628f8abb8ee1a26e861fc6d5004140779",
+    "./README.md": "2af1c59c34f1dcde3083806ff27889e5adebff77979556136134b071266b23b6",
     "./fgfw-lite/GeoLite2-Country.mmdb": "11795dfa4567cd409197b335b747a000a331ab925c054f7a7f577e9868594cb2",
     "./fgfw-lite/apfilter.py": "e285496d0daefafb54ecf74ad47635dc074e3dfd5bf3cb98b7c2e9162b9aca77",
     "./fgfw-lite/basesocket.py": "0de8136b3f8d399ee563b4cc8aa5ae58e5b54b8b217a9b2dac9e4e0373cdc818",
@@ -22,7 +22,7 @@
     "./fgfw-lite/dnsserver.py": "fa23e00a7a7b8ec23b3108db5348273a9ca95ca28438947688db94ffa679f7a7",
     "./fgfw-lite/ecc.py": "a2f4ae277dffb9ea67a24c74598a0fed7e5c700e4b27ac118e49ae8eae8c984a",
     "./fgfw-lite/encrypt.py": "ad6e5ce09a0942b68565ab3744600d5677698440049a8470edf486e89af42920",
-    "./fgfw-lite/fgfw-lite.py": "0cf4727f19e849d23d3aaeaf1fee1a842c11fb7bf08656a8779e5216707aaea6",
+    "./fgfw-lite/fgfw-lite.py": "6448290fdae3450a5d6afae5332810a4be46b8415cfe328c7509e98b444e7683",
     "./fgfw-lite/get_proxy.py": "c268f641b78e45b290559f48a0c7fd4ec018cb1e4320e5c432c3e93c09d70237",
     "./fgfw-lite/httputil.py": "c156d8d66d7d5b6f25e59f966bbc7749095200df9f29a363375135b456e40fa5",
     "./fgfw-lite/hxsocks.py": "2f3701870731986fecd14df70bee78a4b2a48ff07ba210b486493326d360c25c",
@@ -44,5 +44,5 @@
     "./fgfw-lite/ui_settings.py": "cd053bc9560ae0c898576e0ca1bf537b8fd7398c9ec0d883844d95d3f55b826f",
     "./fgfw-lite/util.py": "e593fbd8a696c5177a519f28dbd0aecaa26b559be9e4a4d27d8df73edee38418",
     "./release_note.txt": "d3b1a7fc4ef6664b75c2b8ec268e773274858c1c29490b481bbda52cdd85109a",
-    "./userconf.sample.ini": "5b68b525852fd42a2fd6752db95221ced9544746fcdee23b8ec5882f80daaa06"
+    "./userconf.sample.ini": "c2a70e3e97ffc95a54e3e4c7b42669c3eedf544d468a39c31059133306bd61ae"
 }
