@@ -979,6 +979,9 @@ def update(conf, logger, auto=False):
     if auto and not conf.userconf.dgetbool('FGFW_Lite', 'autoupdate'):
         return
     gfwlist_url = conf.userconf.dget('fgfwproxy', 'gfwlist_url', 'https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt')
+    if 'googlecode' in gfwlist_url:
+        conf.userconf.set('fgfwproxy', 'gfwlist_url', 'https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt')
+        conf.confsave()
 
     filelist = [(gfwlist_url, './fgfw-lite/gfwlist.txt'), ]
 
