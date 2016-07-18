@@ -86,6 +86,7 @@ class ParentProxy(object):
         self.last_ckeck = 0
         if self.parse.scheme.lower() == 'sni':
             self.httppriority = -1
+            logger.warning('sni proxy is detectable by GFW, server ip can be blocked.')
 
     def get_location(self):
         if self.country_code:

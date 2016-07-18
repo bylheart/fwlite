@@ -79,8 +79,8 @@ For Linux and Mac, run `FWLite.pyw`
   - HTTP Proxy
   - HTTPS Proxy (HTTP Proxy over TLS)
   - Socks5 Proxy
-  - SNI Proxy
   - [Shadowsocks] by @clowwindy (with OTA support)
+  - SNI Proxy (**DANGER, STAY AWAY FROM THIS**)
 - Prioritize parent proxies by location and response time
 - Redirector(some hidden function here)
 - Support PAC for WPAD
