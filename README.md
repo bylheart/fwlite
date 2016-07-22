@@ -71,18 +71,17 @@ For Linux and Mac, run `FWLite.pyw`
   - chnroute
   - global mode
 - Support Network which require a Proxy ([issue #39](https://github.com/v3aqb/fwlite/issues/39))
-- Support HOSTS
-- Support FTP LIST/RETR
+- Support FTP LIST/RETR (Anonymous Only)
 - Support websocket protocol
 - Simple Adblock
 - Supported parent proxy
   - HTTP Proxy
-  - HTTPS Proxy (HTTP Proxy over TLS)
   - Socks5 Proxy
   - [Shadowsocks] by @clowwindy (with OTA support)
+  - [hxsocks]
   - SNI Proxy (**DANGER, STAY AWAY FROM THIS**)
 - Prioritize parent proxies by location and response time
-- Redirector(some hidden function here)
+- Redirector (some hidden function here)
 - Support PAC for WPAD
 - A simple anti-poison DNS server
 
@@ -131,7 +130,7 @@ Assign a parent proxy for certain sites
 GPLv2
 
 ##Thanks
-[翻墙路由器的原理与实现]
+[缈诲璺敱鍣ㄧ殑鍘熺悊涓庡疄鐜癩
 
 [COW]
 
@@ -145,8 +144,6 @@ GPLv2
 
 [gfwlist]
 
-[hxsocks]
-
 [COW]:https://github.com/cyfdecyf/cow
 [GoAgent]:https://github.com/goagent/goagent
 [Shadowsocks]:https://github.com/clowwindy/shadowsocks
@@ -154,4 +151,4 @@ GPLv2
 [pybuild]:https://github.com/goagent/pybuild
 [hxsocks]:https://github.com/v3aqb/hxsocks
 [gfwlist]:https://github.com/gfwlist/gfwlist
-[翻墙路由器的原理与实现]:https://docs.google.com/document/d/1mmMiMYbviMxJ-DhTyIGdK7OOg581LSD1CZV4XY1OMG8/pub
+[缈诲璺敱鍣ㄧ殑鍘熺悊涓庡疄鐜癩:https://docs.google.com/document/d/1mmMiMYbviMxJ-DhTyIGdK7OOg581LSD1CZV4XY1OMG8/pub
