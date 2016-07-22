@@ -609,7 +609,7 @@ class ProxyHandler(HTTPRequestHandler):
                 return
             elif all(u in self.conf.parentlist.dict.keys() for u in new_url.split()):
                 self._proxylist = [self.conf.parentlist.get(u) for u in new_url.split()]
-                random.shuffle(self._proxylist)
+                # random.shuffle(self._proxylist)
 
         self.rip = self.conf.resolver.get_ip_address(self.requesthost[0])
 
