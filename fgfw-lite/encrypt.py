@@ -67,7 +67,7 @@ except ImportError:
 
 
 def random_string(size):
-    return b'\x16\x03\x03\x00' + os.urandom(size-4)
+    return os.urandom(size)
 
 
 def EVP_BytesToKey(password, key_len):
