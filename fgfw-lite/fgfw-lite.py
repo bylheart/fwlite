@@ -659,14 +659,14 @@ class ProxyHandler(HTTPRequestHandler):
                 reason = ''
                 (ins, _, _) = select.select(fds, [], [], self.conf.timeout)
                 if not ins:
-                    self.logger.debug('timeout, break')
+                    self.logger.debug('timeout, break(0)')
                     reason = 'timeout'
                     break
                 if self.connection in ins:
-                    self.logger.debug('read from client')
+                    self.logger.debug('read from client(0)')
                     data = self.connection_recv(self.bufsize)
                     if not data:
-                        self.logger.debug('client closed')
+                        self.logger.debug('client closed(0)')
                         reason = 'client closed'
                         self.remotesoc.shutdown(socket.SHUT_WR)
                         fds.remove(self.connection)
@@ -679,53 +679,63 @@ class ProxyHandler(HTTPRequestHandler):
                     if self.retryable:
                         self.rbuffer.append(data)
                 if self.remotesoc in ins:
-                    self.logger.debug('read from remote')
+                    self.logger.debug('read from remote(0)')
                     data = self.remotesoc.recv(self.bufsize)
                     if not data:  # remote connection closed
-                        self.logger.debug('remote closed')
+                        self.logger.debug('remote closed(0)')
                         reason = 'remote closed'
                         fds.remove(self.remotesoc)
                         break
                     rtime = time.clock() - timelog
                     self._wfile_write(data)
             except NetWorkIOError as e:
-                self.logger.warning('do_CONNECT error: %r on %s %s' % (e, reason, count))
+                self.logger.warning('do_CONNECT error: %r on %s %s(0)' % (e, reason, count))
                 break
-        self.logger.debug('retryable? %s' % self.retryable)
         if self.retryable:
             reason = reason or "don't know why"
-            self.logger.warning('%s %s via %s failed! %s' % (self.command, self.path, self.ppname, reason))
             if reason != 'client closed':
+                self.logger.warning('%s %s via %s failed! %s. retry...' % (self.command, self.path, self.ppname, reason))
                 return self._do_CONNECT(True)
             else:
+                self.logger.warning('%s %s via %s failed! %s' % (self.command, self.path, self.ppname, reason))
                 self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
                 return
         # not retryable, clear rbuffer
         self.rbuffer = deque()
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
         self.pproxy.log(self.requesthost[0], rtime)
+        self.logger.debug('%s response time %.3fs' % (self.requesthost[0], rtime))
+        self.logger.debug('start forwarding... %d' % len(fds))
         """forward socket"""
         try:
             while fds:
                 ins, _, _ = select.select(fds, [], [], 60)
                 if not ins:
+                    self.logger.debug('tcp forwarding timed out.')
                     break
                 if self.connection in ins:
                     data = self.connection_recv(self.bufsize)
                     if data:
+                        self.logger.debug('read from client %d' % len(data))
                         self.remotesoc.sendall(data)
                     else:
+                        self.logger.debug('client closed')
                         fds.remove(self.connection)
                 if self.remotesoc in ins:
                     data = self.remotesoc.recv(self.bufsize)
                     if data:
+                        self.logger.debug('read from remote %d' % len(data))
                         self._wfile_write(data)
                     else:
+                        self.logger.debug('remote closed')
                         fds.remove(self.remotesoc)
                         self.connection.shutdown(socket.SHUT_WR)
+            self.logger.debug('forward completed successfully.')
         except socket.timeout:
+            self.logger.debug('socket.timeout error')
             pass
         except NetWorkIOError as e:
+            self.logger.debug('NetWorkIOError, code %d' % e.args[0])
             if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
                 raise
             if e.args[0] in (errno.EBADF,):
