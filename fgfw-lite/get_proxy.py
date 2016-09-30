@@ -126,7 +126,13 @@ class get_proxy(object):
         if int(ip) == 0:
             return True
 
-        if ip and any((ip.is_loopback, ip.is_private)):
+        if ip.is_loopback:
+            return False
+
+        if level == 5:
+            return True
+
+        if ip.is_private:
             return False
 
         if level == 4:
@@ -162,6 +168,7 @@ class get_proxy(object):
                    2 -- encrypt all: proxy if local_rule or not https, direct if ip in region or override, proxy if gfwlist
                    3 -- chnroute:    proxy if local_rule, direct if ip in region or override, proxy if all
                    4 -- global:      proxy if not local
+                   5 -- global:      proxy if not localhost
         '''
         host, port = host
 
