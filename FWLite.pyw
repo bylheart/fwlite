@@ -219,14 +219,8 @@ class MainWindow(QtGui.QMainWindow):
 
         profile = [int(x) for x in self.conf.dget('fgfwproxy', 'profile', '13')]
         for i, p in enumerate(profile):
-            d = {0: tr("MainWindow", "direct_access", None, QtGui.QApplication.UnicodeUTF8),
-                 1: tr("MainWindow", "auto_routing", None, QtGui.QApplication.UnicodeUTF8),
-                 2: tr("MainWindow", "encrypt_all", None, QtGui.QApplication.UnicodeUTF8),
-                 3: tr("MainWindow", "chnroute", None, QtGui.QApplication.UnicodeUTF8),
-                 4: tr("MainWindow", "global_mode", None, QtGui.QApplication.UnicodeUTF8),
-                 }
-            title = d[p] + str(self.port + i) if p in d else (u'127.0.0.1:%d profile%d' % ((self.port + i), p))
-            if i < 6:
+            title = tr("MainWindow", "route_profile_%s" % p, None, QtGui.QApplication.UnicodeUTF8) + ' ' + str(self.port + i)
+            if i < 10:
                 self.settingIEproxyMenu.addAction(QtGui.QAction(title, self, triggered=getattr(self, 'set_ie_p%d' % i)))
         self.settingIEproxyMenu.addAction(self.setIENoneAction)
 
