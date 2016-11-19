@@ -231,11 +231,11 @@ class AEncryptor(object):
             self.encrypt_key, self.auth_key, self.decrypt_key, self.de_auth_key = hkdf(key, salt, ctx, self.key_len)
         else:
             self.decrypt_key, self.de_auth_key, self.encrypt_key, self.auth_key = hkdf(key, salt, ctx, self.key_len)
-        hfunc = key_len_to_hash[self.key_len]
         self.iv_sent = False
         self.cipher_iv = random_string(self.iv_len)
         self.cipher = get_cipher(self.encrypt_key, method, 1, self.cipher_iv)
         self.decipher = None
+        hfunc = key_len_to_hash[self.key_len]
         self.enmac = hmac.new(self.auth_key, digestmod=hfunc)
         self.demac = hmac.new(self.de_auth_key, digestmod=hfunc)
 
