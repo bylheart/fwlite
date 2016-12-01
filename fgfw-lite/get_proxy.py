@@ -54,14 +54,6 @@ class get_proxy(object):
                 self.add_rule(line, local=True)
 
         if self.conf.rproxy is False:
-            # consider cloud.txt a part of gfwlist
-            for line in open('./fgfw-lite/cloud.txt'):
-                rule, _, dest = line.strip().partition(' ')
-                if dest:  # |http://www.google.com/url forcehttps
-                    self.add_redirect(rule, dest)
-                else:
-                    self.add_rule(line)
-
             self.logger.info('loading  gfwlist...')
             try:
                 with open('./fgfw-lite/gfwlist.txt') as f:

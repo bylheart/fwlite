@@ -1,8 +1,0 @@
-||google.com
-||google.com.hk
-|https://www.mozilla.org
-@@||cn.bing.com
-@@||weibo.com
-@@||ykimg.com
-@@||qq.com
-||avira-update.com
