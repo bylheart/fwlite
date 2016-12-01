@@ -34,7 +34,11 @@ On Windows, this should be done automatically.
 ####Start
 For Windows, run `FWLite.exe`
 
-For Linux and Mac, run `FWLite.pyw`
+For Linux and Mac, run `python2 /path_to/fwlite/FWLite.pyw`
+
+Run in command-line:
+
+    python2.7 /path_to/fwlite/fgfw-lite/fgfw-lite.py
 
 ####Instruction under openSUSE
 
