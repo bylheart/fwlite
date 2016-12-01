@@ -73,7 +73,6 @@ For Linux and Mac, run `FWLite.pyw`
 - Support Network which require a Proxy ([issue #39](https://github.com/v3aqb/fwlite/issues/39))
 - Support FTP LIST/RETR (Anonymous Only)
 - Support websocket protocol
-- Simple Adblock
 - Supported parent proxy
   - HTTP Proxy
   - Socks5 Proxy
