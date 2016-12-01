@@ -110,7 +110,7 @@ method_supported = {
     'salsa20': (32, 8),
     'chacha20': (32, 8),
     'chacha20-ietf': (32, 12),
-    'bypass': (16, 16),  # for testing only
+    # 'bypass': (16, 16),  # for testing only
 }
 
 
