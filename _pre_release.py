@@ -16,7 +16,7 @@ if sys.version_info > (3, 0):
     raw_input = input
 
 if raw_input('update? y/n: ').lower().startswith('y'):
-    updatelst = [('https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt', './fgfw-lite/gfwlist.txt'),
+    updatelst = [('https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt', './fgfw-lite/gfwlist.txt'),
                  ]
     try:
         import urllib2
@@ -48,8 +48,7 @@ if raw_input('update ui? y/n: ').lower().startswith('y'):
 
 
 BLOCKSIZE = 8192
-flist = ['./fgfw-lite/cloud.txt',
-         './fgfw-lite/GeoLite2-Country.mmdb',
+flist = ['./fgfw-lite/GeoLite2-Country.mmdb',
          './userconf.sample.ini',
          './Python27/python27.zip',
          './README.md',
