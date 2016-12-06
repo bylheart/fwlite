@@ -62,18 +62,13 @@ Run in command-line:
 ##Features
 
 - Set IE proxy automatically (windows)
-- URL Search (if your browser doesn't support this well)
 - Detect blocked sites automatically
   - autoproxy-gfwlist
   - user-defined rules
   - connect timeout
   - read timeout
   - connection reset
-- Multiple work mode
-  - gfwlist + auto
-  - encrypt-all
-  - chnroute
-  - global mode
+- Multiple work profile
 - Support Network which require a Proxy ([issue #39](https://github.com/v3aqb/fwlite/issues/39))
 - Support FTP LIST/RETR (Anonymous Only)
 - Support websocket protocol
@@ -81,12 +76,12 @@ Run in command-line:
   - HTTP Proxy
   - Socks5 Proxy
   - [Shadowsocks] by @clowwindy (with OTA support)
-- Prioritize parent proxies by location and response time
-- Redirector (some hidden function here)
+- Prioritize parent proxies by response time
+- <del>Prioritize parent proxies by location</del>
+- Redirector
 - Support PAC for WPAD
-- A simple anti-poison DNS server
 
-Not all features are listed here, and not all of them covered in GUI.
+Not all features are listed here, and only few of them are covered in GUI.
 
 ##User Defined Rules(./fgfw-lite/local.txt)
 
@@ -139,8 +134,6 @@ GPLv2
 
 [Shadowsocks]
 
-[fqrouter]
-
 [pybuild]
 
 [gfwlist]
@@ -148,8 +141,6 @@ GPLv2
 [COW]:https://github.com/cyfdecyf/cow
 [GoAgent]:https://github.com/goagent/goagent
 [Shadowsocks]:https://github.com/clowwindy/shadowsocks
-[fqrouter]:https://github.com/fqrouter/fqrouter
 [pybuild]:https://github.com/goagent/pybuild
-[hxsocks]:https://github.com/v3aqb/hxsocks
 [gfwlist]:https://github.com/gfwlist/gfwlist
 [翻墙路由器的原理与实现]:https://docs.google.com/document/d/1mmMiMYbviMxJ-DhTyIGdK7OOg581LSD1CZV4XY1OMG8/pub
