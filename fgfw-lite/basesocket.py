@@ -11,6 +11,7 @@ class basesocket(object):
     def __init__(self):
         self._rbuffer = io.BytesIO()
         self._sock = None
+        self._rfile = None
 
     def read(self, size):
         data = b''
@@ -106,6 +107,7 @@ class basesocket(object):
             return buf.getvalue()
 
     def close(self):
+        self._rfile.close()
         if self._sock:
             self._sock.close()
 

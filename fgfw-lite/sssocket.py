@@ -5,8 +5,12 @@ import encrypt
 import hashlib
 import hmac
 import io
+import os
+import base64
+
 from parent_proxy import ParentProxy
 from basesocket import basesocket
+from httputil import read_reaponse_line, read_headers
 
 
 class sssocket(basesocket):
@@ -25,6 +29,15 @@ class sssocket(basesocket):
         self.__ota = False
         self._ota_chunk_idx = 0
         self.connected = False
+        # TODO: send custom headers
+        self._http_obfs = False
+        self._http_header = b'GET / HTTP/1.1\r\n'
+        self._http_header += b'Host: www.baidu.com\r\n'
+        self._http_header += b'User-Agent: curl/7.18.1\r\n'
+        self._http_header += b'Upgrade: websocket\r\nConnection: Upgrade\r\n'
+        self._http_header += b'Sec-WebSocket-Key: ' + base64.b64encode(os.urandom(16))
+        self._http_header += b'\r\n\r\n'
+        self._header_received = False
 
     def connect(self, address):
         self.__address = address
@@ -34,11 +47,16 @@ class sssocket(basesocket):
             self.__ota = True
             ssmethod = ssmethod[:-5]
         self._sock = create_connection((sshost, ssport), self.timeout, parentproxy=self.parentproxy, tunnel=True)
+        self._rfile = self._sock.makefile('rb')
         self.crypto = encrypt.Encryptor(sspassword, ssmethod)
 
     def recv(self, size):
         if not self.connected:
             self.sendall(b'')
+        if self._http_obfs and not self._header_received:
+            # TODO: verify
+            line, version, status, reason = read_reaponse_line(self._rfile)
+            header_data, headers = read_headers(self._rfile)
         buf = self._rbuffer
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
