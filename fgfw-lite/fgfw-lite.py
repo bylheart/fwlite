@@ -735,7 +735,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.debug('socket.timeout error')
             pass
         except NetWorkIOError as e:
-            self.logger.debug('NetWorkIOError, code %d' % e.args[0])
+            self.logger.debug('NetWorkIOError, code %r' % e.args[0])
             if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
                 raise
             if e.args[0] in (errno.EBADF,):
