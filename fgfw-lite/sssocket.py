@@ -12,6 +12,23 @@ from parent_proxy import ParentProxy
 from basesocket import basesocket
 from httputil import read_response_line, read_headers
 
+REQUEST_HEADER = b'''\
+POST / HTTP/1.1\r\n\
+Host: {host}\r\n\
+User-Agent: {UA}\r\n\
+Accept: */*\r\n\
+Content-Type: application/octet-stream\r\n\
+Content-Length: {size}\r\n\
+\r\n'''
+
+REQUEST_HEADER_WS = b'''\
+GET / HTTP/1.1\r\n\
+Host: {host}\r\n\
+User-Agent: {UA}\r\n\
+Upgrade: websocket\r\n\
+Connection: Upgrade\r\n\
+Sec-WebSocket-Key: {ws_key}\r\n\r\n'''
+
 
 class sssocket(basesocket):
     bufsize = 65519
@@ -31,12 +48,8 @@ class sssocket(basesocket):
         self.connected = False
         # TODO: send custom headers
         self._http_obfs = self.ssServer.query.get('obfs', [''])[0] == 'http'
-        self._http_header = b'GET / HTTP/1.1\r\n'
-        self._http_header += b'Host: %s\r\n' % self.ssServer.query.get('hostname', ['www.baidu.com'])[0].encode()
-        self._http_header += b'User-Agent: %s\r\n' % self.ssServer.query.get('UA', ['curl/7.18.1'])[0].encode()
-        self._http_header += b'Upgrade: websocket\r\nConnection: Upgrade\r\n'
-        self._http_header += b'Sec-WebSocket-Key: ' + base64.b64encode(os.urandom(16))
-        self._http_header += b'\r\n\r\n'
+        self._http_obfs_host = self.ssServer.query.get('hostname', ['www.baidu.com'])[0].encode()
+        self._http_obfs_ua = self.ssServer.query.get('UA', ['curl/7.18.1'])[0].encode()
         self._header_received = False
 
     def connect(self, address):
@@ -93,6 +106,13 @@ class sssocket(basesocket):
         else:
             # https://shadowsocks.org/en/spec/one-time-auth.html
             host, port = self.__address
+
+            if self._http_obfs:
+                d = {'host': self._http_obfs_host,
+                     'UA': self._http_obfs_ua,
+                     'ws_key': base64.b64encode(os.urandom(16))}
+                self._sock.sendall(REQUEST_HEADER_WS.format(**d))
+
             addrtype = 19 if self.__ota else 3
             header = b''.join([chr(addrtype),
                                chr(len(host)).encode(),
@@ -110,7 +130,7 @@ class sssocket(basesocket):
         return self
 
 if __name__ == '__main__':
-    s = sssocket('ss://aes-128-cfb:password@127.0.0.1:8138', 5)
+    s = sssocket('ss://aes-128-cfb:password@127.0.0.1:8138/?obfs=http', 5)
     s.connect(('www.baidu.com', 80))
     s.sendall(b'GET / HTTP/1.0\r\n\r\n')
     data = s.recv(1024)

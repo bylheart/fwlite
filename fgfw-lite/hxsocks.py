@@ -119,7 +119,7 @@ class _hxssocket(basesocket):
         if self._http_obfs and not self._header_sent:
             self._header_sent = True
             self._sock.sendall(self._http_header)
-        self._sock.sendall(data)
+        return self._sock.sendall(data)
 
     def _rfile_read(self, size):
         if self._http_obfs and not self._header_received:
@@ -380,7 +380,7 @@ class _hxssocket(basesocket):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    hxs = hxssocket('hxs://user:pass@127.0.0.1:9000')
+    hxs = hxssocket('hxs://user:pass@127.0.0.1:8138/?PSK=password&method=aes-128-cfb&obfs=http')
     hxs.connect(('www.baidu.com', 80))
     hxs.sendall(b'GET / HTTP/1.0\r\n\r\n')
     data = hxs.recv(1024)
