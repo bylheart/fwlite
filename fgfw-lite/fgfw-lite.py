@@ -73,7 +73,7 @@ from util import parse_hostport, is_connection_dropped, sizeof_fmt
 from connection import create_connection
 from resolver import TCP_Resolver
 from parent_proxy import ParentProxy
-from httputil import read_reaponse_line, read_headers, read_header_data, httpconn_pool
+from httputil import read_response_line, read_headers, read_header_data, httpconn_pool
 try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
@@ -433,7 +433,7 @@ class ProxyHandler(HTTPRequestHandler):
             skip = False
             if 'Expect' in self.headers:
                 try:
-                    response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
+                    response_line, protocol_version, response_status, response_reason = read_response_line(remoterfile)
                 except Exception as e:
                     # TODO: probably the server don't handle Expect well.
                     self.logger.warning('read response line error: %r' % e)
@@ -484,13 +484,13 @@ class ProxyHandler(HTTPRequestHandler):
                         self.remotesoc.sendall(data)
                 # read response line
                 timelog = time.clock()
-                response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
+                response_line, protocol_version, response_status, response_reason = read_response_line(remoterfile)
                 rtime = time.clock() - timelog
             # read response headers
             while response_status == 100:
                 hdata = read_header_data(remoterfile)
                 self._wfile_write(response_line + hdata)
-                response_line, protocol_version, response_status, response_reason = read_reaponse_line(remoterfile)
+                response_line, protocol_version, response_status, response_reason = read_response_line(remoterfile)
             header_data, response_header = read_headers(remoterfile)
             conntype = response_header.get('Connection', "")
             if protocol_version >= b"HTTP/1.1":

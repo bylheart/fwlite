@@ -9,7 +9,7 @@ import random
 import time
 
 from parent_proxy import ParentProxy
-from httputil import read_reaponse_line, read_header_data
+from httputil import read_response_line, read_header_data
 
 logger = logging.getLogger('conn')
 logger.setLevel(logging.INFO)
@@ -84,7 +84,7 @@ def do_tunnel(soc, netloc, pp):
     s.append('Host: %s:%s\r\n\r\n' % (netloc[0], netloc[1]))
     soc.sendall(''.join(s).encode())
     remoterfile = soc.makefile('rb', 0)
-    line, version, status, reason = read_reaponse_line(remoterfile)
+    line, version, status, reason = read_response_line(remoterfile)
     if status != 200:
         raise IOError(0, 'create tunnel via %s failed!' % pp.name)
     read_header_data(remoterfile)

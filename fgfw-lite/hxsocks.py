@@ -37,7 +37,7 @@ from parent_proxy import ParentProxy
 from httputil import httpconn_pool
 import encrypt
 from ecc import ECC
-from httputil import read_reaponse_line, read_headers
+from httputil import read_response_line, read_headers
 
 import logging
 
@@ -105,10 +105,10 @@ class _hxssocket(basesocket):
         self.writeable = 0
         self.pooled = 0
         # TODO: send custom headers
-        self._http_obfs = False
+        self._http_obfs = self.hxsServer.query.get('obfs', [''])[0] == 'http'
         self._http_header = b'GET / HTTP/1.1\r\n'
-        self._http_header += b'Host: www.baidu.com\r\n'
-        self._http_header += b'User-Agent: curl/7.18.1\r\n'
+        self._http_header += b'Host: %s\r\n' % self.hxsServer.query.get('hostname', ['www.baidu.com'])[0].encode()
+        self._http_header += b'User-Agent: %s\r\n' % self.hxsServer.query.get('UA', ['curl/7.18.1'])[0].encode()
         self._http_header += b'Upgrade: websocket\r\nConnection: Upgrade\r\n'
         self._http_header += b'Sec-WebSocket-Key: ' + base64.b64encode(os.urandom(16))
         self._http_header += b'\r\n\r\n'
@@ -117,12 +117,14 @@ class _hxssocket(basesocket):
 
     def _sock_sendall(self, data):
         if self._http_obfs and not self._header_sent:
+            self._header_sent = True
             self._sock.sendall(self._http_header)
         self._sock.sendall(data)
 
     def _rfile_read(self, size):
         if self._http_obfs and not self._header_received:
-            line, version, status, reason = read_reaponse_line(self._rfile)
+            self._header_received = True
+            line, version, status, reason = read_response_line(self._rfile)
             header_data, headers = read_headers(self._rfile)
         return self._rfile.read(size)
 
@@ -323,6 +325,7 @@ class _hxssocket(basesocket):
         logger.debug('hxsocks close, readable %s, writeable %s' % (self.readable, self.writeable))
         if self.pooled:
             try:
+                self._rfile.close()
                 self._sock.close()
             except Exception:
                 pass
