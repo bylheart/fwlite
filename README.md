@@ -22,9 +22,11 @@ It looks like this:
 or this:
 
     [parents]
-    proxy1 = http://127.0.0.1:8086
-    proxy2 = http://user:pass@127.0.0.1:8087
-    proxy3 = socks5://127.0.0.1:1080
+    proxy1 = http://user:pass@127.0.0.1:8087
+    proxy2 = socks5://127.0.0.1:1080
+
+    # connect to 'http://127.0.0.1:8087' via 'socks5://127.0.0.1:1080'
+    proxy3 = http://127.0.0.1:8087|socks5://127.0.0.1:1080
 
 ####Set browser
 Set your browser's proxy setting to `http://127.0.0.1:8118`.
