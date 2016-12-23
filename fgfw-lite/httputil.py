@@ -99,15 +99,22 @@ class httpconn_pool(object):
     def _purge(self):
         pcount = 0
         with self.lock:
+            remove_lst = []
             for soc in is_connection_dropped(self.socs.keys()):
                 soc.close()
-                self._remove(soc)
+                remove_lst.append(soc)
                 pcount += 1
+            for soc in remove_lst:
+                self._remove(soc)
+            remove_lst = []
+
             self.timerwheel_index = next(self.timerwheel_iter)
             for soc in list(self.timerwheel[self.timerwheel_index]):
                 soc.close()
-                self._remove(soc)
+                remove_lst.append(soc)
                 pcount += 1
+            for soc in remove_lst:
+                self._remove(soc)
         if pcount:
             self.logger.debug('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, len(self.socs), ', '.join([k[0] if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))
         Timer(30, self._purge, ()).start()

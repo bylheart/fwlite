@@ -404,7 +404,7 @@ class ProxyHandler(HTTPRequestHandler):
                 s.append('%s /%s %s\r\n' % (self.command, '/'.join(self.path.split('/')[3:]), self.request_version))
             # Does the client want to close connection after this request?
             conntype = self.headers.get('Connection', "")
-            if self.request_version >= b"HTTP/1.1":
+            if self.request_version >= "HTTP/1.1":
                 self.close_connection = 'close' in conntype.lower()
             else:
                 self.close_connection = 'keep_alive' in conntype.lower()
