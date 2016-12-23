@@ -199,10 +199,10 @@ class BaseResolver(object):
 
     def get_ip_address(self, host):
         try:
-            return ip_address(unicode(host))
+            return ip_address(host)
         except Exception:
             try:
-                return ip_address(unicode(self.resolve(host, dirty=True)[0][1]))
+                return ip_address(self.resolve(host, dirty=True)[0][1])
             except Exception:
                 return ip_address(u'0.0.0.0')
 
@@ -365,6 +365,7 @@ class Anti_GFW_Resolver(BaseResolver):
         self.apfilter_list = apfilter_list
         self.bad_ip = bad_ip
         self.hostlock = defaultdict(RLock)
+        self.record = self._record
 
     def _record(self, domain, qtype):
         try:
@@ -426,7 +427,9 @@ if __name__ == '__main__':
             if '||' in line:
                 apfilter.add(line)
     print(apfilter.match('twitter.com', 'twitter.com', True))
-    resolver = get_resolver(('223.5.5.5', 53), ('8.8.8.8', 53), 'http://127.0.0.1:8119', [apfilter, ])
+    print(apfilter.match('www.163.com', 'www.163.com', True))
+    resolver = get_resolver([('223.5.5.5', 53), ], [('8.8.8.8', 53), ], 'http://127.0.0.1:8119', [apfilter, ])
     print(resolver.record('twitter.com', 'ANY'))
     print(resolver.resolve('twitter.com'))
     print(resolver.get_ip_address('twitter.com'))
+    print(resolver.get_ip_address('www.163.com'))

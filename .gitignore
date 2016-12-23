@@ -10,3 +10,5 @@
 /.hxs_known_hosts/*
 /fgfw-lite/adblock.txt
 *.log
+fgfw-lite/.hxs_known_hosts/*
+.gitignore

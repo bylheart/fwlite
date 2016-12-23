@@ -75,7 +75,7 @@ class sssocket(basesocket):
             # https://shadowsocks.org/en/spec/one-time-auth.html
             host, port = self.__address
             addrtype = 19 if self.__ota else 3
-            header = b''.join([chr(addrtype),
+            header = b''.join([chr(addrtype).encode(),
                                chr(len(host)).encode(),
                                host.encode(),
                                struct.pack(b">H", port)])

@@ -6,7 +6,6 @@ import logging
 
 from repoze.lru import lru_cache
 
-from apfilter import ap_rule, ap_filter
 from util import ip_to_country_code
 
 
@@ -42,6 +41,7 @@ class get_proxy(object):
         self.config()
 
     def config(self):
+        from apfilter import ap_rule, ap_filter
         self.gfwlist = ap_filter()
         self.local = ap_filter()
         self.ignore = ap_filter()  # used by rules like "||twimg.com auto"

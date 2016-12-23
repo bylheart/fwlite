@@ -11,7 +11,6 @@ except ImportError:
     urlquote = urllib2.quote
     urlunquote = urllib2.unquote
 
-from apfilter import ap_rule, ap_filter
 try:
     from _manager import redirector as uredirector
 except ImportError:
@@ -21,6 +20,7 @@ except ImportError:
 
 class redirector(object):
     def __init__(self, conf):
+        from apfilter import ap_filter
         self.conf = conf
         self.logger = logging.getLogger('redirector')
         self.logger.setLevel(logging.INFO)
@@ -59,6 +59,7 @@ class redirector(object):
         return self._bad302.match(uri)
 
     def add_redirect(self, rule, dest, pp=None):
+        from apfilter import ap_rule
         if pp is None:
             pp = self.conf.PARENT_PROXY
         try:

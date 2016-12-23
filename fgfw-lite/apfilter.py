@@ -20,12 +20,12 @@
 
 from __future__ import print_function, division
 
+import sys
 import re
 import time
 from threading import Timer
 from collections import defaultdict
 from util import parse_hostport
-import config
 try:
     import urlparse
 except ImportError:
@@ -219,8 +219,9 @@ class ap_filter(object):
                         break
             self.rules.discard(rule)
             del self.expire[rule]
-            config.conf.stdout()
-
+            if '-GUI' in sys.argv:
+                sys.stdout.write(b'\n')
+                sys.stdout.flush()
 
 if __name__ == "__main__":
     gfwlist = ap_filter()

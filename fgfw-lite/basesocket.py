@@ -30,7 +30,7 @@ class basesocket(object):
             # check if we already have it in our buffer
             buf.seek(0)
             bline = buf.readline(size)
-            if bline.endswith('\n') or len(bline) == size:
+            if bline.endswith(b'\n') or len(bline) == size:
                 self._rbuffer = io.BytesIO()
                 self._rbuffer.write(buf.read())
                 return bline
