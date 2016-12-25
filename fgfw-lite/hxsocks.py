@@ -26,6 +26,8 @@ import hmac
 import socket
 import base64
 
+from six import byte2int
+
 from collections import defaultdict
 from threading import RLock, Thread
 try:
@@ -141,9 +143,15 @@ class _hxssocket(basesocket):
             self._header_received = False
         logger.debug('hxsocks send connect request')
         padding_len = random.randint(64, 255)
-        pt = struct.pack('>I', int(time.time())) + chr(len(self._address[0])) + self._address[0] + struct.pack('>H', self._address[1]) + b'\x00' * padding_len
+        pt = b''.join([struct.pack('>I', int(time.time())),
+                       chr(len(self._address[0])).encode('latin1'),
+                       self._address[0].encode(),
+                       struct.pack('>H', self._address[1]),
+                       b'\x00' * padding_len])
         ct, mac = self.cipher.encrypt(pt)
-        self._sock_sendall(self.pskcipher.encrypt(chr(11) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
+        self._sock_sendall(self.pskcipher.encrypt(b''.join([chr(11).encode(),
+                                                            keys[self.serverid][0],
+                                                            struct.pack('>H', len(ct))])) + ct + mac)
 
         resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
         data = self._rfile_read(resp_len)
@@ -154,7 +162,7 @@ class _hxssocket(basesocket):
 
         resp = self.pskcipher.decrypt(self._rfile_read(resp_len))
 
-        d = ord(resp[0]) if resp else None
+        d = byte2int(resp) if resp else None
         if d == 0:
             logger.debug('hxsocks connected')
             self.readable = 1
@@ -186,9 +194,12 @@ class _hxssocket(basesocket):
                     logger.debug('hxsocks send key exchange request')
                     ts = struct.pack('>I', int(time.time()))
                     padding_len = random.randint(64, 255)
-                    data = ts + chr(len(pubk)) + pubk + hmac.new(psw.encode(), ts + pubk + usn.encode(), hashlib.sha256).digest()\
-                        + b'\x00' * padding_len
-                    data = chr(10) + struct.pack('>H', len(data)) + data
+                    data = b''.join([ts,
+                                     chr(len(pubk)).encode('latin1'),
+                                     pubk,
+                                     hmac.new(psw.encode(), ts + pubk + usn.encode(), hashlib.sha256).digest(),
+                                     b'\x00' * padding_len])
+                    data = chr(10).encode() + struct.pack('>H', len(data)) + data
                     self._sock_sendall(self.pskcipher.encrypt(data))
                     resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
                     resp_len = self.pskcipher.decrypt(self._rfile_read(resp_len))
@@ -197,12 +208,12 @@ class _hxssocket(basesocket):
 
                     data = io.BytesIO(data)
 
-                    resp_code = ord(data.read(1))
+                    resp_code = byte2int(data.read(1))
                     if resp_code == 0:
                         logger.debug('hxsocks read key exchange respond')
-                        pklen = ord(data.read(1))
-                        scertlen = ord(data.read(1))
-                        siglen = ord(data.read(1))
+                        pklen = byte2int(data.read(1))
+                        scertlen = byte2int(data.read(1))
+                        siglen = byte2int(data.read(1))
 
                         server_key = data.read(pklen)
                         auth = data.read(32)
@@ -254,7 +265,7 @@ class _hxssocket(basesocket):
                 ct = self._rfile_read(ctlen)
                 mac = self._rfile_read(MAC_LEN)
                 data = self.cipher.decrypt(ct, mac)
-                pad_len = ord(data[0])
+                pad_len = byte2int(data)
                 if 0 < pad_len < 8:
                     logger.debug('Fake chunk, drop')
                     if pad_len == 1:
@@ -262,7 +273,7 @@ class _hxssocket(basesocket):
                         self.send_fake_chunk(2)
                     # server should be sending another chunk right away
                     continue
-                data = data[1:0-pad_len] if ord(data[0]) else data[1:]
+                data = data[1:0-pad_len] if byte2int(data) else data[1:]
                 if not data:
                     logger.debug('hxsocks recv closed gracefully')
                     self.readable = 0
@@ -298,7 +309,7 @@ class _hxssocket(basesocket):
             data, data_more = data[:self.bufsize], data[self.bufsize:]
         padding_len = random.randint(8, 255)
         padding = b'\x00' * padding_len
-        data = chr(padding_len) + data + padding
+        data = chr(padding_len).encode('latin1') + data + padding
 
         ct, mac = self.cipher.encrypt(data)
         data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
@@ -359,14 +370,14 @@ class _hxssocket(basesocket):
                 ct = self._rfile_read(ctlen)
                 mac = self._rfile_read(MAC_LEN)
                 data = self.cipher.decrypt(ct, mac)
-                pad_len = ord(data[0])
+                pad_len = byte2int(data)
                 if 0 < pad_len < 8:
                     # fake chunk, drop
                     if pad_len == 1:
                         self.send_fake_chunk(2)
                     # server should be sending another chunk right away
                     continue
-                data = data[1:0-pad_len] if ord(data[0]) else data[1:]
+                data = data[1:0-pad_len] if byte2int(data) else data[1:]
                 if not data:
                     logger.debug('hxsocks add to pool')
                     self.pooled = 1
