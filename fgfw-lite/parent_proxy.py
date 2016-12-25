@@ -79,10 +79,11 @@ class ParentProxy(object):
             self.via = ParentProxy('via', '|'.join(proxy_list[1:]))
             self.via.name = '%s://%s:%s' % (self.via.scheme, self.via.hostname, self.via.port)
         self.parse = urlparse.urlparse(self.proxy)
+        self.query = urlparse.parse_qs(self.parse.query)
         self.httppriority = int(httppriority)
         self.httpspriority = int(httpspriority)
         self.timeout = int(timeout)
-        self.country_code = urlparse.parse_qs(self.parse.query).get('location', [''])[0] or None
+        self.country_code = self.query.get('location', [''])[0] or None
         self.last_ckeck = 0
         if self.parse.scheme.lower() == 'sni':
             self.httppriority = -1
@@ -99,12 +100,12 @@ class ParentProxy(object):
 
             if ip.is_loopback or ip.is_private:
                 from connection import create_connection
-                from httputil import read_reaponse_line, read_headers
+                from httputil import read_response_line, read_headers
                 try:
                     soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=None, parentproxy=self)
                     soc.sendall(b'GET / HTTP/1.1\r\nConnection: keep_alive\r\nHost: bot.whatismyipaddress.com\r\nAccept-Encoding: identity\r\nUser-Agent: Python-urllib/2.7\r\n\r\n')
                     f = soc.makefile()
-                    line, version, status, reason = read_reaponse_line(f)
+                    line, version, status, reason = read_response_line(f)
                     _, headers = read_headers(f)
                     assert status == 200
                     ip = soc.recv(int(headers['Content-Length']))

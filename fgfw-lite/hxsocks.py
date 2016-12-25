@@ -24,6 +24,7 @@ import random
 import hashlib
 import hmac
 import socket
+import base64
 
 from collections import defaultdict
 from threading import RLock, Thread
@@ -36,6 +37,7 @@ from parent_proxy import ParentProxy
 from httputil import httpconn_pool
 import encrypt
 from ecc import ECC
+from httputil import read_response_line, read_headers
 
 import logging
 
@@ -102,6 +104,29 @@ class _hxssocket(basesocket):
         self.readable = 0
         self.writeable = 0
         self.pooled = 0
+        # TODO: send custom headers
+        self._http_obfs = self.hxsServer.query.get('obfs', [''])[0] == 'http'
+        self._http_header = b'GET / HTTP/1.1\r\n'
+        self._http_header += b'Host: %s\r\n' % self.hxsServer.query.get('hostname', ['www.baidu.com'])[0].encode()
+        self._http_header += b'User-Agent: %s\r\n' % self.hxsServer.query.get('UA', ['curl/7.18.1'])[0].encode()
+        self._http_header += b'Upgrade: websocket\r\nConnection: Upgrade\r\n'
+        self._http_header += b'Sec-WebSocket-Key: ' + base64.b64encode(os.urandom(16))
+        self._http_header += b'\r\n\r\n'
+        self._header_sent = False
+        self._header_received = False
+
+    def _sock_sendall(self, data):
+        if self._http_obfs and not self._header_sent:
+            self._header_sent = True
+            self._sock.sendall(self._http_header)
+        return self._sock.sendall(data)
+
+    def _rfile_read(self, size):
+        if self._http_obfs and not self._header_received:
+            self._header_received = True
+            line, version, status, reason = read_response_line(self._rfile)
+            header_data, headers = read_headers(self._rfile)
+        return self._rfile.read(size)
 
     def connect(self, address):
         self._address = address
@@ -111,21 +136,23 @@ class _hxssocket(basesocket):
             host, port = self.hxsServer.hostname, self.hxsServer.port
             self._sock = create_connection((host, port), self.timeout, parentproxy=self.parentproxy, tunnel=True)
             self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+            self._rfile = self._sock.makefile('rb')
+            self._header_sent = False
+            self._header_received = False
         logger.debug('hxsocks send connect request')
         padding_len = random.randint(64, 255)
         pt = struct.pack('>I', int(time.time())) + chr(len(self._address[0])) + self._address[0] + struct.pack('>H', self._address[1]) + b'\x00' * padding_len
         ct, mac = self.cipher.encrypt(pt)
-        self._sock.sendall(self.pskcipher.encrypt(chr(11) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
+        self._sock_sendall(self.pskcipher.encrypt(chr(11) + keys[self.serverid][0] + struct.pack('>H', len(ct))) + ct + mac)
 
-        fp = self._sock.makefile('rb', 0)
         resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
-        data = fp.read(resp_len)
+        data = self._rfile_read(resp_len)
         if not data:
             raise IOError(0, 'hxsocks Error: connection closed.')
         resp_len = self.pskcipher.decrypt(data)
         resp_len = struct.unpack('>H', resp_len)[0]
 
-        resp = self.pskcipher.decrypt(fp.read(resp_len))
+        resp = self.pskcipher.decrypt(self._rfile_read(resp_len))
 
         d = ord(resp[0]) if resp else None
         if d == 0:
@@ -151,6 +178,9 @@ class _hxssocket(basesocket):
                         from connection import create_connection
                         self._sock = create_connection((host, port), self.timeout, parentproxy=self.parentproxy, tunnel=True)
                         self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+                        self._rfile = self._sock.makefile('rb')
+                        self._header_sent = False
+                        self._header_received = False
                     acipher = ECC(self.pskcipher.key_len)
                     pubk = acipher.get_pub_key()
                     logger.debug('hxsocks send key exchange request')
@@ -159,12 +189,11 @@ class _hxssocket(basesocket):
                     data = ts + chr(len(pubk)) + pubk + hmac.new(psw.encode(), ts + pubk + usn.encode(), hashlib.sha256).digest()\
                         + b'\x00' * padding_len
                     data = chr(10) + struct.pack('>H', len(data)) + data
-                    self._sock.sendall(self.pskcipher.encrypt(data))
-                    fp = self._sock.makefile('rb', 0)
+                    self._sock_sendall(self.pskcipher.encrypt(data))
                     resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
-                    resp_len = self.pskcipher.decrypt(fp.read(resp_len))
+                    resp_len = self.pskcipher.decrypt(self._rfile_read(resp_len))
                     resp_len = struct.unpack('>H', resp_len)[0]
-                    data = self.pskcipher.decrypt(fp.read(resp_len))
+                    data = self.pskcipher.decrypt(self._rfile_read(resp_len))
 
                     data = io.BytesIO(data)
 
@@ -211,7 +240,6 @@ class _hxssocket(basesocket):
         logger.debug('hxsocks recv')
         # if not self.readable:
         #     return b''
-        fp = self._sock.makefile('rb', 0)
         buf = self._rbuffer
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
@@ -219,12 +247,12 @@ class _hxssocket(basesocket):
         if buf_len == 0:
             logger.debug('Nothing in buffer. Try to read.')
             while 1:
-                ctlen = fp.read(2)
+                ctlen = self._rfile_read(2)
                 if not ctlen:
                     return b''
                 ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
-                ct = fp.read(ctlen)
-                mac = fp.read(MAC_LEN)
+                ct = self._rfile_read(ctlen)
+                mac = self._rfile_read(MAC_LEN)
                 data = self.cipher.decrypt(ct, mac)
                 pad_len = ord(data[0])
                 if 0 < pad_len < 8:
@@ -259,7 +287,7 @@ class _hxssocket(basesocket):
         data = chr(flag) + b'\x00' * random.randint(64, 512)
         ct, mac = self.cipher.encrypt(data)
         data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
-        self._sock.sendall(data)
+        self._sock_sendall(data)
 
     def sendall(self, data):
         if not data:
@@ -274,7 +302,7 @@ class _hxssocket(basesocket):
 
         ct, mac = self.cipher.encrypt(data)
         data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
-        self._sock.sendall(data)
+        self._sock_sendall(data)
         if data_more:
             self.sendall(data_more)
         logger.debug('hxsocks send data completed')
@@ -290,13 +318,14 @@ class _hxssocket(basesocket):
 
             ct, mac = self.cipher.encrypt(data)
             data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
-            self._sock.sendall(data)
+            self._sock_sendall(data)
             self.writeable = 0
 
     def close(self):
         logger.debug('hxsocks close, readable %s, writeable %s' % (self.readable, self.writeable))
         if self.pooled:
             try:
+                self._rfile.close()
                 self._sock.close()
             except Exception:
                 pass
@@ -308,7 +337,7 @@ class _hxssocket(basesocket):
 
             ct, mac = self.cipher.encrypt(data)
             data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
-            self._sock.sendall(data)
+            self._sock_sendall(data)
             self.writeable = 0
         if self.readable:
             t = Thread(target=self._wait_close)
@@ -323,13 +352,12 @@ class _hxssocket(basesocket):
         self.settimeout(8)
         while 1:
             try:
-                fp = self._sock.makefile('rb', 0)
-                ctlen = fp.read(2)
+                ctlen = self._rfile_read(2)
                 if not ctlen:
                     raise IOError(0, '')
                 ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
-                ct = fp.read(ctlen)
-                mac = fp.read(MAC_LEN)
+                ct = self._rfile_read(ctlen)
+                mac = self._rfile_read(MAC_LEN)
                 data = self.cipher.decrypt(ct, mac)
                 pad_len = ord(data[0])
                 if 0 < pad_len < 8:
@@ -352,7 +380,7 @@ class _hxssocket(basesocket):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    hxs = hxssocket('hxs://user:pass@127.0.0.1:9000')
+    hxs = hxssocket('hxs://user:pass@127.0.0.1:8138/?PSK=password&method=aes-128-cfb&obfs=http')
     hxs.connect(('www.baidu.com', 80))
     hxs.sendall(b'GET / HTTP/1.0\r\n\r\n')
     data = hxs.recv(1024)

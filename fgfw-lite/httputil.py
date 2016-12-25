@@ -15,7 +15,7 @@ except ImportError:
 from util import is_connection_dropped
 
 
-def read_reaponse_line(fp):
+def read_response_line(fp):
     line = fp.readline()
     if not line.startswith(b'HTTP'):
         raise IOError(0, 'bad response line: %r' % line)
