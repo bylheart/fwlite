@@ -41,7 +41,7 @@ class get_proxy(object):
         self.config()
 
     def config(self):
-        from apfilter import ap_rule, ap_filter
+        from apfilter import ap_filter
         self.gfwlist = ap_filter()
         self.local = ap_filter()
         self.ignore = ap_filter()  # used by rules like "||twimg.com auto"
@@ -77,6 +77,7 @@ class get_proxy(object):
 
     def add_ignore(self, rule):
         '''called by redirector'''
+        from apfilter import ap_rule
         self.ignore.add(ap_rule(rule))
 
     def add_rule(self, line, local=False):

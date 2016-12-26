@@ -17,6 +17,7 @@ try:
 except ImportError:
     from ipaddress import ip_address
 
+import config
 from connection import create_connection
 
 
@@ -382,9 +383,10 @@ class Anti_GFW_Resolver(BaseResolver):
     def is_poisoned(self, domain):
         if not self.apfilter_list:
             return
-        for apfilter in self.apfilter_list:
-            if apfilter and apfilter.match(domain, domain, True):
-                return True
+        if config.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True):
+            for apfilter in self.apfilter_list:
+                if apfilter and apfilter.match(domain, domain, True):
+                    return True
 
     def resolve(self, host, dirty=False):
         try:

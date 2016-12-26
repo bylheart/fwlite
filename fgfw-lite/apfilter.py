@@ -87,7 +87,7 @@ class ap_filter(object):
 
     def __init__(self, lst=None):
         self.excludes = []
-        self.matches = []
+        self.slow = []
         self.domains = set()
         self.exclude_domains = set()
         self.url_startswith = tuple()
@@ -110,6 +110,8 @@ class ap_filter(object):
             self._add_exclude_domain(rule)
         elif rule.startswith(('|https://', '@', '/')):
             self._add_slow(rule)
+        elif rule.startswith('|http://') and any(len(s) > (self.KEYLEN) for s in rule.split('*')):
+            self._add_fast(rule)
         elif rule.startswith('|http://') and '*' not in rule:
             self._add_urlstartswith(rule)
         elif any(len(s) > (self.KEYLEN) for s in rule.split('*')):
@@ -127,14 +129,15 @@ class ap_filter(object):
         self.url_startswith = tuple(temp)
 
     def _add_fast(self, rule):
-        lst = [s for s in rule.split('*') if len(s) > self.KEYLEN]
+        rule_t = rule[1:] if rule.startswith('|') else rule
+        lst = [s for s in rule_t.split('*') if len(s) > self.KEYLEN]
         o = ap_rule(rule)
         key = lst[-1][self.KEYLEN * -1:]
         self.fast[key].append(o)
 
     def _add_slow(self, rule):
         o = ap_rule(rule)
-        lst = self.excludes if o.override else self.matches
+        lst = self.excludes if o.override else self.slow
         lst.append(o)
 
     def _add_exclude_domain(self, rule):
@@ -151,6 +154,8 @@ class ap_filter(object):
                 host = urlparse.urlparse(url).hostname
             else:  # www.google.com:443
                 host = parse_hostport(url)[0]
+        if '://' not in url:
+            url = 'https://%s/' % host
         if self._listmatch(self.excludes, url):
             return False
         if self._domainmatch(host) is not None:
@@ -161,7 +166,7 @@ class ap_filter(object):
             return True
         if self._fastmatch(url):
             return True
-        if self._listmatch(self.matches, url):
+        if self._listmatch(self.slow, url):
             return True
 
     def _domainmatch(self, host):
@@ -193,10 +198,20 @@ class ap_filter(object):
                 rule = rule.rstrip('/')
                 self.exclude_domains.discard(rule[4:])
             elif rule.startswith(('|https://', '@', '/')):
-                lst = self.excludes if rule.startswith('@') else self.matches
+                lst = self.excludes if rule.startswith('@') else self.slow
                 for o in lst[:]:
                     if o.rule == rule:
                         lst.remove(o)
+                        break
+            elif rule.startswith('|http://') and any(len(s) > (self.KEYLEN) for s in rule[1:].split('*')):
+                rule_t = rule[1:]
+                lst = [s for s in rule_t.split('*') if len(s) > self.KEYLEN]
+                key = lst[-1][self.KEYLEN * -1:]
+                for o in self.fast[key][:]:
+                    if o.rule == rule:
+                        self.fast[key].remove(o)
+                        if not self.fast[key]:
+                            del self.fast[key]
                         break
             elif rule.startswith('|http://') and '*' not in rule:
                 temp = set(self.url_startswith)
@@ -212,7 +227,7 @@ class ap_filter(object):
                             del self.fast[key]
                         break
             else:
-                lst = self.excludes if rule.startswith('@') else self.matches
+                lst = self.excludes if rule.startswith('@') else self.slow
                 for o in lst[:]:
                     if o.rule == rule:
                         lst.remove(o)
@@ -224,29 +239,6 @@ class ap_filter(object):
                 sys.stdout.flush()
 
 if __name__ == "__main__":
-    gfwlist = ap_filter()
-    lst = ['inxian.com',
-           '||twitter.com',
-           '@@||qq.com',
-           '|https://doc*.google.com',
-           '@@|http://www.163.com',
-           '|http://zh.wikipedia.com']
-    for rule in lst:
-        gfwlist.add(rule)
-
-    def show():
-        print(gfwlist.excludes)
-        print(gfwlist.matches)
-        print(gfwlist.domains)
-        print(gfwlist.exclude_domains)
-        print(gfwlist.url_startswith)
-        print(gfwlist.fast)
-    show()
-    for r in list(gfwlist.rules):
-        print('remove %s' % r)
-        gfwlist.remove(r)
-        show()
-
     gfwlist = ap_filter()
     t = time.clock()
     with open('gfwlist.txt') as f:
@@ -264,14 +256,15 @@ if __name__ == "__main__":
             del data
     print('loading: %fs' % (time.clock() - t))
     print('result for inxian: %r' % gfwlist.match('http://www.inxian.com', 'www.inxian.com'))
-    print('result for twitter: %r' % gfwlist.match('www.twitter.com:443', 'www.twitter.com'))
+    print('result for twitter: %r' % gfwlist.match('twitter.com:443', 'twitter.com'))
     print('result for 163: %r' % gfwlist.match('http://www.163.com', 'www.163.com'))
     print('result for alipay: %r' % gfwlist.match('www.alipay.com:443', 'www.alipay.com'))
     print('result for qq: %r' % gfwlist.match('http://www.qq.com', 'www.qq.com'))
     print('result for keyword: %r' % gfwlist.match('http://www.test.com/iredmail.org', 'www.test.com'))
     print('result for url_startswith: %r' % gfwlist.match('http://itweet.net/whatever', 'itweet.net'))
-    import sys
-    url = sys.argv[1] if len(sys.argv) > 1 else 'http://www.163.com'
+    print('result for google.com.au: %r' % gfwlist.match('www.google.com.au:443', 'www.google.com.au'))
+
+    url = sys.argv[1] if len(sys.argv) > 1 else 'http://news.163.com/16/1226/18/C97U4AI50001875N.html'
     host = urlparse.urlparse(url).hostname
     print('%s, %s' % (url, host))
     print(gfwlist.match(url, host))
@@ -280,9 +273,10 @@ if __name__ == "__main__":
         gfwlist.match(url, host)
     print('KEYLEN = %d' % gfwlist.KEYLEN)
     print('10000 query for %s, %fs' % (url, time.clock() - t))
-    print('O(1): %d' % (len(gfwlist.domains) + len(gfwlist.exclude_domains)))
-    print('O(n): %d' % (len(gfwlist.excludes) + len(gfwlist.matches)))
+    print('O(1): %d' % (len(gfwlist.rules) - (len(gfwlist.excludes) + len(gfwlist.slow) + len(gfwlist.url_startswith))))
+    print('O(n): %d' % (len(gfwlist.excludes) + len(gfwlist.slow) + len(gfwlist.url_startswith)))
+    print('total: %d' % len(gfwlist.rules))
     l = gfwlist.fast.keys()
     l = sorted(l, key=lambda x: len(gfwlist.fast[x]))
-    for i in l[-20:]:
+    for i in l[-10:]:
         print('%r : %d' % (i, len(gfwlist.fast[i])))

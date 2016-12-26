@@ -136,8 +136,6 @@ return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
         self.maxretry = self.userconf.dgetint('fgfwproxy', 'maxretry', 4)
 
         def addhost(host, ip):
-            if isinstance(ip, bytes):
-                ip = unicode(ip)
             try:
                 ipo = ip_address(ip)
                 if isinstance(ipo, IPv4Address):
