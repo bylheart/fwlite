@@ -105,12 +105,6 @@ def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, p
         s = create_connection((parentproxy.hostname, parentproxy.port or 80), ctimeout, source_address, parentproxy=via, tunnel=True)
         if tunnel:
             do_tunnel(s, netloc, parentproxy)
-    elif parentproxy.scheme == 'https':
-        s = create_connection((parentproxy.hostname, parentproxy.port or 443), ctimeout, source_address, parentproxy=via, tunnel=True)
-        s = ssl.wrap_socket(s)
-        s.do_handshake()
-        if tunnel:
-            do_tunnel(s, netloc, parentproxy)
     elif parentproxy.scheme == 'ss':
         from sssocket import sssocket
         s = sssocket(parentproxy, ctimeout, via)
