@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, see <http://www.gnu.org/licenses>.
 
+from builtins import chr
+
 import os
 import struct
 import io
@@ -295,7 +297,7 @@ class _hxssocket(basesocket):
         assert 0 < flag < 8
         if flag == 1:
             logger.warning('hxsocks client requesting fake chunk could cause trouble')
-        data = chr(flag) + b'\x00' * random.randint(64, 512)
+        data = chr(flag).encode('latin1') + b'\x00' * random.randint(64, 512)
         ct, mac = self.cipher.encrypt(data)
         data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
         self._sock_sendall(data)
@@ -325,7 +327,7 @@ class _hxssocket(basesocket):
         if how == socket.SHUT_WR:
             logger.debug('hxsocks shutdown write')
             padding_len = random.randint(8, 255)
-            data = chr(padding_len) + b'\x00' * padding_len
+            data = chr(padding_len).encode('latin1') + b'\x00' * padding_len
 
             ct, mac = self.cipher.encrypt(data)
             data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
@@ -344,7 +346,7 @@ class _hxssocket(basesocket):
         if self.writeable:
             logger.debug('hxsocks shutdown write, close')
             padding_len = random.randint(8, 255)
-            data = chr(padding_len) + b'\x01' * padding_len
+            data = chr(padding_len).encode('latin1') + b'\x01' * padding_len
 
             ct, mac = self.cipher.encrypt(data)
             data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac

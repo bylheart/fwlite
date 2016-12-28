@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # coding:utf-8
+
+from builtins import chr
+
 import struct
 import encrypt
 import hashlib
@@ -115,7 +118,7 @@ class sssocket(basesocket):
 
             addrtype = 19 if self.__ota else 3
             header = b''.join([chr(addrtype).encode(),
-                               chr(len(host)).encode(),
+                               chr(len(host)).encode('latin1'),
                                host.encode(),
                                struct.pack(b">H", port)])
             if self.__ota:
