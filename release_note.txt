@@ -1,3 +1,11 @@
+2016.12.27 v4.16
+drop SNI Proxy and https proxy support
+remove cloud.txt
+support shadowsocks header obfs
+python3 compatible
+fix bug in resolver(gfwlist switch)
+gfwlist match is now 10% faster
+
 2016.10.14 v4.15.4
 Update translate
 Other minor modifications

@@ -2,7 +2,7 @@
 
 A anti-censorship HTTP proxy with builtin shadowsocks support.
 
-Current Version: 4.15.3
+Current Version: 4.16
 
 Tested on Windows 7 and Windows 10.
 
@@ -18,6 +18,7 @@ It looks like this:
     [parents]
     shadowsocks = ss://aes-256-cfb:password@127.0.0.1:8388
     shadowsocks_with_OTA = ss://aes-256-cfb-auth:password@127.0.0.1:8388
+    shadowsocks_with_header_obfs = ss://aes-256-cfb:password@127.0.0.1:8388/?obfs=http&hostname=www.baidu.com
 
 or this:
 
@@ -51,7 +52,7 @@ Run in command-line:
 
 	# install requirements
 	sudo zypper install gcc python-devel libffi-devel
-	./env/bin/python -m pip install repoze.lru ipaddr dnslib chardet geoip2
+	./env/bin/python -m pip install repoze.lru ipaddr dnslib chardet geoip2 future
 	./env/bin/python -m pip install gevent cryptography
 
 	# install requirements for GUI. It's gonna take a while.
