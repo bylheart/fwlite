@@ -162,7 +162,15 @@ class _hxssocket(basesocket):
         resp_len = self.pskcipher.decrypt(data)
         resp_len = struct.unpack('>H', resp_len)[0]
 
-        resp = self.pskcipher.decrypt(self._rfile_read(resp_len))
+        ct = self._rfile_read(resp_len - MAC_LEN)
+        mac = self._rfile_read(MAC_LEN)
+
+        try:
+            resp = self.cipher.decrypt(ct, mac)
+        except ValueError:
+            if self.serverid in keys:
+                del keys[self.serverid]
+            raise IOError(0, 'hxsocks Error: invalid shared key.')
 
         d = byte2int(resp) if resp else None
         if d == 0:
@@ -170,12 +178,8 @@ class _hxssocket(basesocket):
             self.readable = 1
             self.writeable = 1
             return
-        elif d == 2:
-            raise IOError(0, 'hxsocks Error: remote connect timed out. code 2')
         else:
-            if self.serverid in keys:
-                del keys[self.serverid]
-            raise IOError(0, 'hxsocks Error: invalid shared key. code %d' % d)
+            raise IOError(0, 'hxsocks Error: remote connect failed. code %d' % d)
 
     def getKey(self):
         with newkey_lock[self.serverid]:
