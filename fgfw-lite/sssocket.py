@@ -8,29 +8,9 @@ import encrypt
 import hashlib
 import hmac
 import io
-import os
-import base64
 
 from parent_proxy import ParentProxy
 from basesocket import basesocket
-from httputil import read_response_line, read_headers
-
-REQUEST_HEADER = '''\
-POST / HTTP/1.1\r\n\
-Host: {host}\r\n\
-User-Agent: {UA}\r\n\
-Accept: */*\r\n\
-Content-Type: application/octet-stream\r\n\
-Content-Length: {size}\r\n\
-\r\n'''
-
-REQUEST_HEADER_WS = '''\
-GET / HTTP/1.1\r\n\
-Host: {host}\r\n\
-User-Agent: {UA}\r\n\
-Upgrade: websocket\r\n\
-Connection: Upgrade\r\n\
-Sec-WebSocket-Key: {ws_key}\r\n\r\n'''
 
 
 class sssocket(basesocket):
@@ -49,11 +29,6 @@ class sssocket(basesocket):
         self.__ota = False
         self._ota_chunk_idx = 0
         self.connected = False
-        # TODO: send custom headers
-        self._http_obfs = self.ssServer.query.get('obfs', [''])[0] == 'http'
-        self._http_obfs_host = self.ssServer.query.get('hostname', ['www.baidu.com'])[0]
-        self._http_obfs_ua = self.ssServer.query.get('UA', ['curl/7.18.1'])[0]
-        self._header_received = False
 
     def connect(self, address):
         self.__address = address
@@ -69,11 +44,6 @@ class sssocket(basesocket):
     def recv(self, size):
         if not self.connected:
             self.sendall(b'')
-        if self._http_obfs and not self._header_received:
-            # TODO: verify
-            self._header_received = True
-            line, version, status, reason = read_response_line(self._rfile)
-            header_data, headers = read_headers(self._rfile)
         buf = self._rbuffer
         buf.seek(0, 2)  # seek end
         buf_len = buf.tell()
@@ -109,12 +79,6 @@ class sssocket(basesocket):
         else:
             # https://shadowsocks.org/en/spec/one-time-auth.html
             host, port = self.__address
-
-            if self._http_obfs:
-                d = {'host': self._http_obfs_host,
-                     'UA': self._http_obfs_ua,
-                     'ws_key': base64.b64encode(os.urandom(16)).decode()}
-                self._sock.sendall(REQUEST_HEADER_WS.format(**d).encode())
 
             addrtype = 19 if self.__ota else 3
             header = b''.join([chr(addrtype).encode(),

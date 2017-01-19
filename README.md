@@ -18,7 +18,6 @@ It looks like this:
     [parents]
     shadowsocks = ss://aes-256-cfb:password@127.0.0.1:8388
     shadowsocks_with_OTA = ss://aes-256-cfb-auth:password@127.0.0.1:8388
-    shadowsocks_with_header_obfs = ss://aes-256-cfb:password@127.0.0.1:8388/?obfs=http&hostname=www.baidu.com
 
 or this:
 
