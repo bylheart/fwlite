@@ -30,7 +30,7 @@ import socket
 from six import byte2int
 
 from collections import defaultdict
-from threading import RLock, Thread
+from threading import RLock
 try:
     import urllib.parse as urlparse
 except ImportError:
@@ -322,52 +322,46 @@ class _hxssocket(basesocket):
             except Exception:
                 pass
             return
-        if self.writeable:
-            logger.debug('hxsocks shutdown write, close')
-            padding_len = random.randint(8, 255)
-            data = chr(padding_len).encode('latin1') + b'\x01' * padding_len
+        try:
+            if self.writeable:
+                logger.debug('hxsocks shutdown write, close')
+                padding_len = random.randint(8, 255)
+                data = chr(padding_len).encode('latin1') + b'\x01' * padding_len
 
-            ct, mac = self.cipher.encrypt(data)
-            data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
-            self._sock.sendall(data)
-            self.writeable = 0
-        if self.readable:
-            t = Thread(target=self._wait_close)
-            t.daemon = True
-            t.start()
-        logger.debug('hxsocks add to pool')
-        self.pooled = 1
-        POOL.put(self.hxsServer.parse.hostname, self, self.hxsServer.name)
-
-    def _wait_close(self):
-        logger.debug('hxsocks _wait_close')
-        self.settimeout(8)
-        while 1:
-            try:
-                ctlen = self._rfile.read(2)
-                if not ctlen:
-                    raise IOError(0, '')
-                ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
-                ct = self._rfile.read(ctlen)
-                mac = self._rfile.read(MAC_LEN)
-                data = self.cipher.decrypt(ct, mac)
-                pad_len = byte2int(data)
-                if 0 < pad_len < 8:
-                    # fake chunk, drop
-                    if pad_len == 1:
-                        self.send_fake_chunk(2)
-                    # server should be sending another chunk right away
-                    continue
-                data = data[1:0-pad_len] if byte2int(data) else data[1:]
-                if not data:
-                    logger.debug('hxsocks add to pool')
-                    self.pooled = 1
-                    POOL.put(self.hxsServer.parse.hostname, self, self.hxsServer.name)
-                    self.readable = 0
-                    break
-            except Exception:
-                self._sock.close()
-                return
+                ct, mac = self.cipher.encrypt(data)
+                data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
+                self._sock.sendall(data)
+                self.writeable = 0
+            if self.readable:
+                self.settimeout(8)
+                while 1:
+                    ctlen = self._rfile.read(2)
+                    if not ctlen:
+                        raise IOError(0, '')
+                    ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
+                    ct = self._rfile.read(ctlen)
+                    mac = self._rfile.read(MAC_LEN)
+                    data = self.cipher.decrypt(ct, mac)
+                    pad_len = byte2int(data)
+                    if 0 < pad_len < 8:
+                        # fake chunk, drop
+                        if pad_len == 1:
+                            self.send_fake_chunk(2)
+                        # server should be sending another chunk right away
+                        continue
+                    data = data[1:0-pad_len] if byte2int(data) else data[1:]
+                    if not data:
+                        self.readable = 0
+                        break
+                    else:
+                        logger.warning('data read while wait_close...')
+        except Exception:
+            self._sock.close()
+            return
+        else:
+            logger.debug('hxsocks add to pool')
+            self.pooled = 1
+            POOL.put(self.hxsServer.parse.hostname, self, self.hxsServer.name)
 
 
 if __name__ == '__main__':
