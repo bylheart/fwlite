@@ -39,6 +39,7 @@
 import os
 import hashlib
 import hmac
+from util import iv_checker
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -49,7 +50,7 @@ try:
     from hmac import compare_digest
 except ImportError:
     def compare_digest(a, b):
-        # return a == b
+        # if a and b are identical, return True
         if isinstance(a, str):
             if len(a) != len(b):
                 return False
@@ -121,6 +122,8 @@ class bypass(object):
     def update(self, buf):
         return buf
 
+IV_CHECKER = iv_checker(1048576, 3600)
+
 
 def get_cipher(key, method, op, iv):
     if method == 'bypass':
@@ -190,10 +193,12 @@ class Encryptor(object):
             raise ValueError('buf should not be empty')
         if self.decipher is None:
             self.decipher_iv = buf[:self.iv_len]
+            if self.servermode:
+                IV_CHECKER.check(self.key, self.decipher_iv)
             self.decipher = get_cipher(self.key, self.method, 0, self.decipher_iv)
             buf = buf[self.iv_len:]
             if len(buf) == 0:
-                return buf
+                return
         return self.decipher.update(buf)
 
 

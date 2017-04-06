@@ -115,3 +115,13 @@ def ip_to_country_code(ip):
         return resp.country.iso_code
     except Exception:
         return u''
+
+
+class iv_checker(object):
+    # check reused iv, removing out-dated data automatically
+
+    def __init__(self, maxlen, timeout):
+        pass
+
+    def check(self, key, iv):
+        pass
