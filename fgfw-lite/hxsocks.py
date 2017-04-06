@@ -125,10 +125,10 @@ class _hxssocket(basesocket):
                        self._address[0].encode(),
                        struct.pack('>H', self._address[1]),
                        b'\x00' * padding_len])
-        ct, mac = self.cipher.encrypt(pt)
+        ct = self.cipher.encrypt(pt)
         self._sock.sendall(self.pskcipher.encrypt(b''.join([chr(11).encode(),
                                                             keys[self.serverid][0],
-                                                            struct.pack('>H', len(ct))])) + ct + mac)
+                                                            struct.pack('>H', len(ct))])) + ct)
 
         resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
         data = self._rfile.read(resp_len)
@@ -137,11 +137,10 @@ class _hxssocket(basesocket):
         resp_len = self.pskcipher.decrypt(data)
         resp_len = struct.unpack('>H', resp_len)[0]
 
-        ct = self._rfile.read(resp_len - MAC_LEN)
-        mac = self._rfile.read(MAC_LEN)
+        ct = self._rfile.read(resp_len)
 
         try:
-            resp = self.cipher.decrypt(ct, mac)
+            resp = self.cipher.decrypt(ct)
         except ValueError:
             if self.serverid in keys:
                 del keys[self.serverid]
@@ -244,8 +243,7 @@ class _hxssocket(basesocket):
                     return b''
                 ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
                 ct = self._rfile.read(ctlen)
-                mac = self._rfile.read(MAC_LEN)
-                data = self.cipher.decrypt(ct, mac)
+                data = self.cipher.decrypt(ct)
                 pad_len = byte2int(data)
                 if 0 < pad_len < 8:
                     logger.debug('Fake chunk, drop')
@@ -277,8 +275,8 @@ class _hxssocket(basesocket):
         if flag == 1:
             logger.warning('hxsocks client requesting fake chunk could cause trouble')
         data = chr(flag).encode('latin1') + b'\x00' * random.randint(64, 512)
-        ct, mac = self.cipher.encrypt(data)
-        data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
+        ct = self.cipher.encrypt(data)
+        data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
         self._sock.sendall(data)
 
     def sendall(self, data):
@@ -292,8 +290,8 @@ class _hxssocket(basesocket):
         padding = b'\x00' * padding_len
         data = chr(padding_len).encode('latin1') + data + padding
 
-        ct, mac = self.cipher.encrypt(data)
-        data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
+        ct = self.cipher.encrypt(data)
+        data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
         self._sock.sendall(data)
         if data_more:
             self.sendall(data_more)
@@ -308,8 +306,8 @@ class _hxssocket(basesocket):
             padding_len = random.randint(8, 255)
             data = chr(padding_len).encode('latin1') + b'\x00' * padding_len
 
-            ct, mac = self.cipher.encrypt(data)
-            data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
+            ct = self.cipher.encrypt(data)
+            data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
             self._sock.sendall(data)
             self.writeable = 0
 
@@ -328,8 +326,8 @@ class _hxssocket(basesocket):
                 padding_len = random.randint(8, 255)
                 data = chr(padding_len).encode('latin1') + b'\x01' * padding_len
 
-                ct, mac = self.cipher.encrypt(data)
-                data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct + mac
+                ct = self.cipher.encrypt(data)
+                data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
                 self._sock.sendall(data)
                 self.writeable = 0
             if self.readable:
@@ -340,8 +338,7 @@ class _hxssocket(basesocket):
                         raise IOError(0, '')
                     ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
                     ct = self._rfile.read(ctlen)
-                    mac = self._rfile.read(MAC_LEN)
-                    data = self.cipher.decrypt(ct, mac)
+                    data = self.cipher.decrypt(ct)
                     pad_len = byte2int(data)
                     if 0 < pad_len < 8:
                         # fake chunk, drop
