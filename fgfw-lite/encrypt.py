@@ -173,16 +173,9 @@ class Encryptor(object):
 
         self.key_len, self.iv_len = method_supported.get(method)
         self.key = EVP_BytesToKey(password, self.key_len)
-        while True:
-            iv = random_string(self.iv_len)
-            try:
-                IV_CHECKER.check(self.key, iv)
-            except ValueError:
-                continue
-            break
-        self.cipher_iv = iv
+
+        self.cipher_iv = random_string(self.iv_len)
         self.cipher = get_cipher(self.key, method, 1, self.cipher_iv)
-        self.decipher_iv = None
         self.decipher = None
 
     def encrypt(self, buf):
@@ -198,25 +191,14 @@ class Encryptor(object):
         if len(buf) == 0:
             raise ValueError('buf should not be empty')
         if self.decipher is None:
-            self.decipher_iv = buf[:self.iv_len]
-            IV_CHECKER.check(self.key, self.decipher_iv)
-            self.decipher = get_cipher(self.key, self.method, 0, self.decipher_iv)
+            iv = buf[:self.iv_len]
+            # comment the next line while testing
+            IV_CHECKER.check(self.key, iv)
+            self.decipher = get_cipher(self.key, self.method, 0, iv)
             buf = buf[self.iv_len:]
             if len(buf) == 0:
                 return
         return self.decipher.update(buf)
-
-
-def _hkdf(key, salt, ctx, key_len):
-    '''
-    consider key come from a key exchange protocol.
-    '''
-    key = hmac.new(salt, key, hashlib.sha256).digest()
-    sek = hmac.new(key, ctx + b'server_encrypt_key', hashlib.sha256).digest()[:key_len]
-    sak = hmac.new(key, ctx + b'server_authenticate_key', hashlib.sha256).digest()
-    cek = hmac.new(key, ctx + b'client_encrypt_key', hashlib.sha256).digest()[:key_len]
-    cak = hmac.new(key, ctx + b'client_authenticate_key', hashlib.sha256).digest()
-    return sek, sak, cek, cak
 
 
 key_len_to_hash = {
@@ -230,32 +212,24 @@ class AEncryptor(object):
     '''
     Provide Authenticated Encryption
     '''
-    def __init__(self, key, method, salt, ctx, servermode, mac_len):
+    def __init__(self, key, method, ctx):
         if method not in method_supported:
             raise ValueError('encryption method not supported')
         self.method = method
-        self.servermode = servermode
         self.key = key
         self.key_len, self.iv_len = method_supported.get(method)
-        self.mac_len = mac_len
-        if servermode:
-            self.encrypt_key, self.auth_key, self.decrypt_key, self.de_auth_key = _hkdf(key, salt, ctx, self.key_len)
-        else:
-            self.decrypt_key, self.de_auth_key, self.encrypt_key, self.auth_key = _hkdf(key, salt, ctx, self.key_len)
+        self.mac_len = 16
         self.iv_sent = False
-        while True:
-            iv = random_string(self.iv_len)
-            try:
-                IV_CHECKER.check(self.key, iv)
-            except ValueError:
-                continue
-            break
-        self.cipher_iv = iv
-        self.cipher = get_cipher(self.encrypt_key, method, 1, self.cipher_iv)
+        self.hfunc = key_len_to_hash[self.key_len]
+
+        self.cipher_iv = random_string(self.iv_len)
+        encrypt_key = hmac.new(key, self.cipher_iv, hashlib.sha256).digest()[:self.key_len]
+        auth_key = hmac.new(key, encrypt_key, hashlib.sha256).digest()[:self.key_len]
+        self.cipher = get_cipher(encrypt_key, method, 1, self.cipher_iv)
+        self.enmac = hmac.new(auth_key, digestmod=self.hfunc)
+
         self.decipher = None
-        hfunc = key_len_to_hash[self.key_len]
-        self.enmac = hmac.new(self.auth_key, digestmod=hfunc)
-        self.demac = hmac.new(self.de_auth_key, digestmod=hfunc)
+        self.demac = None
 
     def encrypt(self, buf, ad=None):
         if len(buf) == 0:
@@ -273,16 +247,23 @@ class AEncryptor(object):
     def decrypt(self, buf, ad=None):
         if len(buf) == 0:
             raise ValueError('buf should not be empty')
-        if ad:
-            self.demac.update(ad)
+        if self.decipher is None:
+            iv, buf = buf[:self.iv_len], buf[self.iv_len:]
+            # comment the next line while testing
+            IV_CHECKER.check(self.key, iv)
+            decrypt_key = hmac.new(self.key, iv, hashlib.sha256).digest()[:self.key_len]
+            deauth_key = hmac.new(self.key, decrypt_key, hashlib.sha256).digest()[:self.key_len]
+            self.demac = hmac.new(deauth_key, digestmod=self.hfunc)
+            self.decipher = get_cipher(decrypt_key, self.method, 0, iv)
+            if ad:
+                self.demac.update(ad)
+            self.demac.update(iv)
+        else:
+            if ad:
+                self.demac.update(ad)
         buf, mac = buf[:self.mac_len * -1], buf[self.mac_len * -1:]
         self.demac.update(buf)
         rmac = self.demac.digest()[:self.mac_len]
-        if self.decipher is None:
-            decipher_iv = buf[:self.iv_len]
-            IV_CHECKER.check(self.decrypt_key, decipher_iv)
-            self.decipher = get_cipher(self.decrypt_key, self.method, 0, decipher_iv)
-            buf = buf[self.iv_len:]
         pt = self.decipher.update(buf) if buf else b''
         if compare_digest(rmac, mac):
             return pt
@@ -306,16 +287,16 @@ if __name__ == '__main__':
         except Exception as e:
             print(repr(e))
     print('test AE HMAC')
-    ae1 = AEncryptor(b'123456', 'aes-256-cfb', b'salt', b'ctx', False, 16)
-    ae2 = AEncryptor(b'123456', 'aes-256-cfb', b'salt', b'ctx', True, 16)
+    ae1 = AEncryptor(b'123456', 'aes-256-cfb', b'ctx')
+    ae2 = AEncryptor(b'123456', 'aes-256-cfb', b'ctx')
     ct1 = ae1.encrypt(b'abcde')
     ct2 = ae1.encrypt(b'fg')
     print(ae2.decrypt(ct1))
     print(ae2.decrypt(ct2))
     for method in lst:
         try:
-            cipher1 = AEncryptor(b'123456', method, b'salt', b'ctx', False, 16)
-            cipher2 = AEncryptor(b'123456', method, b'salt', b'ctx', True, 16)
+            cipher1 = AEncryptor(b'123456', method, b'ctx')
+            cipher2 = AEncryptor(b'123456', method, b'ctx')
             t = time.clock()
             for _ in range(1024):
                 ct1 = cipher1.encrypt(s)

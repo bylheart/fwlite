@@ -52,9 +52,8 @@ hdr.setFormatter(formatter)
 logger.addHandler(hdr)
 
 
-DEFAULT_METHOD = 'rc4-md5'
+DEFAULT_METHOD = 'aes-128-cfb'
 DEFAULT_HASH = 'sha256'
-SALT = b'G\x91V\x14{\x00\xd9xr\x9d6\x99\x81GL\xe6c>\xa9\\\xd2\xc6\xe0:\x9c\x0b\xefK\xd4\x9ccU'
 CTX = b'hxsocks'
 MAC_LEN = 16
 
@@ -213,7 +212,7 @@ class _hxssocket(basesocket):
                             if ECC.verify_with_pub_key(server_cert, auth, signature, self.hash_algo):
                                 shared_secret = acipher.get_dh_key(server_key)
                                 keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
-                                self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0, MAC_LEN)
+                                self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, CTX)
                                 logger.debug('hxs key exchange success')
                                 return
                             else:
@@ -225,7 +224,7 @@ class _hxssocket(basesocket):
                 else:
                     raise IOError(0, 'hxs getKey Error')
             else:
-                self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, SALT, CTX, 0, MAC_LEN)
+                self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, CTX)
 
     def recv(self, size):
         logger.debug('hxsocks recv')
