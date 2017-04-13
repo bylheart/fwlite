@@ -18,8 +18,11 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, see <http://www.gnu.org/licenses>.
 
+from collections import OrderedDict, defaultdict
 import re
+import random
 import select
+import time
 try:
     import configparser
 except ImportError:
@@ -117,11 +120,73 @@ def ip_to_country_code(ip):
         return u''
 
 
+class iv_store(object):
+
+    def __init__(self, maxlen, timeout):
+        self.maxlen = maxlen
+        self.timeout = timeout
+        self.store = OrderedDict()
+        self.last_time_used = time.time()
+
+    def add(self, item):
+        self.last_time_used = time.time()
+        if random.random() < 0.01:
+            self._clean()
+        if item in self:
+            raise ValueError("iv reused")
+        self.store[item] = self.last_time_used
+        while len(self.store) > self.maxlen:
+            self.store.popitem()
+
+    def __contains__(self, item):
+        if random.random() < 0.01:
+            self._clean()
+        self.last_time_used = time.time()
+        try:
+            if self.store[item] < time.time() - self.timeout:
+                while True:
+                    a, _ = self.store.popitem()
+                    if a == item:
+                        break
+                return False
+            else:
+                return True
+        except KeyError:
+            return False
+
+    def _clean(self):
+        garbage = []
+        for k in self.store:
+            if self.store[k] < time.time() - self.timeout:
+                garbage.append(k)
+            else:
+                break
+        for k in garbage:
+            del self.store[k]
+
+    def __str__(self):
+        return str([k for k in self.store])
+
+    def __repr__(self):
+        return str([k for k in self.store])
+
+
 class iv_checker(object):
     # check reused iv, removing out-dated data automatically
 
     def __init__(self, maxlen, timeout):
-        pass
+        self.timeout = timeout * 10
+        self.store = defaultdict(lambda: iv_store(maxlen, timeout))
 
     def check(self, key, iv):
-        pass
+        if random.random() < 0.01:
+            self._clean()
+        self.store[key].add(iv)
+
+    def _clean(self):
+        garbage = []
+        for k, v in self.store.items():
+            if v.last_time_used < time.time() - self.timeout:
+                garbage.append(k)
+        for k in garbage:
+            del self.store[k]

@@ -162,19 +162,25 @@ def get_cipher(key, method, op, iv):
 
 
 class Encryptor(object):
-    def __init__(self, password, method=None, servermode=False):
+    def __init__(self, password, method):
         if method not in method_supported:
             raise ValueError('encryption method not supported')
         if not isinstance(password, bytes):
             password = password.encode('utf8')
         self.key = password
         self.method = method
-        self.servermode = servermode
         self.iv_sent = False
 
         self.key_len, self.iv_len = method_supported.get(method)
         self.key = EVP_BytesToKey(password, self.key_len)
-        self.cipher_iv = random_string(self.iv_len)
+        while True:
+            iv = random_string(self.iv_len)
+            try:
+                IV_CHECKER.check(self.key, iv)
+            except ValueError:
+                continue
+            break
+        self.cipher_iv = iv
         self.cipher = get_cipher(self.key, method, 1, self.cipher_iv)
         self.decipher_iv = None
         self.decipher = None
@@ -193,8 +199,7 @@ class Encryptor(object):
             raise ValueError('buf should not be empty')
         if self.decipher is None:
             self.decipher_iv = buf[:self.iv_len]
-            if self.servermode:
-                IV_CHECKER.check(self.key, self.decipher_iv)
+            IV_CHECKER.check(self.key, self.decipher_iv)
             self.decipher = get_cipher(self.key, self.method, 0, self.decipher_iv)
             buf = buf[self.iv_len:]
             if len(buf) == 0:
@@ -230,6 +235,7 @@ class AEncryptor(object):
             raise ValueError('encryption method not supported')
         self.method = method
         self.servermode = servermode
+        self.key = key
         self.key_len, self.iv_len = method_supported.get(method)
         self.mac_len = mac_len
         if servermode:
@@ -237,7 +243,14 @@ class AEncryptor(object):
         else:
             self.decrypt_key, self.de_auth_key, self.encrypt_key, self.auth_key = _hkdf(key, salt, ctx, self.key_len)
         self.iv_sent = False
-        self.cipher_iv = random_string(self.iv_len)
+        while True:
+            iv = random_string(self.iv_len)
+            try:
+                IV_CHECKER.check(self.key, iv)
+            except ValueError:
+                continue
+            break
+        self.cipher_iv = iv
         self.cipher = get_cipher(self.encrypt_key, method, 1, self.cipher_iv)
         self.decipher = None
         hfunc = key_len_to_hash[self.key_len]
@@ -267,6 +280,7 @@ class AEncryptor(object):
         rmac = self.demac.digest()[:self.mac_len]
         if self.decipher is None:
             decipher_iv = buf[:self.iv_len]
+            IV_CHECKER.check(self.decrypt_key, decipher_iv)
             self.decipher = get_cipher(self.decrypt_key, self.method, 0, decipher_iv)
             buf = buf[self.iv_len:]
         pt = self.decipher.update(buf) if buf else b''
@@ -291,7 +305,7 @@ if __name__ == '__main__':
             print('%s %ss' % (method, time.clock() - t))
         except Exception as e:
             print(repr(e))
-    print('test AE')
+    print('test AE HMAC')
     ae1 = AEncryptor(b'123456', 'aes-256-cfb', b'salt', b'ctx', False, 16)
     ae2 = AEncryptor(b'123456', 'aes-256-cfb', b'salt', b'ctx', True, 16)
     ct1 = ae1.encrypt(b'abcde')
