@@ -202,7 +202,7 @@ class Encryptor(object):
         return self.decipher.update(buf)
 
 
-def hkdf(key, salt, ctx, key_len):
+def _hkdf(key, salt, ctx, key_len):
     '''
     consider key come from a key exchange protocol.
     '''
@@ -233,9 +233,9 @@ class AEncryptor(object):
         self.key_len, self.iv_len = method_supported.get(method)
         self.mac_len = mac_len
         if servermode:
-            self.encrypt_key, self.auth_key, self.decrypt_key, self.de_auth_key = hkdf(key, salt, ctx, self.key_len)
+            self.encrypt_key, self.auth_key, self.decrypt_key, self.de_auth_key = _hkdf(key, salt, ctx, self.key_len)
         else:
-            self.decrypt_key, self.de_auth_key, self.encrypt_key, self.auth_key = hkdf(key, salt, ctx, self.key_len)
+            self.decrypt_key, self.de_auth_key, self.encrypt_key, self.auth_key = _hkdf(key, salt, ctx, self.key_len)
         self.iv_sent = False
         self.cipher_iv = random_string(self.iv_len)
         self.cipher = get_cipher(self.encrypt_key, method, 1, self.cipher_iv)
