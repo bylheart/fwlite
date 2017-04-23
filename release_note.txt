@@ -1,3 +1,7 @@
+2017.4.24 v4.17
+update hxsocks protocol
+minor bug fix
+
 2016.12.27 v4.16
 drop SNI Proxy and https proxy support
 remove cloud.txt

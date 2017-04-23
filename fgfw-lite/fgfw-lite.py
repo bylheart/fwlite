@@ -3,7 +3,7 @@
 #
 # FGFW_Lite.py A Proxy Server help go around the Great Firewall
 #
-# Copyright (C) 2012-2015 Jiang Chao <sgzz.cj@gmail.com>
+# Copyright (C) 2012-2017 Jiang Chao <sgzz.cj@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -97,7 +97,7 @@ except ImportError:
     def on_finish(hdlr):
         pass
 
-__version__ = '4.16'
+__version__ = '4.17'
 
 if sys.platform.startswith('win'):
     PYTHON2 = '"./Python27/python27.exe"'
