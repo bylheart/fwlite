@@ -99,14 +99,6 @@ except ImportError:
 
 __version__ = '4.17'
 
-if sys.platform.startswith('win'):
-    PYTHON2 = '"./Python27/python27.exe"'
-else:
-    for cmd in ('python2.7', 'python27', 'python2'):
-        if subprocess.call(shlex.split('which %s' % cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
-            PYTHON2 = cmd
-            break
-
 NetWorkIOError = (IOError, OSError)
 DEFAULT_TIMEOUT = 5
 FAKEGIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x01D\x00;'
@@ -721,6 +713,7 @@ class ProxyHandler(HTTPRequestHandler):
                     else:
                         self.logger.debug('client closed')
                         fds.remove(self.connection)
+                        self.remotesoc.shutdown(socket.SHUT_WR)
                 if self.remotesoc in ins:
                     data = self.remotesoc.recv(self.bufsize)
                     if data:
