@@ -25,17 +25,18 @@ import time
 import random
 import hashlib
 import hmac
+import traceback
+import select
 import socket
-
+import backports.socketpair
 from six import byte2int
 
 from collections import defaultdict
-from threading import RLock
+from threading import RLock, Thread
 try:
     import urllib.parse as urlparse
 except ImportError:
     import urlparse
-from basesocket import basesocket
 from parent_proxy import ParentProxy
 from httputil import httpconn_pool
 import encrypt
@@ -84,15 +85,16 @@ def hxssocket(hxsServer, ctimeout=4, parentproxy=None):
     return _hxssocket(hxsServer, ctimeout, parentproxy)
 
 
-class _hxssocket(basesocket):
+class _hxssocket(object):
     bufsize = 8192
 
     def __init__(self, hxsServer, ctimeout=4, parentproxy=None):
-        basesocket.__init__(self)
         if not isinstance(hxsServer, ParentProxy):
             hxsServer = ParentProxy(hxsServer, hxsServer)
         self.hxsServer = hxsServer
         self.timeout = ctimeout
+        self._sock = None
+        self._socketpair_a, self._socketpair_b = socket.socketpair()
         if parentproxy and not isinstance(parentproxy, ParentProxy):
             parentproxy = ParentProxy(parentproxy, parentproxy)
         self.parentproxy = parentproxy
@@ -150,7 +152,9 @@ class _hxssocket(basesocket):
             logger.debug('hxsocks connected')
             self.readable = 1
             self.writeable = 1
-            return
+            # start forwarding
+            self._thread = Thread(target=self.forward_tcp, args=(self._socketpair_b, self._sock, self.cipher, self.pskcipher, 60))
+            self._thread.start()
         else:
             raise IOError(0, 'hxsocks Error: remote connect failed. code %d' % d)
 
@@ -226,47 +230,81 @@ class _hxssocket(basesocket):
             else:
                 self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, CTX)
 
-    def recv(self, size):
-        logger.debug('hxsocks recv')
-        # if not self.readable:
-        #     return b''
-        buf = self._rbuffer
-        buf.seek(0, 2)  # seek end
-        buf_len = buf.tell()
-        self._rbuffer = io.BytesIO()  # reset _rbuf.  we consume it via buf.
-        if buf_len == 0:
-            logger.debug('Nothing in buffer. Try to read.')
-            while 1:
-                ctlen = self._rfile.read(2)
-                if not ctlen:
-                    return b''
-                ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
-                ct = self._rfile.read(ctlen)
-                data = self.cipher.decrypt(ct)
-                pad_len = byte2int(data)
-                if 0 < pad_len < 8:
-                    logger.debug('Fake chunk, drop')
-                    if pad_len == 1:
-                        logger.debug('sending fake chunk')
-                        self.send_fake_chunk(2)
-                    # server should be sending another chunk right away
-                    continue
-                data = data[1:0-pad_len] if byte2int(data) else data[1:]
-                if not data:
-                    logger.debug('hxsocks recv closed gracefully')
-                    self.readable = 0
-                    return b''
-                if len(data) <= size:
-                    return data
-                buf_len = len(data)
-                buf.write(data)
-                del data  # explicit free
-                break
-        buf.seek(0)
-        rv = buf.read(size)
-        if buf_len > size:
-            self._rbuffer.write(buf.read())
-        return rv
+    def forward_tcp(self, local, remote, cipher, pskcipher, timeout=60):
+        # local: self._socketpair_b, connect with client
+        # remote: self._sock, connect with server
+        fds = [local, remote]
+        total_send = 0
+        try:
+            while fds:
+                if len(fds) < 2:
+                    timeout = 10
+                ins, _, _ = select.select(fds, [], [], timeout)
+                if not ins:
+                    logger.debug('timed out')
+                    break
+                if remote in ins:
+                    ct_len = self._rfile.read(2)
+                    if not ct_len:
+                        logger.debug('server closed')
+                        fds.remove(remote)
+                        local.shutdown(socket.SHUT_WR)
+                        break
+                    ct_len = struct.unpack('>H', pskcipher.decrypt(ct_len))[0]
+                    ct = self._rfile.read(ct_len)
+                    data = cipher.decrypt(ct)
+                    pad_len = ord(data[0])
+                    cmd = ord(data[-1])
+                    if 0 < pad_len < 8:
+                        logger.debug('Fake chunk, drop')
+                        if pad_len == 1:
+                            logger.debug('sending fake chunk')
+                            self.send_fake_chunk(2)
+                    else:
+                        data = data[1:0-pad_len] if pad_len else data[1:]
+                        if data:
+                            local.sendall(data)
+                        else:
+                            logger.debug('server close, gracefully')
+                            if cmd:
+                                local.close()
+                            else:
+                                local.shutdown(socket.SHUT_WR)
+                            fds.remove(remote)
+                            self.readable = 0
+
+                if local in ins:
+                    data = local.recv(self.bufsize)
+                    if not data:
+                        fds.remove(local)
+                        if total_send < 8196 and random.random() < 0.5:
+                            _data = chr(2).encode('latin1') + b'\x00' * random.randint(1024, 8196)
+                            ct = cipher.encrypt(_data)
+                            _data = pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
+                            remote.sendall(_data)
+                        self.writeable = 0
+                    total_send += len(data)
+                    padding_len = random.randint(8, 255)
+                    data = chr(padding_len).encode('latin1') + data + b'\x00' * padding_len
+                    ct = cipher.encrypt(data)
+                    data = pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
+                    remote.sendall(data)
+        except socket.timeout:
+            pass
+        except (OSError, IOError) as e:
+            if e.args[0] in (errno.EBADF,):
+                return
+            if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
+                raise
+        except Exception as e:
+            logger.error(repr(e))
+            logger.error(traceback.format_exc())
+        finally:
+            try:
+                local.close()
+            except (OSError, IOError):
+                pass
+        remote.close()
 
     def send_fake_chunk(self, flag):
         # if flag == 1, other side should respond a fake chunk
@@ -278,38 +316,6 @@ class _hxssocket(basesocket):
         data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
         self._sock.sendall(data)
 
-    def sendall(self, data):
-        if not data:
-            logger.warning('no data!!!')
-        logger.debug('hxsocks send data')
-        data_more = None
-        if len(data) > self.bufsize:
-            data, data_more = data[:self.bufsize], data[self.bufsize:]
-        padding_len = random.randint(8, 255)
-        padding = b'\x00' * padding_len
-        data = chr(padding_len).encode('latin1') + data + padding
-
-        ct = self.cipher.encrypt(data)
-        data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
-        self._sock.sendall(data)
-        if data_more:
-            self.sendall(data_more)
-        logger.debug('hxsocks send data completed')
-
-    def makefile(self, mode='rb', bufsize=0):
-        return self
-
-    def shutdown(self, how):
-        if how == socket.SHUT_WR:
-            logger.debug('hxsocks shutdown write')
-            padding_len = random.randint(8, 255)
-            data = chr(padding_len).encode('latin1') + b'\x00' * padding_len
-
-            ct = self.cipher.encrypt(data)
-            data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
-            self._sock.sendall(data)
-            self.writeable = 0
-
     def close(self):
         logger.debug('hxsocks close, readable %s, writeable %s' % (self.readable, self.writeable))
         if self.pooled:
@@ -319,46 +325,31 @@ class _hxssocket(basesocket):
             except Exception:
                 pass
             return
-        try:
-            if self.writeable:
-                logger.debug('hxsocks shutdown write, close')
-                padding_len = random.randint(8, 255)
-                data = chr(padding_len).encode('latin1') + b'\x01' * padding_len
 
-                ct = self.cipher.encrypt(data)
-                data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
-                self._sock.sendall(data)
-                self.writeable = 0
-            if self.readable:
-                self.settimeout(8)
-                while 1:
-                    ctlen = self._rfile.read(2)
-                    if not ctlen:
-                        raise IOError(0, '')
-                    ctlen = struct.unpack('>H', self.pskcipher.decrypt(ctlen))[0]
-                    ct = self._rfile.read(ctlen)
-                    data = self.cipher.decrypt(ct)
-                    pad_len = byte2int(data)
-                    if 0 < pad_len < 8:
-                        # fake chunk, drop
-                        if pad_len == 1:
-                            self.send_fake_chunk(2)
-                        # server should be sending another chunk right away
-                        continue
-                    data = data[1:0-pad_len] if byte2int(data) else data[1:]
-                    if not data:
-                        self.readable = 0
-                        break
-                    else:
-                        logger.warning('data read while wait_close...')
-        except Exception:
-            self._sock.close()
-            return
-        else:
-            logger.debug('hxsocks add to pool')
-            self.pooled = 1
-            POOL.put(self.hxsServer.parse.hostname, self, self.hxsServer.name)
+    def recv(self, size):
+        return self._socketpair_a.recv(size)
 
+    def sendall(self, data):
+        return self._socketpair_a.sendall(data)
+
+    def makefile(self, mode='rb', bufsize=0):
+        return self._socketpair_a.makefile(mode, bufsize)
+
+    def settimeout(self, value):
+        self._socketpair_a.settimeout(value)
+        self._sock.settimeout(value)
+
+    def setsockopt(self, level, optname, value):
+        return self._socketpair_a.setsockopt(level, optname, value)
+
+    def fileno(self):
+        return self._socketpair_a.fileno()
+
+    def shutdown(self, how):
+        return self._socketpair_a.shutdown(how)
+
+    def close(self):
+        return self._socketpair_a.close()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
