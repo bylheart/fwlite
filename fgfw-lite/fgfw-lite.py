@@ -1128,9 +1128,10 @@ def atexit_do():
 
 
 def main():
-    s = 'FWLite ' + __version__
     if gevent:
-        s += ' with gevent %s' % gevent.__version__
+        s = 'FWLite %s with gevent %s' % (__version__, gevent.__version__)
+    else:
+        s = 'FWLite %s without gevent' % __version__
     conf = config.conf
     logger = logging.getLogger('FW_Lite')
     logger.setLevel(logging.INFO)
