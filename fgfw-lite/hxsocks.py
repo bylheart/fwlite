@@ -25,6 +25,7 @@ import time
 import random
 import hashlib
 import hmac
+import errno
 import traceback
 import select
 import socket
@@ -353,7 +354,7 @@ class _hxssocket(object):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    hxs = hxssocket('hxs://user:pass@127.0.0.1:8138/?PSK=password&method=aes-128-cfb&obfs=http')
+    hxs = hxssocket('hxs://user:pass@127.0.0.1:8138/?PSK=password&method=aes-128-cfb')
     hxs.connect(('www.baidu.com', 80))
     hxs.sendall(b'GET / HTTP/1.0\r\n\r\n')
     data = hxs.recv(1024)
