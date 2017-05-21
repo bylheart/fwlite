@@ -32,6 +32,102 @@ if not os.path.isfile('./fgfw-lite/local.txt'):
 ! /^http://www.baidu.com/.*wd=([^&]*).*$/ /https://www.google.com/search?q=\1/
 ''')
 
+PAC = '''
+var wall_proxy = "__PROXY__";
+var direct = "DIRECT;";
+
+/*
+ * Copyright (C) 2014 breakwa11
+ * https://github.com/breakwa11/gfw_whitelist
+ */
+
+var subnetIpRangeList = [
+0,1,
+167772160,184549376,    //10.0.0.0/8
+2886729728,2887778304,  //172.16.0.0/12
+3232235520,3232301056,  //192.168.0.0/16
+2130706432,2130706688   //127.0.0.0/24
+];
+
+var hasOwnProperty = Object.hasOwnProperty;
+
+function check_ipv4(host) {
+    // check if the ipv4 format (TODO: ipv6)
+    //   http://home.deds.nl/~aeron/regex/
+    var re_ipv4 = /^\d+\.\d+\.\d+\.\d+$/g;
+    if (re_ipv4.test(host)) {
+        // in theory, we can add chnroutes test here.
+        // but that is probably too much an overkill.
+        return true;
+    }
+}
+function convertAddress(ipchars) {
+    var bytes = ipchars.split('.');
+    var result = (bytes[0] << 24) |
+    (bytes[1] << 16) |
+    (bytes[2] << 8) |
+    (bytes[3]);
+    return result >>> 0;
+}
+function isInSubnetRange(ipRange, intIp) {
+    for ( var i = 0; i < 10; i += 2 ) {
+        if ( ipRange[i] <= intIp && intIp < ipRange[i+1] )
+            return true;
+    }
+}
+function getProxyFromDirectIP(strIp) {
+    var intIp = convertAddress(strIp);
+    if ( isInSubnetRange(subnetIpRangeList, intIp) ) {
+        return direct;
+    }
+    return wall_proxy;
+}
+function isInDomains(domain_dict, host) {
+    var suffix;
+    var pos1 = host.lastIndexOf('.');
+
+    suffix = host.substring(pos1 + 1);
+    if (suffix == "cn") {
+        return true;
+    }
+
+    var domains = domain_dict[suffix];
+    if ( domains === undefined ) {
+        return false;
+    }
+    host = host.substring(0, pos1);
+    var pos = host.lastIndexOf('.');
+
+    while(1) {
+        if (pos <= 0) {
+            if (hasOwnProperty.call(domains, host)) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        suffix = host.substring(pos + 1);
+        if (hasOwnProperty.call(domains, suffix)) {
+            return true;
+        }
+        pos = host.lastIndexOf('.', pos - 1);
+    }
+}
+function FindProxyForURL(url, host) {
+    url=""+url;
+    host=""+host;
+    if ( isPlainHostName(host) === true ) {
+        return direct;
+    }
+    if ( check_ipv4(host) === true ) {
+        return getProxyFromDirectIP(host);
+    }
+    return wall_proxy;
+}
+
+'''
+
+
 
 class Config(object):
     def __init__(self):
@@ -61,44 +157,20 @@ class Config(object):
             self.listen = (listen.rsplit(':', 1)[0], int(listen.rsplit(':', 1)[1]))
 
         try:
-            self.local_ip = set(socket.gethostbyname_ex(socket.gethostname())[2])
-        except Exception:
-            try:
-                csock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                csock.connect(('8.8.8.8', 53))
-                (addr, port) = csock.getsockname()
-                csock.close()
-                self.local_ip = set([addr])
-            except socket.error:
-                self.local_ip = set(['127.0.0.1'])
-        ip = self.local_ip.pop()
-        self.local_ip.add(ip)
-        self.PAC = '''\
-function FindProxyForURL(url, host) {
-if (isPlainHostName(host) ||
-    host.indexOf('127.') == 0 ||
-    host.indexOf('192.168.') == 0 ||
-    host.indexOf('10.') == 0 ||
-    shExpMatch(host, 'localhost.*'))
-    {
-        return 'DIRECT';
-    }
-return "PROXY %s:%s; DIRECT";}''' % (ip, self.listen[1])
+            csock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            csock.connect(('8.8.8.8', 53))
+            (addr, port) = csock.getsockname()
+            csock.close()
+            self.local_ip = addr
+        except socket.error:
+            self.local_ip = '127.0.0.1'
+
+        ip = self.local_ip
+        self.PAC = PAC.replace('__PROXY__', 'PROXY %s:%s' % (ip, self.listen[1]))
         if self.userconf.dget('fgfwproxy', 'pac', ''):
             if os.path.isfile(self.userconf.dget('fgfwproxy', 'pac', '')):
                 self.PAC = open(self.userconf.dget('fgfwproxy', 'pac', '')).read()
-            else:
-                self.PAC = '''\
-function FindProxyForURL(url, host) {
-if (isPlainHostName(host) ||
-    host.indexOf('127.') == 0 ||
-    host.indexOf('192.168.') == 0 ||
-    host.indexOf('10.') == 0 ||
-    shExpMatch(host, 'localhost.*'))
-    {
-        return 'DIRECT';
-    }
-return "PROXY %s; DIRECT";}''' % self.userconf.dget('fgfwproxy', 'pac', '')
+
         self.PAC = self.PAC.encode()
 
         if self.userconf.dget('FGFW_Lite', 'logfile', ''):

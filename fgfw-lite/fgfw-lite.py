@@ -281,6 +281,10 @@ class ProxyHandler(HTTPRequestHandler):
         if self.path.lower().startswith('ftp://'):
             return self.do_FTP()
 
+        if self.path == '/pac':
+            if self.headers['Host'].startswith(self.conf.local_ip):
+                return self.write(msg=self.conf.PAC, ctype='application/x-ns-proxy-autoconfig')
+
         # transparent proxy
         if self.path.startswith('/'):
             if 'Host' not in self.headers:
@@ -299,10 +303,6 @@ class ProxyHandler(HTTPRequestHandler):
         # gather info
         self.requesthost = parse_hostport(self.headers['Host'], 80)
         self.rip = self.conf.resolver.get_ip_address(self.requesthost[0])
-
-        if self.path == '/pac':
-            if self.rip.is_loopback or str(self.rip) in self.conf.local_ip:
-                return self.write(msg=self.conf.PAC, ctype='application/x-ns-proxy-autoconfig')
 
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
