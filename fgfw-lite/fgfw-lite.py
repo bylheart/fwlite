@@ -172,6 +172,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
             self._wfile_write(content)
+        self.logger.error('%s %s ' % (self.path, code))
 
     def write(self, code=200, msg=None, ctype=None):
         if msg is None:
@@ -297,11 +298,12 @@ class ProxyHandler(HTTPRequestHandler):
 
         parse = urlparse.urlparse(self.path)
 
-        if 'Host' not in self.headers:
-            self.headers['Host'] = parse.netloc
-
         # gather info
-        self.requesthost = parse_hostport(self.headers['Host'], 80)
+        if 'Host' not in self.headers:
+            self.requesthost = parse_hostport(parse.netloc, 80)
+        else:
+            self.requesthost = parse_hostport(self.headers['Host'], 80)
+
         self.rip = self.conf.resolver.get_ip_address(self.requesthost[0])
 
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
@@ -314,16 +316,20 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(int(new_url))
             elif new_url.lower() == 'return':
                 # request handled by redirector, return
+                self.logger.info('{} {} {} return'.format(self.command, self.shortpath or self.path, self.client_address[0]))
                 return
             elif new_url.lower() == 'reset':
                 self.close_connection = 1
+                self.logger.info('{} {} {} reset'.format(self.command, self.shortpath or self.path, self.client_address[0]))
                 return
             elif new_url.lower() == 'adblock':
+                self.logger.info('{} {} {} adblock'.format(self.command, self.shortpath or self.path, self.client_address[0]))
                 return self.write(msg=FAKEGIF, ctype='image/gif')
             elif all(u in self.conf.parentlist.dict.keys() for u in new_url.split()):
                 self._proxylist = [self.conf.parentlist.get(u) for u in new_url.split()]
                 # random.shuffle(self._proxylist)
             else:
+                self.logger.info('redirect {} {}'.format(self.shortpath or self.path, new_url))
                 return self.redirect(new_url)
 
         if self.rip.is_loopback:
@@ -383,15 +389,16 @@ class ProxyHandler(HTTPRequestHandler):
                 self._proxylist.insert(0, self.pproxy)
             self.set_timeout()
             self.remotesoc = self._http_connect_via_proxy(self.requesthost, iplist)
+            self.remotesoc.settimeout(self.rtimeout)
             self.wbuffer = deque()
             self.wbuffer_size = 0
-            # send request header
+            # prep request header
             s = []
             if self.pproxy.proxy.startswith('http'):
                 s.append('%s %s %s\r\n' % (self.command, self.path, self.request_version))
                 if self.pproxy.username:
                     a = '%s:%s' % (self.pproxy.username, self.pproxy.password)
-                    self.headers['Proxy-Authorization'] = 'Basic %s' % base64.b64encode(a.encode())
+                    s.append('Proxy-Authorization: Basic %s' % base64.b64encode(a.encode()))
             else:
                 s.append('%s /%s %s\r\n' % (self.command, '/'.join(self.path.split('/')[3:]), self.request_version))
             # Does the client want to close connection after this request?
@@ -401,13 +408,11 @@ class ProxyHandler(HTTPRequestHandler):
             else:
                 self.close_connection = 'keep_alive' in conntype.lower()
             if 'Upgrade' in self.headers:
-                if 'websocket' in self.headers['Upgrade']:
-                    self.headers['Upgrade'] = 'websocket'
-                    self.close_connection = True
-                else:
-                    self.logger.warning('unsupported Upgrade header found! (%s)' % self.headers['Upgrade'])
-                    del self.headers['Upgrade']
+                self.close_connection = True
+                self.logger.warning('Upgrade header found! (%s)' % self.headers['Upgrade'])
+                # del self.headers['Upgrade']
             else:
+                # always try to keep connection alive
                 self.headers['Connection'] = 'keep_alive'
 
             for k, v in self.headers.items():
@@ -416,10 +421,9 @@ class ProxyHandler(HTTPRequestHandler):
                 s.append("%s: %s\r\n" % ("-".join([w.capitalize() for w in k.split("-")]), v))
             s.append("\r\n")
             data = ''.join(s).encode('latin1')
+            # send request header
             self.remotesoc.sendall(data)
             self.traffic_count[0] += len(data)
-            # Now remotesoc is connected, set read timeout
-            self.remotesoc.settimeout(self.rtimeout)
             remoterfile = self.remotesoc.makefile('rb', 0)
             # Expect
             skip = False
@@ -484,6 +488,7 @@ class ProxyHandler(HTTPRequestHandler):
                 self._wfile_write(response_line + hdata)
                 response_line, protocol_version, response_status, response_reason = read_response_line(remoterfile)
             header_data, response_header = read_headers(remoterfile)
+            # check response headers
             conntype = response_header.get('Connection', "")
             if protocol_version >= b"HTTP/1.1":
                 remote_close = 'close' in conntype.lower()
@@ -504,11 +509,12 @@ class ProxyHandler(HTTPRequestHandler):
                 content_length = int(response_header["Content-Length"])
             else:
                 content_length = None
-            self.wfile_write(response_line)
-            self.wfile_write(header_data)
-            # verify
+
             if response_status in (301, 302) and self.conf.PARENT_PROXY.bad302(response_header.get('Location')):
                 raise IOError(0, 'Bad 302!')
+
+            self.wfile_write(response_line)
+            self.wfile_write(header_data)
             # read response body
             if self.command == 'HEAD' or response_status in (204, 205, 304):
                 pass
