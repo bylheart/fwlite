@@ -224,6 +224,8 @@ class ProxyHandler(HTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     bufsize = 8192
     timeout = 60
+    _delay = 0.5 / 2
+    slowlog = {}
 
     def __init__(self, request, client_address, server):
         self.ssrealip = None
@@ -247,6 +249,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.failed_parents = []
         self.path = ''
         self.noxff = False
+        self.slow = False
         self.count = 0
         self.traffic_count = [0, 0]  # [read from client, write to client]
         self.logmethod = self.logger.info
@@ -275,6 +278,16 @@ class ProxyHandler(HTTPRequestHandler):
             return 1
         self.pproxy = self._proxylist.pop(0)
         self.ppname = self.pproxy.name
+
+    def delay(self):
+        if self.slow:
+            if self.requesthost[0] in self.slowlog and\
+                    time.time() - self.slowlog[self.requesthost[0]] < 1200:
+                return time.sleep(self._delay)
+            if self.traffic_count[1] < 786432:
+                return time.sleep(self._delay / 20)
+            self.slowlog[self.requesthost[0]] = time.time()
+            time.sleep(self._delay)
 
     def do_GET(self):
         if isinstance(self.path, bytes):
@@ -325,6 +338,9 @@ class ProxyHandler(HTTPRequestHandler):
             elif new_url.lower() == 'adblock':
                 self.logger.info('{} {} {} adblock'.format(self.command, self.shortpath or self.path, self.client_address[0]))
                 return self.write(msg=FAKEGIF, ctype='image/gif')
+            elif new_url.lower() == 'slow':
+                self.slow = True
+                self.bufsize = 512
             elif all(u in self.conf.parentlist.dict.keys() for u in new_url.split()):
                 self._proxylist = [self.conf.parentlist.get(u) for u in new_url.split()]
                 # random.shuffle(self._proxylist)
@@ -527,15 +543,19 @@ class ProxyHandler(HTTPRequestHandler):
                     flag = trunk_lenth != 2
                     while trunk_lenth:
                         data = self.remotesoc.recv(min(self.bufsize, trunk_lenth))
+                        # self.logger.info('chunk data received %d %s' % (len(data), self.path))
                         trunk_lenth -= len(data)
                         self.wfile_write(data)
+                        self.delay()
             elif content_length is not None:
                 while content_length:
                     data = self.remotesoc.recv(min(self.bufsize, content_length))
                     if not data:
                         raise IOError(0, 'remote socket closed')
+                    # self.logger.info('content_length data received %d %s' % (len(data), self.path))
                     content_length -= len(data)
                     self.wfile_write(data)
+                    self.delay()
             else:
                 # websocket?
                 self.close_connection = 1
@@ -543,6 +563,7 @@ class ProxyHandler(HTTPRequestHandler):
                 self.wfile_write()
                 fd = [self.connection, self.remotesoc]
                 while fd:
+                    self.delay()
                     ins, _, _ = select.select(fd, [], [], 60)
                     if not ins:
                         break
@@ -556,6 +577,7 @@ class ProxyHandler(HTTPRequestHandler):
                     if self.remotesoc in ins:
                         data = self.remotesoc.recv(self.bufsize)
                         if data:
+                            # self.logger.info('ws data received %d %s' % (len(data), self.path))
                             self._wfile_write(data)
                         else:
                             fd.remove(self.remotesoc)
@@ -605,6 +627,9 @@ class ProxyHandler(HTTPRequestHandler):
                 return self.send_error(int(new_url))
             elif new_url.lower() in ('reset', 'adblock'):
                 return
+            elif new_url.lower() == 'slow':
+                self.slow = True
+                self.bufsize = 512
             elif all(u in self.conf.parentlist.dict.keys() for u in new_url.split()):
                 self._proxylist = [self.conf.parentlist.get(u) for u in new_url.split()]
                 # random.shuffle(self._proxylist)
@@ -707,6 +732,7 @@ class ProxyHandler(HTTPRequestHandler):
         """forward socket"""
         try:
             while fds:
+                self.delay()
                 ins, _, _ = select.select(fds, [], [], 60)
                 if not ins:
                     self.logger.debug('tcp forwarding timed out.')
@@ -714,7 +740,7 @@ class ProxyHandler(HTTPRequestHandler):
                 if self.connection in ins:
                     data = self.connection_recv(self.bufsize)
                     if data:
-                        self.logger.debug('read from client %d' % len(data))
+                        self.logger.debug('read from client %d, %s' % (len(data), self.path))
                         self.remotesoc.sendall(data)
                     else:
                         self.logger.debug('client closed')
@@ -723,7 +749,7 @@ class ProxyHandler(HTTPRequestHandler):
                 if self.remotesoc in ins:
                     data = self.remotesoc.recv(self.bufsize)
                     if data:
-                        self.logger.debug('read from remote %d' % len(data))
+                        # self.logger.info('read from remote %d, %s' % (len(data), self.path))
                         self._wfile_write(data)
                     else:
                         self.logger.debug('remote closed')
@@ -748,7 +774,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.remotesoc = None
 
     def on_conn_log(self):
-        self.logmethod('{} {} via {}'.format(self.command, self.shortpath or self.path, self.ppname))
+        self.logmethod('{} {} via {}. {}{}'.format(self.command, self.shortpath or self.path, self.ppname, 'slow ' if self.slow else '', self.client_address[0]))
 
     def wfile_write(self, data=None):
         if data is None:
