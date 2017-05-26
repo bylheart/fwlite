@@ -54,7 +54,7 @@ flist = ['./fgfw-lite/GeoLite2-Country.mmdb',
          './README.md',
          './FWLite.exe',
          './FWLite.pyw',
-         # './release_note.txt',
+         './release_note.txt',
          ]
 
 for p in glob.glob('./fgfw-lite/*.py'):
