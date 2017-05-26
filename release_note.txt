@@ -1,3 +1,9 @@
+2017.5.27 v4.18
+add new redirector keyword "slow", able to make some sites slow as hell
+
+2017.4.24 v4.17.1
+fix performance problem(shame on me)
+
 2017.4.24 v4.17
 update hxsocks protocol
 minor bug fix
