@@ -11,6 +11,7 @@ Tested on Windows 7 and Windows 10.
 ##Quick Start
 
 ####Set parent proxy
+
 Add your own parent proxy in the `parents` section of main configuration file `userconf.ini`.
 
 It looks like this:
@@ -29,11 +30,13 @@ or this:
     proxy3 = http://127.0.0.1:8087|socks5://127.0.0.1:1080
 
 ####Set browser
+
 Set your browser's proxy setting to `http://127.0.0.1:8118`.
 
 On Windows, this should be done automatically.
 
 ####Start
+
 For Windows, run `FWLite.exe`
 
 For Linux and Mac, run `python2 /path_to/fwlite/FWLite.pyw`
@@ -128,6 +131,7 @@ Assign a parent proxy for certain sites
 GPLv2
 
 ##Thanks
+
 [翻墙路由器的原理与实现]
 
 [COW]
