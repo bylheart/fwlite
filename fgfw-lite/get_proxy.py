@@ -127,10 +127,13 @@ class get_proxy(object):
         if self.ignore.match(uri, host):
             return None
 
+        if self.ifhost_in_region(host, str(ip)):
+            return False
+
         if level == 2 and uri.startswith('http://'):
             return True
 
-        if self.conf.HOSTS.get(host) or self.ifhost_in_region(host, str(ip)):
+        if self.conf.HOSTS.get(host):
             return None
 
         if level == 3:
@@ -147,8 +150,8 @@ class get_proxy(object):
             host: ('www.google.com', 443) (no port number is allowed)
             level: 0 -- direct
                    1 -- auto:        proxy if local_rule, direct if ip in region or override, proxy if gfwlist
-                   2 -- encrypt all: proxy if local_rule or not https, direct if ip in region or override, proxy if gfwlist
-                   3 -- chnroute:    proxy if local_rule, direct if ip in region or override, proxy if all
+                   2 -- encrypt all: proxy if local_rule, direct if ip in region or override, proxy if gfwlist or not https
+                   3 -- chnroute:    proxy if local_rule, direct if ip in region or override, proxy for all
                    4 -- global:      proxy if not local
                    5 -- global:      proxy if not localhost
         '''

@@ -154,6 +154,8 @@ class MainWindow(QtGui.QMainWindow):
         for line in copy.copy(lines):
             if 'Update Completed' in line:
                 freload = True
+            if "error: can't start new thread" in line:
+                freload = True
             elif 'dnslib_resolve_over_' in line:
                 lines.remove(line)
             elif 'extend_iplist start' in line:

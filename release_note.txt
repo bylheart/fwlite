@@ -1,3 +1,12 @@
+2017.8.2 v4.19
+update cryptography, gevent
+cleanup python27.zip
+update encrypt.py
+update gfwlist
+update hxsocks protocol
+some security update
+update resolver
+
 2017.5.27 v4.18
 add new redirector keyword "slow", able to make some sites slow as hell
 

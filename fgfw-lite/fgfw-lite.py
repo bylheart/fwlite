@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, see <http://www.gnu.org/licenses>.
 
-from __future__ import print_function, division
+from __future__ import absolute_import, print_function, division
 
 import sys
 import os
@@ -59,7 +59,7 @@ except ImportError:
         from StringIO import StringIO
     except ImportError:
         from io import BytesIO as StringIO
-from threading import Thread, Timer
+from threading import Thread
 
 sys.dont_write_bytecode = True
 WORKINGDIR = '/'.join(os.path.dirname(os.path.abspath(__file__).replace('\\', '/')).split('/')[:-1])
@@ -311,14 +311,6 @@ class ProxyHandler(HTTPRequestHandler):
 
         parse = urlparse.urlparse(self.path)
 
-        # gather info
-        if 'Host' not in self.headers:
-            self.requesthost = parse_hostport(parse.netloc, 80)
-        else:
-            self.requesthost = parse_hostport(self.headers['Host'], 80)
-
-        self.rip = self.conf.resolver.get_ip_address(self.requesthost[0])
-
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
         # redirector
@@ -347,6 +339,22 @@ class ProxyHandler(HTTPRequestHandler):
             else:
                 self.logger.info('redirect {} {}'.format(self.shortpath or self.path, new_url))
                 return self.redirect(new_url)
+
+        parse = urlparse.urlparse(self.path)
+
+        # gather info
+        if 'Host' not in self.headers:
+            self.logger.warning('"Host" not in self.headers')
+            self.requesthost = parse_hostport(parse.netloc, 80)
+        else:
+            if not self.headers['Host'].startswith(parse_hostport(parse.netloc, 80)[0]):
+                self.logger.warning('Host and URI mismatch! %s %s' % (self.path, self.headers['Host']))
+                # self.headers['Host'] = parse.netloc
+            self.requesthost = parse_hostport(self.headers['Host'], 80)
+
+        # self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
+
+        self.rip = self.conf.resolver.get_ip_address(self.requesthost[0])
 
         if self.rip.is_loopback:
             if ip_address(self.client_address[0]).is_loopback:
@@ -624,12 +632,15 @@ class ProxyHandler(HTTPRequestHandler):
         if new_url:
             self.logger.debug('redirect %s, %s %s' % (new_url, self.command, self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
+                self.logger.info('{} {} {} send error {}'.format(self.command, self.shortpath or self.path, self.client_address[0], new_url))
                 return self.send_error(int(new_url))
-            elif new_url.lower() in ('reset', 'adblock'):
+            elif new_url.lower() in ('reset', 'adblock', 'return'):
+                self.logger.info('{} {} {} reset'.format(self.command, self.shortpath or self.path, self.client_address[0]))
                 return
             elif new_url.lower() == 'slow':
                 self.slow = True
                 self.bufsize = 512
+                self.logger.info('{} {} {} slow'.format(self.command, self.shortpath or self.path, self.client_address[0]))
             elif all(u in self.conf.parentlist.dict.keys() for u in new_url.split()):
                 self._proxylist = [self.conf.parentlist.get(u) for u in new_url.split()]
                 # random.shuffle(self._proxylist)
@@ -667,6 +678,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
             self.logger.warning('%s %s via %s failed on connect! %r' % (self.command, self.path, self.ppname, e))
+            self.logger.error(traceback.format_exc())
             return self._do_CONNECT(True)
         self.logger.debug('%s connected' % self.path)
         count = 0
@@ -993,7 +1005,7 @@ class ProxyHandler(HTTPRequestHandler):
 
 
 def updater(conf):
-    lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
+    time.sleep(10)
 
     logger = logging.getLogger('updater')
     logger.setLevel(logging.INFO)
@@ -1002,12 +1014,15 @@ def updater(conf):
                                   datefmt='%H:%M:%S')
     hdr.setFormatter(formatter)
     logger.addHandler(hdr)
-    if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
-        try:
-            update(conf, logger, auto=True)
-        except Exception:
-            logger.error(traceback.format_exc())
-    Timer(random.randint(600, 3600), updater, (conf, )).start()
+    while 1:
+        lastupdate = conf.version.dgetfloat('Update', 'LastUpdate', 0)
+
+        if time.time() - lastupdate > conf.UPDATE_INTV * 60 * 60:
+            try:
+                update(conf, logger, auto=True)
+            except Exception:
+                logger.error(traceback.format_exc())
+        time.sleep(3600 + random.randint(0, 600))
 
 
 def update(conf, logger, auto=False):
@@ -1174,7 +1189,7 @@ def main():
     logger.addHandler(hdr)
 
     logger.info(s)
-    Timer(10, updater, (conf, )).start()
+
     d = {'http': '127.0.0.1:%d' % conf.listen[1], 'https': '127.0.0.1:%d' % conf.listen[1]}
     urllib2.install_opener(urllib2.build_opener(urllib2.ProxyHandler(d)))
     for i, level in enumerate(list(conf.userconf.dget('fgfwproxy', 'profile', '13'))):
@@ -1195,6 +1210,10 @@ def main():
         t = Thread(target=server.serve_forever)
         t.start()
 
+    t = Thread(target=updater, args=(conf, ))
+    t.daemon = True
+    t.start()
+
     if conf.userconf.dgetbool('dns', 'enable', False):
         try:
             listen = parse_hostport(conf.userconf.dget('dns', 'listen', '127.0.0.1:53'))
@@ -1209,8 +1228,10 @@ def main():
         except Exception as e:
             logger.error(repr(e))
             logger.error(traceback.format_exc() + '\n')
+    time.sleep(3)
     conf.stdout()
     t.join()
+
 
 if __name__ == "__main__":
     try:

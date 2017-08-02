@@ -23,7 +23,7 @@ from __future__ import print_function, division
 import sys
 import re
 import time
-from threading import Timer
+from threading import Thread
 from collections import defaultdict
 from util import parse_hostport
 try:
@@ -121,7 +121,7 @@ class ap_filter(object):
         self.rules.add(rule)
         self.expire[rule] = expire
         if expire:
-            Timer(expire, self.remove, (rule, )).start()
+            Thread(target=self.remove, args=(rule, expire)).start()
 
     def _add_urlstartswith(self, rule):
         temp = set(self.url_startswith)
@@ -189,7 +189,9 @@ class ap_filter(object):
     def _listmatch(self, lst, url):
         return any(r.match(url) for r in lst)
 
-    def remove(self, rule):
+    def remove(self, rule, delay=None):
+        if delay:
+            time.sleep(delay)
         if rule in self.rules:
             if rule.startswith('||') and '*' not in rule:
                 rule = rule.rstrip('/')
@@ -237,6 +239,7 @@ class ap_filter(object):
             if '-GUI' in sys.argv:
                 sys.stdout.write(b'\n')
                 sys.stdout.flush()
+
 
 if __name__ == "__main__":
     gfwlist = ap_filter()

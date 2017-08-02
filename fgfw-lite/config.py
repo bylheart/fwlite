@@ -128,7 +128,6 @@ function FindProxyForURL(url, host) {
 '''
 
 
-
 class Config(object):
     def __init__(self):
         self.logger = logging.getLogger('config')
@@ -184,7 +183,7 @@ class Config(object):
             self.logger.addHandler(hdlr)
 
         self.region = set(x.upper() for x in self.userconf.dget('fgfwproxy', 'region', '').split('|') if x.strip())
-        self.profiles = len(self.userconf.dget('fgfwproxy', 'profile', '134'))
+        self.profiles = len(self.userconf.dget('fgfwproxy', 'profile', '13'))
         self.xheaders = self.userconf.dgetbool('fgfwproxy', 'xheaders', False)
 
         if self.userconf.dget('fgfwproxy', 'parentproxy', ''):
@@ -258,5 +257,6 @@ class Config(object):
         if self.GUI:
             sys.stdout.write(text + b'\n')
             sys.stdout.flush()
+
 
 conf = Config()

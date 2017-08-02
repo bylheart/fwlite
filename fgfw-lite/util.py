@@ -106,6 +106,7 @@ def sizeof_fmt(num):
         num /= 1024.0
     return "%.1f%s" % (num, 'TB')
 
+
 try:
     GeoIP2 = geoip2.database.Reader('./fgfw-lite/GeoLite2-Country.mmdb', mode=geoip2.database.MODE_MEMORY) if geoip2 else None
 except Exception:
@@ -176,7 +177,7 @@ class iv_checker(object):
 
     def __init__(self, maxlen, timeout):
         self.timeout = timeout * 10
-        self.store = defaultdict(lambda: iv_store(maxlen, timeout))
+        self.store = defaultdict(lambda: iv_store(maxlen, timeout * 2))
 
     def check(self, key, iv):
         if random.random() < 0.01:

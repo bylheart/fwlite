@@ -9,7 +9,7 @@ import traceback
 import logging
 import time
 import itertools
-from threading import Event, Timer, RLock, Thread
+from threading import Event, Thread
 from collections import defaultdict
 
 try:
@@ -17,7 +17,6 @@ try:
 except ImportError:
     from ipaddress import ip_address
 
-import config
 from connection import create_connection
 
 
@@ -43,45 +42,46 @@ class DNS_Cache(object):
         self._cache_id = next(self._cache_iter)
         self._bad_cache_iter = itertools.cycle(range(NUM_BAD_CACHE))
         self._bad_cache_id = next(self._bad_cache_iter)
-        self._lock = RLock()
-        Timer(CLEAN_INTV, self._sched_clean, ()).start()
+        t = Thread(target=self._sched_clean, args=(CLEAN_INTV, ))
+        t.daemon = True
+        t.start()
 
     def cache(self, host, qtype, result):
-        with self._lock:
-            if not result or isinstance(result, Exception):
-                self._bad_cache[self._bad_cache_id][(host, qtype)] = result
-            else:
-                self._cache[self._cache_id][(host, qtype)] = result
+        logger.debug('dns cache add: {} {!r} {}'.format(host, qtype, result.__class__.__name__))
+        if not result or isinstance(result, Exception):
+            self._bad_cache[self._bad_cache_id][(host, qtype)] = result
+        else:
+            self._cache[self._cache_id][(host, qtype)] = result
 
     def query(self, host, qtype):
-        with self._lock:
-            for v in self._bad_cache:
-                if (host, qtype) in v:
-                    logger.debug('dns cache hit: bad result, {} {}'.format(host, qtype))
-                    return v[(host, qtype)]
-            for v in self._cache:
-                if (host, qtype) in v:
-                    logger.debug('dns cache hit: good result, {} {}'.format(host, qtype))
-                    return v[(host, qtype)]
-            logger.debug('dns cache hit: good result, {} {}'.format(host, qtype))
+        for v in self._cache:
+            if (host, qtype) in v:
+                logger.debug('dns cache hit: good, {} {!r}'.format(host, qtype))
+                return v[(host, qtype)]
+        for v in self._bad_cache:
+            if (host, qtype) in v:
+                logger.debug('dns cache hit: bad, {} {!r}'.format(host, qtype))
+                return v[(host, qtype)]
+        logger.debug('dns cache miss... {} {!r}'.format(host, qtype))
 
-    def clean(self):
-        with self._lock:
-            self._cache = [{} for _ in range(NUM_CACHE)]
-            self._bad_cache = [{} for _ in range(NUM_BAD_CACHE)]
+    def clear(self):
+        self._cache = [{} for _ in range(NUM_CACHE)]
+        self._bad_cache = [{} for _ in range(NUM_BAD_CACHE)]
 
-    def _sched_clean(self):
-        with self._lock:
+    def _sched_clean(self, intv):
+        while 1:
+            time.sleep(intv)
             self._cache_id = next(self._cache_iter)
             self._bad_cache_id = next(self._bad_cache_iter)
             self._cache[self._cache_id] = {}
             self._bad_cache[self._bad_cache_id] = {}
-        Timer(CLEAN_INTV, self._sched_clean, ()).start()
+
 
 dns_cache = DNS_Cache()
 
 
 def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
+    logger.debug('entering getaddrinfo()')
     result = dns_cache.query(host, (port, family, socktype, proto, flags))
     if result:
         if isinstance(result, Exception):
@@ -97,60 +97,34 @@ def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
 
 
 def _resolver(host):
+    logger.debug('entering _resolver()')
     return [(i[0], i[4][0]) for i in getaddrinfo(host, 0)]
 
 
-def _udp_dns_record(host, qtype, server):
+def _udp_dns_record(host, qtype, server, timeout=3):
     if isinstance(qtype, str):
         query = dnslib.DNSRecord.question(host, qtype=qtype)
     else:
         query = dnslib.DNSRecord(q=dnslib.DNSQuestion(host, qtype))
     query_data = query.pack()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(3)
+    sock.settimeout(timeout)
     sock.sendto(query_data, server)
     reply_data, reply_address = sock.recvfrom(8192)
     record = dnslib.DNSRecord.parse(reply_data)
     return record
 
 
-def _udp_dns_records(host, qtype, server):
+def tcp_dns_record(host, qtype, server, proxy, timeout=3):
     if isinstance(qtype, str):
         query = dnslib.DNSRecord.question(host, qtype=qtype)
     else:
         query = dnslib.DNSRecord(q=dnslib.DNSQuestion(host, qtype))
     query_data = query.pack()
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(query_data, server)
-    record_list = []
-    try:
-        (ins, _, _) = select.select([sock], [], [], 2)
-        if ins:
-            reply_data, reply_address = sock.recvfrom(8192)
-            record_list.append(dnslib.DNSRecord.parse(reply_data))
-    finally:
-        while 1:
-            try:
-                (ins, _, _) = select.select([sock], [], [], 2)
-                if not ins:
-                    break
-                reply_data, reply_address = sock.recvfrom(8192)
-                record_list.append(dnslib.DNSRecord.parse(reply_data))
-            except Exception:
-                break
-    return record_list
-
-
-def tcp_dns_record(host, qtype, server, proxy):
-    if isinstance(qtype, str):
-        query = dnslib.DNSRecord.question(host, qtype=qtype)
-    else:
-        query = dnslib.DNSRecord(q=dnslib.DNSQuestion(host, qtype))
-    query_data = query.pack()
-    sock = create_connection(server, ctimeout=5, parentproxy=proxy, tunnel=True)
+    sock = create_connection(server, ctimeout=3, parentproxy=proxy, tunnel=True)
     data = struct.pack('>h', len(query_data)) + query_data
     sock.sendall(bytes(data))
-    sock.settimeout(5)
+    sock.settimeout(timeout)
     rfile = sock.makefile('rb')
     reply_data_length = rfile.read(2)
     reply_data = rfile.read(struct.unpack('>h', reply_data_length)[0])
@@ -161,28 +135,34 @@ def tcp_dns_record(host, qtype, server, proxy):
 
 class BaseResolver(object):
     def __init__(self, dnsserver):
-        self.hostlock = defaultdict(RLock)
         self.dnsserver = tuple(dnsserver)
 
     def record(self, host, qtype):
-        with self.hostlock[(host, qtype)]:
-            result = dns_cache.query(host, (qtype, self.dnsserver))
-            if result:
-                if isinstance(result, Exception):
-                    raise result
-                return result
-            try:
-                result = self._record(host, qtype)
-                dns_cache.cache(host, (host, (qtype, self.dnsserver)), result)
-                return result
-            except Exception as e:
-                dns_cache.cache(host, (host, (qtype, self.dnsserver)), e)
-                raise e
-
-    def _record(self, host, qtype):
-        return _udp_dns_record(host, qtype, self.dnsserver[0])
+        logger.debug('entering %s.record()... %r' % (self.__class__.__name__, self))
+        result = dns_cache.query(host, (qtype, self.dnsserver))
+        if result:
+            if isinstance(result, Exception):
+                raise result
+            if result.header.rcode in (dnslib.RCODE.REFUSED, ):
+                raise ValueError('server refused.')
+            return result
+        try:
+            result = self._record(host, qtype)
+            # check result
+            dns_cache.cache(host, (qtype, self.dnsserver), result)
+            logger.debug('dns success...')
+        except Exception as e:
+            logger.debug('dns error: %r' % e)
+            dns_cache.cache(host, (host, (qtype, self.dnsserver)), e)
+            traceback.print_exc(file=sys.stderr)
+            sys.stderr.flush()
+            raise e
+        if result.header.rcode in (dnslib.RCODE.REFUSED, ):
+            raise ValueError('server refused.')
+        return result
 
     def resolve(self, host, dirty=False):
+        logger.debug('entering %s.resolve()... %r' % (self.__class__.__name__, self))
         try:
             ip = ip_address(host)
             return [(2 if ip._version == 4 else 10, host), ]
@@ -199,6 +179,7 @@ class BaseResolver(object):
             return []
 
     def get_ip_address(self, host):
+        logger.debug('entering %s.get_ip_address()... %r' % (self.__class__.__name__, self))
         try:
             return ip_address(host)
         except Exception:
@@ -237,7 +218,6 @@ class UDP_Resolver(BaseResolver):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.timeout = timeout
         self.event_dict = defaultdict(MEvent)
-        self.hostlock = defaultdict(RLock)
         t = Thread(target=self.daemon)
         t.daemon = True
         t.start()
@@ -287,7 +267,6 @@ class R_UDP_Resolver(BaseResolver):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.timeout = timeout
         self.event_dict = defaultdict(MEvent)
-        self.hostlock = defaultdict(RLock)
         t = Thread(target=self.daemon)
         t.daemon = True
         t.start()
@@ -336,23 +315,22 @@ class R_UDP_Resolver(BaseResolver):
 
 
 class TCP_Resolver(BaseResolver):
-    def __init__(self, dnsserver, proxy=None):
+    def __init__(self, dnsserver, proxy=None, timeout=3):
         self.dnsserver = tuple(dnsserver)
         self.proxy = proxy
-        self.hostlock = defaultdict(RLock)
+        self.timeout = timeout
 
     def _record(self, domain, qtype):
-        return tcp_dns_record(domain, qtype, self.dnsserver[0], self.proxy)
+        return tcp_dns_record(domain, qtype, self.dnsserver[0], self.proxy, timeout=self.timeout)
 
 
 class Resolver(BaseResolver):
-    def __init__(self, dnsserver, proxy=None):
-        self.dnsserver = dnsserver
-        self.UDP_Resolver = UDP_Resolver(dnsserver)
-        self.TCP_Resolver = TCP_Resolver(dnsserver, proxy)
-        self.hostlock = defaultdict(RLock)
+    def __init__(self, dnsserver, timeout=3):
+        self.dnsserver = tuple(dnsserver)
+        self.UDP_Resolver = UDP_Resolver(dnsserver, timeout)
+        self.TCP_Resolver = TCP_Resolver(dnsserver, timeout)
 
-    def _record(self, domain, qtype):
+    def record(self, domain, qtype):
         record = self.UDP_Resolver.record(domain, qtype)
         if record and record.header.tc == 1:
             record = self.TCP_Resolver.record(domain, qtype)
@@ -361,32 +339,30 @@ class Resolver(BaseResolver):
 
 class Anti_GFW_Resolver(BaseResolver):
     def __init__(self, localdns, remotedns, proxy, apfilter_list, bad_ip):
-        self.local = UDP_Resolver(localdns)
+        logger.debug('localdns: %r' % localdns)
+        logger.debug('remotedns: %r' % remotedns)
+        self.local = Resolver(localdns)
         self.remote = TCP_Resolver(remotedns, proxy)
         self.apfilter_list = apfilter_list
         self.bad_ip = bad_ip
-        self.hostlock = defaultdict(RLock)
-        self.record = self._record
 
-    def _record(self, domain, qtype):
+    def record(self, domain, qtype):
         try:
             if not self.is_poisoned(domain):
                 record = self.local.record(domain, qtype)
                 if any([str(x.rdata) in self.bad_ip for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]):
-                    logger.warning('ip in bad_ip list, host: %s' % domain)
-                else:
-                    return record
-        except Exception:
-            logger.info('resolve %s via udp failed!' % domain)
+                    raise ValueError('ip in bad_ip list')
+                return record
+        except Exception as e:
+            logger.info('resolve %s via local failed! %r' % (domain, e))
         return self.remote.record(domain, qtype)
 
     def is_poisoned(self, domain):
         if not self.apfilter_list:
             return
-        if config.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True):
-            for apfilter in self.apfilter_list:
-                if apfilter and apfilter.match(domain, domain, True):
-                    return True
+        for apfilter in self.apfilter_list:
+            if apfilter and apfilter.match(domain, domain, True):
+                return True
 
     def resolve(self, host, dirty=False):
         try:
@@ -395,18 +371,15 @@ class Anti_GFW_Resolver(BaseResolver):
         except Exception:
             pass
         if not self.is_poisoned(host):
-            return _resolver(host)
+            try:
+                result = self.local.resolve(host, dirty)
+                if result:
+                    return result
+            except Exception as e:
+                logger.info('resolve %s via local failed! %r' % (host, e))
         if dirty:
             return []
-        try:
-            record = self.remote.record(host, 'ANY')
-            while len(record.rr) == 1 and record.rr[0].rtype == dnslib.QTYPE.CNAME:
-                record = self.remote.record(str(record.rr[0].rdata), 'ANY')
-            return [(2 if x.rtype == 1 else 10, str(x.rdata)) for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]
-        except Exception as e:
-            logger.warning('resolving %s failed: %r' % (host, e))
-            traceback.print_exc(file=sys.stderr)
-            return []
+        return self.remote.resolve(host)
 
 
 def get_resolver(localdns, remotedns=None, proxy=None, apfilter=None, bad_ip=None):
@@ -415,6 +388,7 @@ def get_resolver(localdns, remotedns=None, proxy=None, apfilter=None, bad_ip=Non
         return Resolver(localdns)
     else:
         return Anti_GFW_Resolver(localdns, remotedns, proxy, apfilter, bad_ip)
+
 
 if __name__ == '__main__':
     from apfilter import ap_filter
@@ -428,10 +402,12 @@ if __name__ == '__main__':
         for line in data.splitlines():
             if '||' in line:
                 apfilter.add(line)
+    print('test apfilter...')
     print(apfilter.match('twitter.com', 'twitter.com', True))
     print(apfilter.match('www.163.com', 'www.163.com', True))
-    resolver = get_resolver([('223.5.5.5', 53), ], [('8.8.8.8', 53), ], 'http://127.0.0.1:8119', [apfilter, ])
-    print(resolver.record('twitter.com', 'ANY'))
+
+    resolver = get_resolver([('119.29.29.29', 53), ], [('8.8.8.8', 53), ], 'http://127.0.0.1:8119', [apfilter, ])
+    # print(resolver.record('twitter.com', 'ANY'))
     print(resolver.resolve('twitter.com'))
     print(resolver.get_ip_address('twitter.com'))
     print(resolver.get_ip_address('www.163.com'))
