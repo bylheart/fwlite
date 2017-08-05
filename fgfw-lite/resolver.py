@@ -30,7 +30,7 @@ logger.addHandler(hdr)
 
 
 NUM_CACHE = 12
-NUM_BAD_CACHE = 2
+NUM_BAD_CACHE = 1
 CLEAN_INTV = 10
 
 
@@ -40,6 +40,8 @@ class DNS_Cache(object):
         self._bad_cache = [{} for _ in range(NUM_BAD_CACHE)]
         self._cache_iter = itertools.cycle(range(NUM_CACHE))
         self._cache_id = next(self._cache_iter)
+        self._flip_iter = itertools.cycle(range(6))
+        next(self._flip_iter)
         self._bad_cache_iter = itertools.cycle(range(NUM_BAD_CACHE))
         self._bad_cache_id = next(self._bad_cache_iter)
         t = Thread(target=self._sched_clean, args=(CLEAN_INTV, ))
@@ -71,9 +73,10 @@ class DNS_Cache(object):
     def _sched_clean(self, intv):
         while 1:
             time.sleep(intv)
-            self._cache_id = next(self._cache_iter)
+            if not next(self._flip_iter):
+                self._cache_id = next(self._cache_iter)
+                self._cache[self._cache_id] = {}
             self._bad_cache_id = next(self._bad_cache_iter)
-            self._cache[self._cache_id] = {}
             self._bad_cache[self._bad_cache_id] = {}
 
 
@@ -327,8 +330,8 @@ class TCP_Resolver(BaseResolver):
 class Resolver(BaseResolver):
     def __init__(self, dnsserver, timeout=3):
         self.dnsserver = tuple(dnsserver)
-        self.UDP_Resolver = UDP_Resolver(dnsserver, timeout)
-        self.TCP_Resolver = TCP_Resolver(dnsserver, timeout)
+        self.UDP_Resolver = UDP_Resolver(dnsserver, timeout=timeout)
+        self.TCP_Resolver = TCP_Resolver(dnsserver, timeout=timeout+1)
 
     def record(self, domain, qtype):
         record = self.UDP_Resolver.record(domain, qtype)
@@ -341,8 +344,8 @@ class Anti_GFW_Resolver(BaseResolver):
     def __init__(self, localdns, remotedns, proxy, apfilter_list, bad_ip):
         logger.debug('localdns: %r' % localdns)
         logger.debug('remotedns: %r' % remotedns)
-        self.local = Resolver(localdns)
-        self.remote = TCP_Resolver(remotedns, proxy)
+        self.local = Resolver(localdns, timeout=1)
+        self.remote = TCP_Resolver(remotedns, proxy, timeout=3)
         self.apfilter_list = apfilter_list
         self.bad_ip = bad_ip
 

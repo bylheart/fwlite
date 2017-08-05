@@ -30,7 +30,7 @@
     "./fgfw-lite/lang/zh_CN.py": "8d266de5f176f2946ac9c7baed83be5b5fed1d0c181db3fe7c5b15f6ff3627d1",
     "./fgfw-lite/parent_proxy.py": "eb8bc21da846321571d1b0871373e7c0fc028cae4176c1e68002cc8a90130575",
     "./fgfw-lite/redirector.py": "8d4304c460da37c607f99e28f50b92f5cf0f8a7af783d0b8f675f03ca696422a",
-    "./fgfw-lite/resolver.py": "5f2548908e460bf0fee69bf108ae3c39e21a94eeaa7ede9b68f8f172fc7234c1",
+    "./fgfw-lite/resolver.py": "d391832183b3bfe9c7ffa9fedd5c0d968dd0a6fd9120fea54080e71d2d9e19c4",
     "./fgfw-lite/singleton.py": "2fc7ed8cfc47b001053a257f9e8ad521edcef446776adaee022122eb6dbda152",
     "./fgfw-lite/sssocket.py": "46c72237545119799463dc691645e63abcd5bed7241a85e4fe678d4f0d1d0705",
     "./fgfw-lite/tcp_tunnel.py": "3065913992640abfe33146621e95bcfe35085c4a071149c19e48304a9d138c48",
