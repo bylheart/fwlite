@@ -16,7 +16,7 @@ if sys.version_info > (3, 0):
     raw_input = input
 
 if raw_input('update? y/n: ').lower().startswith('y'):
-    updatelst = [('https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt', './fgfw-lite/gfwlist.txt'),
+    updatelst = [('https://raw.githubusercontent.com/v3aqb/gfwlist/master/gfwlist.txt', './fgfw-lite/gfwlist.txt'),
                  ]
     try:
         import urllib2
