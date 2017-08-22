@@ -242,8 +242,8 @@ class ProxyHandler(HTTPRequestHandler):
         self._proxylist = None
         self.remotesoc = None
         self.retryable = True
-        self.rbuffer = deque()  # client read buffer: store request body, ssl handshake package for retry. no pop method.
-        self.wbuffer = deque()  # client write buffer: read only once, not used in connect method
+        self.rbuffer = []  # client read buffer: store request body, ssl handshake package for retry. no pop method.
+        self.wbuffer = []  # client write buffer: read only once, not used in connect method
         self.wbuffer_size = 0
         self.shortpath = None
         self.failed_parents = []
@@ -414,7 +414,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.set_timeout()
             self.remotesoc = self._http_connect_via_proxy(self.requesthost, iplist)
             self.remotesoc.settimeout(self.rtimeout)
-            self.wbuffer = deque()
+            self.wbuffer = []
             self.wbuffer_size = 0
             # prep request header
             s = []
@@ -486,7 +486,7 @@ class ProxyHandler(HTTPRequestHandler):
                         self.remotesoc.sendall(data)
                         if req_body_len > 102400:
                             self.retryable = False
-                            self.rbuffer = deque()
+                            self.rbuffer = []
                 elif content_length > 0:
                     if content_length > 102400:
                         self.retryable = False
@@ -736,7 +736,7 @@ class ProxyHandler(HTTPRequestHandler):
                 self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
                 return
         # not retryable, clear rbuffer
-        self.rbuffer = deque()
+        self.rbuffer = []
         self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
         self.pproxy.log(self.requesthost[0], rtime)
         self.logger.debug('%s response time %.3fs' % (self.requesthost[0], rtime))
@@ -800,7 +800,7 @@ class ProxyHandler(HTTPRequestHandler):
         else:
             if self.wbuffer:
                 self._wfile_write(b''.join(self.wbuffer))
-                self.wbuffer = deque()
+                self.wbuffer = []
             if data:
                 self._wfile_write(data)
 
