@@ -69,11 +69,11 @@ if sys.platform.startswith('win'):
     sys.path += glob.glob('%s/Python27/*.egg' % WORKINGDIR)
 
 import config
-from util import parse_hostport, is_connection_dropped, sizeof_fmt
+from util import parse_hostport, is_connection_dropped, sizeof_fmt, extract_server_name
 from connection import create_connection
 from resolver import TCP_Resolver
 from parent_proxy import ParentProxy
-from httputil import read_response_line, read_headers, read_header_data, httpconn_pool
+from httputil import read_response_line, read_headers, read_header_data, httpconn_pool, parse_headers
 try:
     import urllib.request as urllib2
     import urllib.parse as urlparse
@@ -620,20 +620,87 @@ class ProxyHandler(HTTPRequestHandler):
 
     def do_CONNECT(self):
         self.close_connection = 1
-        host, _, port = self.path.partition(':')
-        self.requesthost = (host, int(port))
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
 
-        if 'Host' not in self.headers:
-            self.headers['Host'] = self.path
+        self.wfile.write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
+
+        data = self.connection_recv(4)
+
+        if self.path.endswith(':80') and data in (b'GET ', b'POST'):
+            # it's a http request, start parsing
+            request_line = data + self.rfile.readline()
+            self.requestline = request_line.rstrip('\r\n')
+            words = self.requestline.split()
+            if len(words) == 3:
+                command, path, version = words
+                if version[:5] != 'HTTP/':
+                    return
+                try:
+                    base_version_number = version.split('/', 1)[1]
+                    version_number = base_version_number.split(".")
+                    # RFC 2145 section 3.1 says there can be only one "." and
+                    #   - major and minor numbers MUST be treated as
+                    #      separate integers;
+                    #   - HTTP/2.4 is a lower version than HTTP/2.13, which in
+                    #      turn is lower than HTTP/12.3;
+                    #   - Leading zeros MUST be ignored by recipients.
+                    if len(version_number) != 2:
+                        raise ValueError
+                    version_number = int(version_number[0]), int(version_number[1])
+                except (ValueError, IndexError):
+                    return
+                if version_number >= (1, 1) and self.protocol_version >= "HTTP/1.1":
+                    self.close_connection = 0
+            else:
+                return
+            self.command, self.path, self.request_version = command, path, version
+
+            # get headers
+            header_data = []
+            while True:
+                line = self.rfile_readline()
+                header_data.append(line)
+                if line in (b'\r\n', b'\n', b'\r'):  # header ends with a empty line
+                    break
+                if not line:
+                    raise IOError(0, 'remote socket closed')
+            self.header_data = b''.join(header_data)
+            self.headers = parse_headers(self.header_data)
+
+            conntype = self.headers.get('Connection', "")
+            if conntype.lower() == 'close':
+                self.close_connection = 1
+            elif (conntype.lower() == 'keep-alive' and
+                  self.protocol_version >= "HTTP/1.1"):
+                self.close_connection = 0
+            return self.do_GET()
+
+        elif data.startswith(b'\x16\x03'):
+            # parse SNI
+            data = data + self.connection_recv(8196)
+            try:
+                server_name = extract_server_name(data)
+                self.logger.debug('sni: %s' % server_name)
+                self.logger.debug('path: %s' % self.path)
+                if server_name and server_name not in self.path:
+                    host, _, port = self.path.partition(':')
+                    self.path = '%s:%s' % (server_name, port)
+            except Exception:
+                pass
+
+        host, _, port = self.path.partition(':')
+        self.requesthost = (host, int(port))
+
+        self.rbuffer.append(data)
+
         # redirector
         new_url = self.conf.PARENT_PROXY.redirect(self)
         if new_url:
             self.logger.debug('redirect %s, %s %s' % (new_url, self.command, self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
                 self.logger.info('{} {} {} send error {}'.format(self.command, self.shortpath or self.path, self.client_address[0], new_url))
-                return self.send_error(int(new_url))
+                return
             elif new_url.lower() in ('reset', 'adblock', 'return'):
                 self.logger.info('{} {} {} reset'.format(self.command, self.shortpath or self.path, self.client_address[0]))
                 return
@@ -651,10 +718,9 @@ class ProxyHandler(HTTPRequestHandler):
             if ip_address(self.client_address[0]).is_loopback:
                 if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
                     # prevent loop
-                    return self.send_error(403)
+                    return
             else:
-                return self.send_error(403, 'Go fuck yourself!')
-        self.wfile.write(self.protocol_version.encode() + b" 200 Connection established\r\n\r\n")
+                return
         self._do_CONNECT()
 
     def _do_CONNECT(self, retry=False):
