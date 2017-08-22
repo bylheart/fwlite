@@ -375,7 +375,7 @@ class Anti_GFW_Resolver(BaseResolver):
             pass
         if not self.is_poisoned(host):
             try:
-                result = self.local.resolve(host, dirty)
+                result = _resolver(host)
                 if result:
                     return result
             except Exception as e:
