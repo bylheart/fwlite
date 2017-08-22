@@ -2,7 +2,7 @@
 
 A anti-censorship HTTP proxy with builtin shadowsocks support.
 
-Current Version: 4.19
+Current Version: 4.19.1
 
 Tested on Windows 7 and Windows 10.
 
@@ -26,8 +26,8 @@ or this:
     proxy1 = http://user:pass@127.0.0.1:8087
     proxy2 = socks5://127.0.0.1:1080
 
-    # connect to 'http://127.0.0.1:8087' via 'socks5://127.0.0.1:1080'
-    proxy3 = http://127.0.0.1:8087|socks5://127.0.0.1:1080
+    # connect to 'http://server:8087' via 'socks5://127.0.0.1:1080'
+    proxy3 = http://server:8087|socks5://127.0.0.1:1080
 
 ####Set browser
 

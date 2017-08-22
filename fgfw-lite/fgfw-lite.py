@@ -37,7 +37,6 @@ except ImportError:
 except TypeError:
     gevent.monkey.patch_all()
     sys.stderr.write('Warning: Please update gevent to the latest 1.0 version!\n')
-from collections import deque
 import subprocess
 import shlex
 import time
@@ -97,7 +96,7 @@ except ImportError:
     def on_finish(hdlr):
         pass
 
-__version__ = '4.18'
+__version__ = '4.19.1'
 
 NetWorkIOError = (IOError, OSError)
 DEFAULT_TIMEOUT = 5
