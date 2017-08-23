@@ -90,13 +90,16 @@ def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
         if isinstance(result, Exception):
             raise result
         return result
-    try:
-        result = socket.getaddrinfo(host, port, family, socktype, proto, flags)
-        dns_cache.cache(host, (port, family, socktype, proto, flags), result)
-        return result
-    except Exception as e:
-        dns_cache.cache(host, (port, family, socktype, proto, flags), e)
-        raise e
+    exp = None
+    for _ in range(2):
+        try:
+            result = socket.getaddrinfo(host, port, family, socktype, proto, flags)
+            dns_cache.cache(host, (port, family, socktype, proto, flags), result)
+            return result
+        except Exception as e:
+            exp = e
+    dns_cache.cache(host, (port, family, socktype, proto, flags), exp)
+    raise exp
 
 
 def _resolver(host):

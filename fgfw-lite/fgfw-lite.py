@@ -32,6 +32,7 @@ try:
     import gevent.queue
     import gevent.monkey
     gevent.monkey.patch_all(subprocess=True, Event=True)
+    gevent.get_hub().threadpool_size = 20
 except ImportError:
     sys.stderr.write('Warning: gevent not found! Using thread instead...\n')
 except TypeError:
