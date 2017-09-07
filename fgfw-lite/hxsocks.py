@@ -105,7 +105,7 @@ class _hxssocket(object):
         self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
         self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [DEFAULT_METHOD])[0].lower()
         self.hash_algo = urlparse.parse_qs(self.hxsServer.parse.query).get('hash', [DEFAULT_HASH])[0].upper()
-        self.serverid = (self.hxsServer.username, self.hxsServer.hostname)
+        self.serverid = (self.hxsServer.username, self.hxsServer.hostname, self.hxsServer.port)
         self.cipher = None
         self._data_bak = None
         self.readable = 0
@@ -213,13 +213,14 @@ class _hxssocket(object):
                         signature = data.read(siglen)
 
                         # TODO: ask user if a certificate should be accepted or not.
-                        if host not in known_hosts:
-                            logger.info('hxs: server %s new cert %s saved.' % (host, hashlib.sha256(server_cert).hexdigest()[:8]))
-                            with open('./.hxs_known_hosts/' + host + '.cert', 'wb') as f:
+                        server_id = '%s_%d' % (host, port)
+                        if server_id not in known_hosts:
+                            logger.info('hxs: server %s new cert %s saved.' % (server_id, hashlib.sha256(server_cert).hexdigest()[:8]))
+                            with open('./.hxs_known_hosts/' + server_id + '.cert', 'wb') as f:
                                 f.write(server_cert)
-                                known_hosts[host] = server_cert
-                        elif known_hosts[host] != server_cert:
-                            logger.error('hxs: server %s certificate mismatch! PLEASE CHECK!' % host)
+                                known_hosts[server_id] = server_cert
+                        elif known_hosts[server_id] != server_cert:
+                            logger.error('hxs: server %s certificate mismatch! PLEASE CHECK!' % server_id)
                             raise OSError(0, 'hxs: bad certificate')
                         if auth == hmac.new(psw.encode(), pubk + server_key + usn.encode(), hashlib.sha256).digest():
                             if ECC.verify_with_pub_key(server_cert, auth, signature, self.hash_algo):
