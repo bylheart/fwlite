@@ -145,7 +145,7 @@ class BaseResolver(object):
 
     def record(self, host, qtype):
         logger.debug('entering %s.record()... %r' % (self.__class__.__name__, self))
-        result = dns_cache.query(host, (qtype, self.dnsserver))
+        result = dns_cache.query(host, (self.__class__.__name__, qtype, self.dnsserver))
         if result:
             if isinstance(result, Exception):
                 raise result
@@ -221,103 +221,27 @@ class MEvent(object):
 class UDP_Resolver(BaseResolver):
     def __init__(self, dnsserver, timeout=3):
         self.dnsserver = tuple(dnsserver)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.timeout = timeout
-        self.event_dict = defaultdict(MEvent)
-        t = Thread(target=self.daemon)
-        t.daemon = True
-        t.start()
+        self.timeout = timeout  # ignored for now
 
     def _record(self, domain, qtype):
         if isinstance(qtype, str):
             request = dnslib.DNSRecord.question(domain, qtype=qtype)
         else:
             request = dnslib.DNSRecord(q=dnslib.DNSQuestion(domain, qtype))
-        while request.header.id in self.event_dict:
-            if isinstance(qtype, str):
-                request = dnslib.DNSRecord.question(domain, qtype=qtype)
-            else:
-                request = dnslib.DNSRecord(q=dnslib.DNSQuestion(domain, qtype))
-        data = request.pack()
-        for dnsserver in self.dnsserver:
-            self.sock.sendto(data, dnsserver)
-        try:
-            result = self.event_dict[request.header.id].wait(self.timeout)
-            del self.event_dict[request.header.id]
-            assert isinstance(result, dnslib.DNSRecord)
-        except Exception:
-            traceback.print_exc(file=sys.stderr)
-            sys.stderr.flush()
-        if result:
-            return result
-        raise IOError(0, 'udp_dns_record %s failed.' % domain)
-
-    def daemon(self):
-        while 1:
-            try:
-                (ins, _, _) = select.select([self.sock], [], [])
-                reply_data, reply_address = self.sock.recvfrom(8192)
-                record = dnslib.DNSRecord.parse(reply_data)
-                if record.header.id in self.event_dict:
-                    self.event_dict[record.header.id].set(record)
-                else:
-                    logger.debug('unexpected dns record:\n%s' % record)
-            except Exception:
-                pass
-
-
-class R_UDP_Resolver(BaseResolver):
-    def __init__(self, dnsserver, timeout=1):
-        # dnsserver should not be inside GFW
-        self.dnsserver = tuple(dnsserver)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.timeout = timeout
-        self.event_dict = defaultdict(MEvent)
-        t = Thread(target=self.daemon)
-        t.daemon = True
-        t.start()
-
-    def _record(self, domain, qtype):
-        if isinstance(qtype, str):
-            request = dnslib.DNSRecord.question(domain, qtype=qtype)
-        else:
-            request = dnslib.DNSRecord(q=dnslib.DNSQuestion(domain, qtype))
-        while request.header.id in self.event_dict:
-            if isinstance(qtype, str):
-                request = dnslib.DNSRecord.question(domain, qtype=qtype)
-            else:
-                request = dnslib.DNSRecord(q=dnslib.DNSQuestion(domain, qtype))
-        data = request.pack()
-        self.sock.sendto(data, self.dnsserver)
-        flag = 1
-        result = None
-        while 1:
-            try:
-                flag = self.event_dict[request.header.id].wait(self.timeout)
-                assert isinstance(flag, dnslib.DNSRecord)
-            except Exception as e:
-                if not isinstance(e, AssertionError):
-                    traceback.print_exc(file=sys.stderr)
-                    sys.stderr.flush()
-                del self.event_dict[request.header.id]
-                if not result:
-                    raise IOError(0, 'reliable udp resolve failed! %s' % domain)
-                return result
-            else:
-                result = flag
-
-    def daemon(self):
-        while 1:
-            try:
-                (ins, _, _) = select.select([self.sock], [], [])
-                reply_data, reply_address = self.sock.recvfrom(8192)
-                record = dnslib.DNSRecord.parse(reply_data)
-                if (reply_address, record.header.id) in self.event_dict:
-                    self.event_dict[(reply_address, record.header.id)].set(record)
-                else:
-                    logger.warning('unexpected dns record:\n%s' % record)
-            except Exception:
-                pass
+        query_data = request.pack()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        exp = None
+        for i in range(2):
+            for server in self.dnsserver:
+                try:
+                    sock.settimeout(i+1)
+                    sock.sendto(query_data, server)
+                    reply_data, reply_address = sock.recvfrom(8192)
+                    record = dnslib.DNSRecord.parse(reply_data)
+                    return record
+                except Exception as e:
+                    exp = e
+        raise exp
 
 
 class TCP_Resolver(BaseResolver):
@@ -327,7 +251,13 @@ class TCP_Resolver(BaseResolver):
         self.timeout = timeout
 
     def _record(self, domain, qtype):
-        return tcp_dns_record(domain, qtype, self.dnsserver[0], self.proxy, timeout=self.timeout)
+        exp = None
+        for server in self.dnsserver:
+            try:
+                return tcp_dns_record(domain, qtype, self.dnsserver[0], self.proxy, timeout=self.timeout)
+            except Exception as e:
+                exp = e
+        raise exp
 
 
 class Resolver(BaseResolver):
@@ -337,8 +267,11 @@ class Resolver(BaseResolver):
         self.TCP_Resolver = TCP_Resolver(dnsserver, timeout=timeout+1)
 
     def record(self, domain, qtype):
-        record = self.UDP_Resolver.record(domain, qtype)
-        if record and record.header.tc == 1:
+        try:
+            record = self.UDP_Resolver.record(domain, qtype)
+            if record and record.header.tc == 1:
+                raise ValueError('tcp required')
+        except Exception:
             record = self.TCP_Resolver.record(domain, qtype)
         return record
 
@@ -378,7 +311,7 @@ class Anti_GFW_Resolver(BaseResolver):
             pass
         if not self.is_poisoned(host):
             try:
-                result = _resolver(host)
+                result = self.local.resolve(host)
                 if result:
                     return result
             except Exception as e:

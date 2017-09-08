@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # coding: UTF-8
 import socket
-import ssl
 import base64
 import struct
 import logging
 import random
-import time
 
 from parent_proxy import ParentProxy
 from httputil import read_response_line, read_header_data
@@ -42,14 +40,15 @@ def _create_connection(address, timeout=None, source_address=None, iplist=None):
     err = None
     if not iplist:
         iplist = resolver(host)
+
+    if not iplist:
+        raise socket.error("getaddrinfo returns an empty list")
+
     if len(iplist) > 1:
         random.shuffle(iplist)
         # ipv4 goes first
         iplist = sorted(iplist, key=lambda item: item[0])
-        if timeout:
-            timeout = max(timeout / 2, 2)
 
-    t = time.time() - 0.2
     for res in iplist:
         af, addr = res
         sock = None
@@ -66,14 +65,7 @@ def _create_connection(address, timeout=None, source_address=None, iplist=None):
             err = _
             if sock is not None:
                 sock.close()
-        if timeout and time.time() - t > timeout:
-            if err:
-                raise err
-            raise socket.error("connect timed out")
-    if err is not None:
-        raise err
-    else:
-        raise socket.error("getaddrinfo returns an empty list")
+    raise err
 
 
 def do_tunnel(soc, netloc, pp):
