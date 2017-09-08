@@ -127,6 +127,11 @@ class get_proxy(object):
         if self.ignore.match(uri, host):
             return None
 
+        if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True) and\
+                uri.startswith('http://') and\
+                self.gfwlist.match('http://%s/' % host, host):
+            return True
+
         if self.ifhost_in_region(host, str(ip)):
             return False
 
@@ -147,7 +152,7 @@ class get_proxy(object):
             decide which parentproxy to use.
             url:  'www.google.com:443'
                   'http://www.inxian.com'
-            host: ('www.google.com', 443) (no port number is allowed)
+            host: ('www.google.com', 443) (without port number is allowed)
             level: 0 -- direct
                    1 -- auto:        proxy if local_rule, direct if ip in region or override, proxy if gfwlist
                    2 -- encrypt all: proxy if local_rule, direct if ip in region or override, proxy if gfwlist or not https
