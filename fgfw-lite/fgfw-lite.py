@@ -46,7 +46,6 @@ import errno
 import atexit
 import base64
 import json
-import ftplib
 import random
 import select
 import socket
@@ -69,7 +68,7 @@ if sys.platform.startswith('win'):
     sys.path += glob.glob('%s/Python27/*.egg' % WORKINGDIR)
 
 import config
-from util import parse_hostport, is_connection_dropped, sizeof_fmt, extract_server_name
+from util import parse_hostport, is_connection_dropped, extract_server_name
 from connection import create_connection
 from resolver import TCP_Resolver
 from parent_proxy import ParentProxy
@@ -293,7 +292,7 @@ class ProxyHandler(HTTPRequestHandler):
         if isinstance(self.path, bytes):
             self.path = self.path.decode('latin1')
         if self.path.lower().startswith('ftp://'):
-            return self.do_FTP()
+            return self.send_error(400)
 
         if self.path == '/pac':
             if self.headers['Host'].startswith(self.conf.local_ip):
@@ -894,67 +893,6 @@ class ProxyHandler(HTTPRequestHandler):
     def _connect_via_proxy(self, netloc, iplist=None, tunnel=False):
         self.on_conn_log()
         return create_connection(netloc, ctimeout=self.ctimeout, iplist=iplist, parentproxy=self.pproxy, tunnel=tunnel)
-
-    def do_FTP(self):
-        self.logger.info('{} {}'.format(self.command, self.path))
-        # fish out user and password information
-        p = urlparse.urlparse(self.path, 'http')
-        user, passwd = p.username or "anonymous", p.password or None
-        if self.command == "GET":
-            if p.path.endswith('/'):
-                return self.do_FTP_LIST(p.netloc, urlunquote(p.path), user, passwd)
-            else:
-                try:
-                    ftp = ftplib.FTP(p.netloc)
-                    ftp.login(user, passwd)
-                    lst = []
-                    response = ftp.retrlines("LIST %s" % urlunquote(p.path), lst.append)
-                    if not lst:
-                        return self.send_error(504, response)
-                    if len(lst) != 1 or lst[0].startswith('d'):
-                        return self.redirect('%s/' % self.path)
-                    self.send_response(200)
-                    self.send_header('Content-Length', lst[0].split()[4])
-                    self.send_header('Connection', 'keep_alive')
-                    self.end_headers()
-                    ftp.retrbinary("RETR %s" % urlunquote(p.path), self._wfile_write, self.bufsize)
-                    ftp.quit()
-                except Exception as e:  # Possibly no such file
-                    self.logger.warning("FTP Exception: %r" % e)
-                    self.send_error(504, repr(e))
-        else:
-            self.send_error(501)
-
-    def do_FTP_LIST(self, netloc, path, user, passwd):
-        if not path.endswith('/'):
-            self.path += '/'
-        lst = []
-        table = '<table class="content"><thead><tr><th align="left">Content</th><th align="right">Size</th><th align="right">Modify</th></tr></thead><tbody>'
-        try:
-            ftp = ftplib.FTP(netloc)
-            ftp.login(user, passwd)
-            response = ftp.retrlines("LIST %s" % path, lst.append)
-            ftp.quit()
-            for line in lst:
-                self.logger.debug(line)
-                line_split = line.split(None, 8)
-                if line.startswith('d'):
-                    line_split[8] += '/'
-                table += '<tr><td align="left"><a href="%s%s">%s</a></td><td align="right">%s</td><td align="right">%s %s %s</td></tr>\r\n' % (
-                    self.path, urlquote(line_split[8]), line_split[8], line_split[4] if line.startswith('d') else sizeof_fmt(int(line_split[4])), line_split[5], line_split[6], line_split[7])
-            table += '<tr><td align="left">================</td><td align="right">==========</td><td align="right">=============</td></tr></tbody></table>\r\n'
-            table += '<p>%s</p>' % response
-        except Exception as e:
-            self.logger.warning("FTP Exception: %r" % e)
-            self.send_error(504, repr(e))
-        else:
-            msg = ['<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN"><html>\n',
-                   '<head><style type="text/css">.content tr{font-family:Consolas,"Droid Sans Mono", Menlo, Monospace;}</style></head>',
-                   "<title>Directory listing for %s</title>\n" % path,
-                   "<body>\n<h2>Directory listing for %s</h2>\n<hr>\n" % path,
-                   table,
-                   "<hr>\n</body>\n</html>\n"]
-            self.write(200, ''.join(msg), 'text/html')
 
     def api(self, parse):
         '''
