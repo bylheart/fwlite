@@ -1218,20 +1218,6 @@ def main():
     t.daemon = True
     t.start()
 
-    if conf.userconf.dgetbool('dns', 'enable', False):
-        try:
-            listen = parse_hostport(conf.userconf.dget('dns', 'listen', '127.0.0.1:53'))
-            from dnsserver import Resolver, UDPDNSServer, DNSHandler, TCPDNSServer
-            r = Resolver(conf.resolver)
-            server = UDPDNSServer(listen, DNSHandler, r)
-            t2 = Thread(target=server.serve_forever)
-            t2.start()
-            server = TCPDNSServer(listen, DNSHandler, r)
-            t2 = Thread(target=server.serve_forever)
-            t2.start()
-        except Exception as e:
-            logger.error(repr(e))
-            logger.error(traceback.format_exc() + '\n')
     time.sleep(3)
     conf.stdout()
     t.join()
