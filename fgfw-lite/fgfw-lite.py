@@ -191,7 +191,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             self.traffic_count[0] += len(data)
             return data
         except NetWorkIOError as e:
-            raise ClientError(e.errno, e.strerror)
+            raise ClientError(e.errno, e.strerror or repr(e))
 
     def rfile_read(self, size=-1):
         try:
@@ -199,7 +199,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             self.traffic_count[0] += len(data)
             return data
         except NetWorkIOError as e:
-            raise ClientError(e.errno, e.strerror)
+            raise ClientError(e.errno, e.strerror or repr(e))
 
     def rfile_readline(self, size=-1):
         try:
@@ -352,7 +352,6 @@ class ProxyHandler(HTTPRequestHandler):
             self.requesthost = parse_hostport(self.headers['Host'], 80)
 
         # self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
-
         self.rip = self.conf.resolver.get_ip_address(self.requesthost[0])
 
         if self.rip.is_loopback:
