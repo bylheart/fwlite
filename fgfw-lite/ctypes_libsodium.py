@@ -25,8 +25,8 @@ from __future__ import absolute_import, division, print_function, \
 
 import os
 import logging
-from ctypes import CDLL, c_char_p, c_int, c_ulonglong, byref, \
-    create_string_buffer, c_void_p, c_ulong
+from ctypes import CDLL, c_char_p, c_int, c_ulonglong, c_uint, byref, \
+    create_string_buffer, c_void_p
 
 logger = logging.getLogger('ctypes_libsodium')
 logger.setLevel(logging.INFO)
@@ -77,11 +77,14 @@ def load_libsodium():
 
     try:
         libsodium.crypto_stream_chacha20_ietf_xor_ic.restype = c_int
-        libsodium.crypto_stream_chacha20_ietf_xor_ic.argtypes = (c_void_p, c_char_p,
-                                                                 c_ulonglong,
-                                                                 c_char_p, c_ulong,
-                                                                 c_char_p)
-    except Exception:
+        libsodium.crypto_stream_chacha20_ietf_xor_ic.argtypes = (
+            c_void_p, c_char_p,
+            c_ulonglong,
+            c_char_p,
+            c_uint,  # uint32_t initial counter
+            c_char_p
+        )
+    except Exception as e:
         pass
 
     libsodium.sodium_init()
