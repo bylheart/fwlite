@@ -739,7 +739,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.logger.debug('create connection')
         try:
             self.remotesoc = self._connect_via_proxy(self.requesthost, iplist, tunnel=True)
-            self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            # self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
             self.logger.warning('%s %s via %s failed on connect! %r' % (self.command, self.path, self.ppname, e))
             self.logger.error(traceback.format_exc())
