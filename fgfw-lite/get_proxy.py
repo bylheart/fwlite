@@ -133,7 +133,7 @@ class get_proxy(object):
             return True
 
         if self.ifhost_in_region(host, str(ip)):
-            return False
+            return None
 
         if level == 2 and uri.startswith('http://'):
             return True
