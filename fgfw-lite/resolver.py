@@ -4,13 +4,11 @@ import sys
 import dnslib
 import struct
 import socket
-import select
 import traceback
 import logging
 import time
 import itertools
 from threading import Event, Thread
-from collections import defaultdict
 
 try:
     from ipaddr import IPAddress as ip_address
@@ -85,26 +83,19 @@ dns_cache = DNS_Cache()
 
 def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
     logger.debug('entering getaddrinfo()')
-    result = dns_cache.query(host, (port, family, socktype, proto, flags))
-    if result:
-        if isinstance(result, Exception):
-            raise result
-        return result
     exp = None
     for _ in range(2):
         try:
             result = socket.getaddrinfo(host, port, family, socktype, proto, flags)
-            dns_cache.cache(host, (port, family, socktype, proto, flags), result)
             return result
         except Exception as e:
             exp = e
-    dns_cache.cache(host, (port, family, socktype, proto, flags), exp)
     raise exp
 
 
-def _resolver(host):
+def _resolver(host, port=0):
     logger.debug('entering _resolver()')
-    return [(i[0], i[4][0]) for i in getaddrinfo(host, 0)]
+    return [(i[0], i[4][0]) for i in getaddrinfo(host, port)]
 
 
 def _udp_dns_record(host, qtype, server, timeout=3):
@@ -121,22 +112,29 @@ def _udp_dns_record(host, qtype, server, timeout=3):
     return record
 
 
-def tcp_dns_record(host, qtype, server, proxy, timeout=3):
+def tcp_dns_record(host, qtype, server, proxy, timeout=2):
     if isinstance(qtype, str):
         query = dnslib.DNSRecord.question(host, qtype=qtype)
     else:
         query = dnslib.DNSRecord(q=dnslib.DNSQuestion(host, qtype))
     query_data = query.pack()
-    sock = create_connection(server, ctimeout=3, parentproxy=proxy, tunnel=True)
-    data = struct.pack('>h', len(query_data)) + query_data
-    sock.sendall(bytes(data))
-    sock.settimeout(timeout)
-    rfile = sock.makefile('rb')
-    reply_data_length = rfile.read(2)
-    reply_data = rfile.read(struct.unpack('>h', reply_data_length)[0])
-    record = dnslib.DNSRecord.parse(reply_data)
-    sock.close()
-    return record
+    exp = None
+    for _ in range(2):
+        try:
+            sock = create_connection(server, ctimeout=3, parentproxy=proxy, tunnel=True)
+            data = struct.pack('>h', len(query_data)) + query_data
+            sock.sendall(bytes(data))
+            sock.settimeout(timeout)
+            rfile = sock.makefile('rb')
+            reply_data_length = rfile.read(2)
+            reply_data = rfile.read(struct.unpack('>h', reply_data_length)[0])
+            record = dnslib.DNSRecord.parse(reply_data)
+            sock.close()
+            return record
+        except Exception as e:
+            exp = e
+    if exp:
+        raise exp
 
 
 class BaseResolver(object):
@@ -275,6 +273,13 @@ class Resolver(BaseResolver):
             record = self.TCP_Resolver.record(domain, qtype)
         return record
 
+    def resolve(self, host, dirty=False):
+        try:
+            ip = ip_address(host)
+            return [(2 if ip._version == 4 else 10, host), ]
+        except Exception:
+            return _resolver(host)
+
 
 class Anti_GFW_Resolver(BaseResolver):
     def __init__(self, localdns, remotedns, proxy, apfilter_list, bad_ip):
@@ -311,11 +316,12 @@ class Anti_GFW_Resolver(BaseResolver):
             pass
         if not self.is_poisoned(host):
             try:
-                result = self.local.resolve(host)
+                result = _resolver(host)
                 if result:
                     return result
             except Exception as e:
                 logger.info('resolve %s via local failed! %r' % (host, e))
+                return self.remote.resolve(host)
         if dirty:
             return []
         return self.remote.resolve(host)
