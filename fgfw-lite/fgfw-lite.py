@@ -593,7 +593,11 @@ class ProxyHandler(HTTPRequestHandler):
             self.pproxy.log(self.requesthost[0], rtime)
             if remote_close or is_connection_dropped([self.remotesoc]):
                 try:
-                    self.remotesoc.close()
+                    if hasattr(self.remotesoc, 'pooled'):
+                        if not self.remotesoc.pooled:
+                            self.remotesoc.close()
+                    else:
+                        self.remotesoc.close()
                 except Exception:
                     pass
             else:
@@ -687,8 +691,7 @@ class ProxyHandler(HTTPRequestHandler):
             except Exception:
                 pass
 
-        host, _, port = self.path.partition(':')
-        self.requesthost = (host, int(port))
+        self.requesthost = parse_hostport(self.path)
 
         self.rbuffer.append(data)
 
@@ -781,6 +784,7 @@ class ProxyHandler(HTTPRequestHandler):
                     self.logger.debug('read from remote(0)')
                     data = self.remotesoc.recv(self.bufsize)
                     if not data:  # remote connection closed
+                        # gonna retry, do not close connection
                         self.logger.debug('remote closed(0)')
                         reason = 'remote closed'
                         fds.remove(self.remotesoc)
@@ -842,12 +846,8 @@ class ProxyHandler(HTTPRequestHandler):
             if e.args[0] in (errno.EBADF,):
                 return
         finally:
-            for sock in [self.connection, self.remotesoc]:
-                try:
-                    sock.close()
-                except NetWorkIOError:
-                    pass
-            self.remotesoc = None
+            if hasattr(self.remotesoc, 'pooled') and self.remotesoc.pooled:
+                self.remotesoc = None
 
     def on_conn_log(self):
         self.logmethod('{} {} via {}. {}{}'.format(self.command, self.shortpath or self.path, self.ppname, 'slow ' if self.slow else '', self.client_address[0]))

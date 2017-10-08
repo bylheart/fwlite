@@ -220,6 +220,7 @@ class Encryptor(object):
             iv = buf[:self.iv_len]
             IV_CHECKER.check(self.__key, iv)
             self.decipher = get_cipher(self.__key, self.method, 0, iv)
+            self.decipher_iv = iv
             del self.__key
             buf = buf[self.iv_len:]
             if len(buf) == 0:

@@ -53,7 +53,15 @@ def parse_headers(data):
 
 
 class httpconn_pool(object):
-    def __init__(self, timeout=300):
+    logger = logging.getLogger('httpconn_pool')
+    logger.setLevel(logging.INFO)
+    hdr = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
+                                  datefmt='%H:%M:%S')
+    hdr.setFormatter(formatter)
+    logger.addHandler(hdr)
+
+    def __init__(self, timeout=60):
         self.POOL = defaultdict(deque)  # {upstream_name: [(soc, ppname), ...]}
         self.socs = {}  # keep track of sock info
         self.intv = 10
@@ -62,13 +70,6 @@ class httpconn_pool(object):
         self.timerwheel_iter = itertools.cycle(range(self.count))
         self.timerwheel_index = next(self.timerwheel_iter)
         self.lock = RLock()
-        self.logger = logging.getLogger('httpconn_pool')
-        self.logger.setLevel(logging.INFO)
-        hdr = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
-                                      datefmt='%H:%M:%S')
-        hdr.setFormatter(formatter)
-        self.logger.addHandler(hdr)
 
         t = Thread(target=self._purge)
         t.daemon = True

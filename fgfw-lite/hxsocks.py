@@ -77,7 +77,7 @@ POOL = httpconn_pool()
 def hxssocket(hxsServer, ctimeout=4, parentproxy=None):
     if not isinstance(hxsServer, ParentProxy):
         hxsServer = ParentProxy(hxsServer, hxsServer)
-    result = POOL.get(hxsServer.parse.hostname)
+    result = POOL.get(hxsServer.name)
     if result:
         logger.debug('hxsocks reusing connection, %s %d' % (result[1], result[0].pool_count))
         result[0].pooled = 0
@@ -111,6 +111,7 @@ class _hxssocket(object):
         self.readable = 0
         self.writeable = 0
         self.pooled = 0
+        self.pooled_at = 0
         self.pool_count = 0
         self.pre_close = 0
 
@@ -255,7 +256,6 @@ class _hxssocket(object):
                     logger.debug('timed out')
                     if local in fds:
                         fds.remove(local)
-                        local.shutdown(socket.SHUT_RD)
                         if self.writeable:
                             padding_len = random.randint(8, 255)
                             data = chr(padding_len).encode('latin1') + b'\x00' * padding_len
@@ -328,7 +328,8 @@ class _hxssocket(object):
                 self.pooled = 1
                 self.fileno = self._sock.fileno
                 self.pool_count += 1
-                POOL.put(self.hxsServer.parse.hostname, self, self.hxsServer.name)
+                self.pooled_at = time.time()
+                POOL.put(self.hxsServer.name, self, self.hxsServer.name)
                 logger.debug('hxsocks pooled. %s' % self.hxsServer.name)
                 return
             logger.debug('hxsocks closed, readable %s, writeable %s, closed %s' % (self.readable, self.writeable, closed))
@@ -353,7 +354,8 @@ class _hxssocket(object):
 
     def close(self):
         if self.pooled:
-            logger.debug('hxsocks close while in pool, %s' % self.hxsServer.name)
+            t = time.time() - self.pooled_at
+            logger.debug('hxsocks close while in pool, %s, %ss' % (self.hxsServer.name, t))
             try:
                 self._rfile.close()
                 self._sock.close()
