@@ -89,51 +89,11 @@ class ParentProxy(object):
             self.httppriority = -1
             logger.warning('sni proxy is detectable by GFW, server ip can be blocked.')
 
-    def get_location(self):
-        if self.country_code:
-            return self.country_code
-        if time.time() - self.last_ckeck < 300:
-            return self.country_code
-        try:
-            self.last_ckeck = time.time()
-            ip = ip_address(socket.getaddrinfo(self.parse.hostname, 0)[0][4][0])
-
-            if ip.is_loopback or ip.is_private:
-                from connection import create_connection
-                from httputil import read_response_line, read_headers
-                try:
-                    soc = create_connection(('bot.whatismyipaddress.com', 80), ctimeout=None, parentproxy=self)
-                    soc.sendall(b'GET / HTTP/1.1\r\nConnection: keep_alive\r\nHost: bot.whatismyipaddress.com\r\nAccept-Encoding: identity\r\nUser-Agent: Python-urllib/2.7\r\n\r\n')
-                    f = soc.makefile()
-                    line, version, status, reason = read_response_line(f)
-                    _, headers = read_headers(f)
-                    assert status == 200
-                    ip = soc.recv(int(headers['Content-Length']))
-                    if not ip:
-                        soc.close()
-                        raise ValueError('%s: ip address is empty' % self.name)
-                    self.country_code = ip_to_country_code(ip)
-                    soc.close()
-                except Exception:
-                    sys.stderr.write(traceback.format_exc())
-                    sys.stderr.flush()
-                    self.country_code = None
-            else:
-                self.country_code = ip_to_country_code(ip)
-        finally:
-            return self.country_code
-
     def priority(self, method=None, host=None, country_code=None):
         if any([host, country_code]) and not all([host, country_code]):
             raise ValueError('host and country_code should be provided together.')
         result = self.httpspriority if method is 'CONNECT' else self.httppriority
-        if country_code == self.get_location():
-            result -= 2
-        else:
-            for continent in continent_list:
-                if self.get_location() in continent and country_code in continent:
-                    result -= 1
-                    break
+
         score = self.get_avg_resp_time() + self.get_avg_resp_time(host)
         result += score * 5
         logger.debug('proxy %s to %s response time penalty is %.3f' % (self.name, host, score * 5))
