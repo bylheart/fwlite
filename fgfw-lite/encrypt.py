@@ -205,7 +205,7 @@ class Encryptor(object):
         self.decipher = None
 
     def encrypt(self, buf):
-        if len(buf) == 0:
+        if not buf:
             raise ValueError('buf should not be empty')
         if self.iv_sent:
             return self.cipher.update(buf)
@@ -214,7 +214,7 @@ class Encryptor(object):
             return self.cipher_iv + self.cipher.update(buf)
 
     def decrypt(self, buf):
-        if len(buf) == 0:
+        if not buf:
             raise ValueError('buf should not be empty')
         if self.decipher is None:
             iv = buf[:self.iv_len]
@@ -273,7 +273,7 @@ class AEncryptor_HMAC(object):
         self.__decrypt_seq = 0
 
     def encrypt(self, buf, ad=None):
-        if len(buf) == 0:
+        if not buf:
             raise ValueError('buf should not be empty')
         if self.iv_sent:
             ct = self.cipher.update(buf)
@@ -290,7 +290,7 @@ class AEncryptor_HMAC(object):
         return ct + enmac.digest()[:self.mac_len]
 
     def decrypt(self, buf, ad=None):
-        if len(buf) == 0:
+        if not buf:
             raise ValueError('buf should not be empty')
         if self.decipher is None:
             iv, buf = buf[:self.iv_len], buf[self.iv_len:]
@@ -351,7 +351,8 @@ class AEncryptor_AEAD(object):
                 continue
             break
         self._encryptor_iv = iv
-        _encryptor_skey = self.key_expand(key, self._encryptor_iv, hashlib.sha1)
+        _encryptor_skey = self.key_expand(key, self._encryptor_iv)
+
         self._encryptor = self.algorithm(_encryptor_skey)
         self._encryptor_nonce = 0
 
@@ -365,7 +366,8 @@ class AEncryptor_AEAD(object):
             return aead.AESGCM
         return aead.ChaCha20Poly1305
 
-    def key_expand(self, key, iv, algo):
+    def key_expand(self, key, iv):
+        algo = hashlib.sha1 if self._ctx == b"ss-subkey" else hashlib.sha256
         prk = hmac.new(iv, key, algo).digest()
 
         hash_len = algo().digest_size
@@ -410,7 +412,7 @@ class AEncryptor_AEAD(object):
         if self._decryptor is None:
             iv, data = data[:self._iv_len], data[self._iv_len:]
             IV_CHECKER.check(self.__key, iv)
-            _decryptor_skey = self.key_expand(self.__key, iv, hashlib.sha1)
+            _decryptor_skey = self.key_expand(self.__key, iv)
             del self.__key
             self._decryptor = self.algorithm(_decryptor_skey)
 
