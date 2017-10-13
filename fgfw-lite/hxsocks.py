@@ -25,7 +25,6 @@ import time
 import random
 import hashlib
 import hmac
-import errno
 import traceback
 import select
 import socket
@@ -58,6 +57,7 @@ DEFAULT_METHOD = 'aes-128-cfb'
 DEFAULT_HASH = 'sha256'
 CTX = b'hxsocks'
 MAC_LEN = 16
+SS_SUBKEY = b"ss-subkey"
 
 keys = {}
 newkey_lock = defaultdict(RLock)
@@ -108,6 +108,7 @@ class _hxssocket(object):
         self.serverid = (self.hxsServer.username, self.hxsServer.hostname, self.hxsServer.port)
         self.cipher = None
         self._data_bak = None
+        self.aead = False
         self.readable = 0
         self.writeable = 0
         self.pooled = 0
@@ -122,7 +123,11 @@ class _hxssocket(object):
             from connection import create_connection
             host, port = self.hxsServer.hostname, self.hxsServer.port
             self._sock = create_connection((host, port), self.timeout, parentproxy=self.parentproxy, tunnel=True)
-            self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+            try:
+                self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+            except ValueError:
+                self.pskcipher = encrypt.AEncryptor_AEAD(self.PSK, self.method, SS_SUBKEY)
+                self.aead = True
             self._rfile = self._sock.makefile('rb')
             self._header_sent = False
             self._header_received = False
@@ -138,7 +143,7 @@ class _hxssocket(object):
                                                             keys[self.serverid][0],
                                                             struct.pack('>H', len(ct))])) + ct)
 
-        resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
+        resp_len = 2 if self.pskcipher.decipher else self.pskcipher._iv_len + 2
         data = self._rfile.read(resp_len)
         if not data:
             raise IOError(0, 'hxsocks Error: connection closed.')
@@ -161,7 +166,7 @@ class _hxssocket(object):
             self.writeable = 1
             self.pre_close = 0
             # start forwarding
-            self._thread = Thread(target=self.forward_tcp, args=(self._socketpair_b, self._sock, self.cipher, self.pskcipher, 60))
+            self._thread = Thread(target=self.forward_tcp, args=(self._socketpair_b, self._sock, self.cipher, 60))
             self._thread.start()
         else:
             raise IOError(0, 'hxsocks Error: remote connect failed. code %d' % d)
@@ -178,11 +183,15 @@ class _hxssocket(object):
                         logger.debug('hxsocks connect')
                         from connection import create_connection
                         self._sock = create_connection((host, port), self.timeout, parentproxy=self.parentproxy, tunnel=True)
-                        self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+                        try:
+                            self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+                        except ValueError:
+                            self.pskcipher = encrypt.AEncryptor_AEAD(self.PSK, self.method, SS_SUBKEY)
+                            self.aead = True
                         self._rfile = self._sock.makefile('rb')
                         self._header_sent = False
                         self._header_received = False
-                    acipher = ECC(self.pskcipher.key_len)
+                    acipher = ECC(self.pskcipher._key_len)
                     pubk = acipher.get_pub_key()
                     logger.debug('hxsocks send key exchange request')
                     ts = struct.pack('>I', int(time.time()))
@@ -194,7 +203,7 @@ class _hxssocket(object):
                                      b'\x00' * padding_len])
                     data = chr(10).encode() + struct.pack('>H', len(data)) + data
                     self._sock.sendall(self.pskcipher.encrypt(data))
-                    resp_len = 2 if self.pskcipher.decipher else self.pskcipher.iv_len + 2
+                    resp_len = 2 if self.pskcipher.decipher else self.pskcipher._iv_len + 2
                     resp_len = self.pskcipher.decrypt(self._rfile.read(resp_len))
                     resp_len = struct.unpack('>H', resp_len)[0]
                     data = self.pskcipher.decrypt(self._rfile.read(resp_len))
@@ -239,7 +248,7 @@ class _hxssocket(object):
                 else:
                     raise IOError(0, 'hxs getKey Error')
 
-    def forward_tcp(self, local, remote, cipher, pskcipher, timeout=60):
+    def forward_tcp(self, local, remote, cipher, timeout=60):
         # local: self._socketpair_b, connect with client
         # remote: self._sock, connect with server
         fds = [local, remote]
@@ -260,7 +269,7 @@ class _hxssocket(object):
                             padding_len = random.randint(8, 255)
                             data = chr(padding_len).encode('latin1') + b'\x00' * padding_len
                             ct = cipher.encrypt(data)
-                            data = pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
+                            data = struct.pack('>H', len(ct)) + ct
                             remote.sendall(data)
                             self.writeable = 0
                     if close_count > 2:
@@ -274,7 +283,7 @@ class _hxssocket(object):
                         local.shutdown(socket.SHUT_WR)
                         closed = 1
                     else:
-                        ct_len = struct.unpack('>H', pskcipher.decrypt(ct_len))[0]
+                        ct_len, = struct.unpack('>H', ct_len)
                         ct = self._rfile.read(ct_len)
                         data = cipher.decrypt(ct)
                         pad_len = ord(data[0])
@@ -313,13 +322,13 @@ class _hxssocket(object):
                         padding_len = random.randint(8, 255)
                         data = chr(padding_len).encode('latin1') + b * padding_len
                         ct = cipher.encrypt(data)
-                        data = pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
+                        data = struct.pack('>H', len(ct)) + ct
                         remote.sendall(data)
                     else:
                         padding_len = random.randint(8, 255)
                         data = chr(padding_len).encode('latin1') + data + b'\x00' * padding_len
                         ct = cipher.encrypt(data)
-                        data = pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
+                        data = struct.pack('>H', len(ct)) + ct
                         total_send += len(data)
                         remote.sendall(data)
                         if random.random() < 0.1:
@@ -349,7 +358,7 @@ class _hxssocket(object):
         assert 0 < flag < 8
         data = chr(flag).encode('latin1') + b'\x00' * random.randint(64, size)
         ct = self.cipher.encrypt(data)
-        data = self.pskcipher.encrypt(struct.pack('>H', len(ct))) + ct
+        data = struct.pack('>H', len(ct)) + ct
         self._sock.sendall(data)
 
     def close(self):
