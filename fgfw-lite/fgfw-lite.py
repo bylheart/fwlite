@@ -759,7 +759,7 @@ class ProxyHandler(HTTPRequestHandler):
         while self.retryable:
             try:
                 reason = ''
-                (ins, _, _) = select.select(fds, [], [], self.conf.timeout)
+                (ins, _, _) = select.select(fds, [], [], self.conf.timeout*2)
                 if not ins:
                     self.logger.debug('timeout, break(0)')
                     reason = 'timeout'
