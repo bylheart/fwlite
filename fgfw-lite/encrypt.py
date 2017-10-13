@@ -105,28 +105,20 @@ method_supported = {
     'aes-128-cfb': (16, 16, False),
     'aes-192-cfb': (24, 16, False),
     'aes-256-cfb': (32, 16, False),
-    # 'aes-128-ofb': (16, 16, False),
-    # 'aes-192-ofb': (24, 16, False),
-    # 'aes-256-ofb': (32, 16, False),
     # 'aes-128-ctr': (16, 16, False),
     # 'aes-192-ctr': (24, 16, False),
     # 'aes-256-ctr': (32, 16, False),
     'camellia-128-cfb': (16, 16, False),
     'camellia-192-cfb': (24, 16, False),
     'camellia-256-cfb': (32, 16, False),
-    # 'camellia-128-ofb': (16, 16, False),
-    # 'camellia-192-ofb': (24, 16, False),
-    # 'camellia-256-ofb': (32, 16, False),
     'rc4-md5': (16, 16, False),
-    # 'salsa20': (32, 8, False),
-    'chacha20': (32, 8, False),
     'chacha20-ietf': (32, 12, False),
     # 'bypass': (16, 16, False),  # for testing only
 
-    # 'aes-128-gcm': (16, 16, True),
-    # 'aes-192-gcm': (24, 24, True),
-    # 'aes-256-gcm': (32, 32, True),
-    # 'chacha20_poly1305': (32, 12, True),
+    'aes-128-gcm': (16, 16, True),
+    'aes-192-gcm': (24, 24, True),
+    'aes-256-gcm': (32, 32, True),
+    'chacha20_poly1305': (32, 12, True),
 }
 
 
@@ -158,8 +150,6 @@ def get_cipher(key, method, op, iv):
         pass
     elif method.endswith('ctr'):
         mode = modes.CTR(iv)
-    elif method.endswith('ofb'):
-        mode = modes.OFB(iv)
     elif method.endswith('cfb'):
         mode = modes.CFB(iv)
     else:
@@ -184,45 +174,42 @@ class Encryptor(object):
         if not isinstance(password, bytes):
             password = password.encode('utf8')
 
-        self.key_len, self.iv_len, is_aead = method_supported.get(method)
+        self.method = method
+        self._key_len, self._iv_len, is_aead = method_supported.get(method)
         if is_aead:
             raise ValueError('AEAD method is not supported by Encryptor class!')
 
-        self.method = method
-        self.iv_sent = False
+        self.__key = EVP_BytesToKey(password, self._key_len)
 
-        self.__key = EVP_BytesToKey(password, self.key_len)
-
-        while True:
-            iv = random_string(self.iv_len)
-            try:
-                IV_CHECKER.check(self.__key, iv)
-            except ValueError:
-                continue
-            break
-        self.cipher_iv = iv
-        self.cipher = get_cipher(self.__key, method, 1, self.cipher_iv)
+        self.cipher = None
         self.decipher = None
 
     def encrypt(self, buf):
         if not buf:
             raise ValueError('buf should not be empty')
-        if self.iv_sent:
-            return self.cipher.update(buf)
-        else:
-            self.iv_sent = True
-            return self.cipher_iv + self.cipher.update(buf)
+        if not self.cipher:
+            while True:
+                _len = len(buf) + self._iv_len - 2
+                iv = struct.pack(">H", _len) + random_string(self._iv_len - 2)
+                try:
+                    IV_CHECKER.check(self.__key, iv)
+                except ValueError:
+                    continue
+                break
+            self.cipher = get_cipher(self.__key, self.method, 1, iv)
+            return iv + self.cipher.update(buf)
+        return self.cipher.update(buf)
 
     def decrypt(self, buf):
         if not buf:
             raise ValueError('buf should not be empty')
         if self.decipher is None:
-            iv = buf[:self.iv_len]
+            iv = buf[:self._iv_len]
             IV_CHECKER.check(self.__key, iv)
             self.decipher = get_cipher(self.__key, self.method, 0, iv)
             self.decipher_iv = iv
             del self.__key
-            buf = buf[self.iv_len:]
+            buf = buf[self._iv_len:]
             if len(buf) == 0:
                 return
         return self.decipher.update(buf)
@@ -243,7 +230,7 @@ class AEncryptor_HMAC(object):
         if method not in method_supported:
             raise ValueError('encryption method not supported')
 
-        self.key_len, self.iv_len, is_aead = method_supported.get(method)
+        self._key_len, self._iv_len, is_aead = method_supported.get(method)
         if is_aead:
             raise ValueError('AEAD method is not supported by AEncryptor_HMAC class!')
 
@@ -251,10 +238,10 @@ class AEncryptor_HMAC(object):
         self.__key = key
         self.mac_len = 16
         self.iv_sent = False
-        self.hfunc = key_len_to_hash[self.key_len]
+        self.hfunc = key_len_to_hash[self._key_len]
 
         while True:
-            iv = random_string(self.iv_len)
+            iv = random_string(self._iv_len)
             try:
                 IV_CHECKER.check(self.__key, iv)
             except ValueError:
@@ -262,8 +249,8 @@ class AEncryptor_HMAC(object):
             break
         self.cipher_iv = iv
 
-        encrypt_key = hmac.new(key, self.cipher_iv, hashlib.sha256).digest()[:self.key_len]
-        encrypt_auth_key = hmac.new(key, encrypt_key, hashlib.sha256).digest()[:self.key_len]
+        encrypt_key = hmac.new(key, self.cipher_iv, hashlib.sha256).digest()[:self._key_len]
+        encrypt_auth_key = hmac.new(key, encrypt_key, hashlib.sha256).digest()[:self._key_len]
         self.__enmac = hmac.new(encrypt_auth_key, digestmod=self.hfunc)
         self.__encrypt_seq = 0
         self.cipher = get_cipher(encrypt_key, method, 1, self.cipher_iv)
@@ -293,10 +280,10 @@ class AEncryptor_HMAC(object):
         if not buf:
             raise ValueError('buf should not be empty')
         if self.decipher is None:
-            iv, buf = buf[:self.iv_len], buf[self.iv_len:]
+            iv, buf = buf[:self._iv_len], buf[self._iv_len:]
             IV_CHECKER.check(self.__key, iv)
-            decrypt_key = hmac.new(self.__key, iv, hashlib.sha256).digest()[:self.key_len]
-            decrypt_auth_key = hmac.new(self.__key, decrypt_key, hashlib.sha256).digest()[:self.key_len]
+            decrypt_key = hmac.new(self.__key, iv, hashlib.sha256).digest()[:self._key_len]
+            decrypt_auth_key = hmac.new(self.__key, decrypt_key, hashlib.sha256).digest()[:self._key_len]
             self.__demac = hmac.new(decrypt_auth_key, digestmod=self.hfunc)
             self.decipher = get_cipher(decrypt_key, self.method, 0, iv)
             del self.__key
@@ -342,18 +329,13 @@ class AEncryptor_AEAD(object):
         self._nonce_len = 12
         self._tag_len = 16
         self.iv_sent = False
+        if self._ctx == b"ss-subkey":
+            self.encrypt = self.encrypt_ss
+            self.__key = EVP_BytesToKey(key, self._key_len)
+        else:
+            self._encrypt
 
-        while True:
-            iv = random_string(self._iv_len)
-            try:
-                IV_CHECKER.check(key, iv)
-            except ValueError:
-                continue
-            break
-        self._encryptor_iv = iv
-        _encryptor_skey = self.key_expand(key, self._encryptor_iv)
-
-        self._encryptor = self.algorithm(_encryptor_skey)
+        self._encryptor = None
         self._encryptor_nonce = 0
 
         self._decryptor = None
@@ -382,7 +364,7 @@ class AEncryptor_AEAD(object):
             okm += output_block
         return okm[:self._key_len]
 
-    def encrypt(self, data, ad=None):
+    def _encrypt(self, data, ad=None):
         '''
         TCP Chunk (after encryption, *ciphertext*)
         +--------------+------------+
@@ -398,15 +380,36 @@ class AEncryptor_AEAD(object):
             raise ValueError('data should not be empty')
         nonce = struct.pack('<Q', self._encryptor_nonce) + b'\x00\x00\x00\x00'
         self._encryptor_nonce += 1
+
+        if not self._encryptor:
+            _len = len(data) + self._iv_len + self._tag_len - 2
+            if self._ctx == b"ss-subkey":
+                _len += self._tag_len + 2
+
+            while True:
+                iv = struct.pack(">H", _len) + random_string(self._iv_len - 2)
+                try:
+                    IV_CHECKER.check(self.__key, iv)
+                except ValueError:
+                    continue
+                break
+            _encryptor_skey = self.key_expand(self.__key, iv)
+            self._encryptor = self.algorithm(_encryptor_skey)
+
         ct = self._encryptor.encrypt(nonce, data, ad)
 
         if not self.iv_sent:
             self.iv_sent = True
-            ct = self._encryptor_iv + ct
+            ct = iv + ct
         return ct
 
+    def encrypt_ss(self, data):
+        a = self._encrypt(struct.pack("!H", len(data)))
+        b = self._encrypt(data)
+        return a + b
+
     def decrypt(self, data, ad=None):
-        if len(data) == 0:
+        if not data:
             raise ValueError('data should not be empty')
 
         if self._decryptor is None:
@@ -416,6 +419,8 @@ class AEncryptor_AEAD(object):
             del self.__key
             self._decryptor = self.algorithm(_decryptor_skey)
 
+        if not data:
+            return
         nonce = struct.pack('<Q', self._decryptor_nonce) + b'\x00\x00\x00\x00'
         self._decryptor_nonce += 1
 
@@ -431,11 +436,6 @@ if __name__ == '__main__':
 
         def check(self, key, iv):
             pass
-
-    method_supported.update({'aes-128-gcm': (16, 16),
-                             'aes-192-gcm': (24, 24),
-                             'aes-256-gcm': (32, 32),
-                             'chacha20_poly1305': (32, 12), })
 
     IV_CHECKER = ivchecker(1, 1)
 
