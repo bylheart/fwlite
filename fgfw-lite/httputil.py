@@ -115,6 +115,8 @@ class httpconn_pool(object):
                 for soc in remove_lst:
                     self._remove(soc)
                 remove_lst = []
+                if pcount:
+                    self.logger.debug('%s closed for connection droped.' % pcount)
 
                 self.timerwheel_index = next(self.timerwheel_iter)
                 for soc in list(self.timerwheel[self.timerwheel_index]):

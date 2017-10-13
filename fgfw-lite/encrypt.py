@@ -47,11 +47,6 @@ from util import iv_checker
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-try:
-    from cryptography.hazmat.primitives.ciphers import aead
-except ImportError:
-    aead = None
-
 from ctypes_libsodium import Salsa20Crypto
 
 try:
@@ -73,6 +68,14 @@ except ImportError:
             for x, y in zip(a, b):
                 result |= x ^ y
             return result == 0
+
+
+class BufEmptyError(Exception):
+    pass
+
+
+class TagInvalidError(Exception):
+    pass
 
 
 def random_string(size):
@@ -115,11 +118,13 @@ method_supported = {
     'chacha20-ietf': (32, 12, False),
     # 'bypass': (16, 16, False),  # for testing only
 
-    'aes-128-gcm': (16, 16, True),
-    'aes-192-gcm': (24, 24, True),
-    'aes-256-gcm': (32, 32, True),
-    'chacha20_poly1305': (32, 12, True),
+    # TODO: update ctypes_libsodium
+    # 'chacha20-ietf-poly1305': (32, 12, True),
 }
+
+
+def is_aead(method):
+    return method_supported.get(method)[2]
 
 
 class bypass(object):
@@ -181,37 +186,36 @@ class Encryptor(object):
 
         self.__key = EVP_BytesToKey(password, self._key_len)
 
-        self.cipher = None
-        self.decipher = None
+        self._encryptor = None
+        self._decryptor = None
 
     def encrypt(self, buf):
         if not buf:
-            raise ValueError('buf should not be empty')
-        if not self.cipher:
+            raise BufEmptyError
+        if not self._encryptor:
             while True:
                 _len = len(buf) + self._iv_len - 2
-                iv = struct.pack(">H", _len) + random_string(self._iv_len - 2)
+                iv = struct.pack(">H", _len) + random_string(self._iv_len-2)
                 try:
                     IV_CHECKER.check(self.__key, iv)
                 except ValueError:
                     continue
                 break
-            self.cipher = get_cipher(self.__key, self.method, 1, iv)
-            return iv + self.cipher.update(buf)
-        return self.cipher.update(buf)
+            self._encryptor = get_cipher(self.__key, self.method, 1, iv)
+            return iv + self._encryptor.update(buf)
+        return self._encryptor.update(buf)
 
     def decrypt(self, buf):
         if not buf:
-            raise ValueError('buf should not be empty')
-        if self.decipher is None:
+            raise BufEmptyError
+        if self._decryptor is None:
             iv = buf[:self._iv_len]
             IV_CHECKER.check(self.__key, iv)
-            self.decipher = get_cipher(self.__key, self.method, 0, iv)
-            self.decipher_iv = iv
+            self._decryptor = get_cipher(self.__key, self.method, 0, iv)
             buf = buf[self._iv_len:]
             if len(buf) == 0:
                 return
-        return self.decipher.update(buf)
+        return self._decryptor.update(buf)
 
 
 key_len_to_hash = {
@@ -219,6 +223,13 @@ key_len_to_hash = {
     24: hashlib.sha1,
     32: hashlib.sha256,
 }
+
+
+def AEncryptor(key, method, ctx):
+    try:
+        return AEncryptor_HMAC(key, method, ctx)
+    except ValueError:
+        return AEncryptor_AEAD(key, method, ctx)
 
 
 class AEncryptor_HMAC(object):
@@ -260,7 +271,7 @@ class AEncryptor_HMAC(object):
 
     def encrypt(self, buf, ad=None):
         if not buf:
-            raise ValueError('buf should not be empty')
+            raise BufEmptyError
         if self.iv_sent:
             ct = self.cipher.update(buf)
         else:
@@ -277,7 +288,7 @@ class AEncryptor_HMAC(object):
 
     def decrypt(self, buf, ad=None):
         if not buf:
-            raise ValueError('buf should not be empty')
+            raise BufEmptyError
         if self.decipher is None:
             iv, buf = buf[:self._iv_len], buf[self._iv_len:]
             IV_CHECKER.check(self.__key, iv)
@@ -300,12 +311,23 @@ class AEncryptor_HMAC(object):
         pt = self.decipher.update(buf) if buf else b''
         if compare_digest(rmac, mac):
             return pt
-        raise ValueError('MAC verification failed!')
+        raise TagInvalidError
 
 
 if sys.version_info[0] == 3:
     def buffer(x):
         return x
+
+try:
+    from cryptography.hazmat.primitives.ciphers import aead
+    method_supported.update({'aes-128-gcm': (16, 16, True),
+                             'aes-192-gcm': (24, 24, True),
+                             'aes-256-gcm': (32, 32, True),
+                             'chacha20-ietf-poly1305': (32, 12, True),
+                             })
+except ImportError:
+    sys.stderr.write('aead not supported by your python-cryptography')
+    aead = None
 
 
 class AEncryptor_AEAD(object):
@@ -327,12 +349,12 @@ class AEncryptor_AEAD(object):
 
         self._nonce_len = 12
         self._tag_len = 16
-        self.iv_sent = False
+
         if self._ctx == b"ss-subkey":
             self.encrypt = self.encrypt_ss
             self.__key = EVP_BytesToKey(key, self._key_len)
         else:
-            self._encrypt
+            self.encrypt = self._encrypt
 
         self._encryptor = None
         self._encryptor_nonce = 0
@@ -341,8 +363,6 @@ class AEncryptor_AEAD(object):
         self._decryptor_nonce = 0
 
     def select_algo(self, method):
-        if not aead:
-            raise ValueError('Please update your python-cryptography!')
         if method.startswith('aes'):
             return aead.AESGCM
         return aead.ChaCha20Poly1305
@@ -363,7 +383,7 @@ class AEncryptor_AEAD(object):
             okm += output_block
         return okm[:self._key_len]
 
-    def _encrypt(self, data, ad=None):
+    def _encrypt(self, data, ad=None, data_len=None):
         '''
         TCP Chunk (after encryption, *ciphertext*)
         +--------------+------------+
@@ -375,18 +395,21 @@ class AEncryptor_AEAD(object):
         first encrypt Data_Len, then encrypt Data
 
         '''
-        if len(data) == 0:
-            raise ValueError('data should not be empty')
+        if not data:
+            raise BufEmptyError
         nonce = struct.pack('<Q', self._encryptor_nonce) + b'\x00\x00\x00\x00'
         self._encryptor_nonce += 1
 
         if not self._encryptor:
             _len = len(data) + self._iv_len + self._tag_len - 2
             if self._ctx == b"ss-subkey":
-                _len += self._tag_len + 2
+                _len += self._tag_len + data_len
 
             while True:
-                iv = struct.pack(">H", _len) + random_string(self._iv_len - 2)
+                if self._ctx == b"ss-subkey":
+                    iv = struct.pack(">H", _len) + random_string(self._iv_len-2)
+                else:
+                    iv = random_string(self._iv_len)
                 try:
                     IV_CHECKER.check(self.__key, iv)
                 except ValueError:
@@ -394,36 +417,36 @@ class AEncryptor_AEAD(object):
                 break
             _encryptor_skey = self.key_expand(self.__key, iv)
             self._encryptor = self.algorithm(_encryptor_skey)
-
-        ct = self._encryptor.encrypt(nonce, data, ad)
-
-        if not self.iv_sent:
-            self.iv_sent = True
+            ct = self._encryptor.encrypt(nonce, data, ad)
             ct = iv + ct
+        else:
+            ct = self._encryptor.encrypt(nonce, data, ad)
+
         return ct
 
     def encrypt_ss(self, data):
-        a = self._encrypt(struct.pack("!H", len(data)))
+        a = self._encrypt(struct.pack("!H", len(data)), data_len=len(data))
         b = self._encrypt(data)
         return a + b
 
     def decrypt(self, data, ad=None):
         if not data:
-            raise ValueError('data should not be empty')
+            raise BufEmptyError
 
         if self._decryptor is None:
             iv, data = data[:self._iv_len], data[self._iv_len:]
             IV_CHECKER.check(self.__key, iv)
             _decryptor_skey = self.key_expand(self.__key, iv)
-            del self.__key
             self._decryptor = self.algorithm(_decryptor_skey)
 
         if not data:
             return
         nonce = struct.pack('<Q', self._decryptor_nonce) + b'\x00\x00\x00\x00'
         self._decryptor_nonce += 1
-
-        return self._decryptor.decrypt(nonce, data, ad)
+        try:
+            return self._decryptor.decrypt(nonce, data, ad)
+        except Exception:
+            raise TagInvalidError
 
 
 if __name__ == '__main__':
@@ -443,7 +466,7 @@ if __name__ == '__main__':
     import time
     lst = sorted(method_supported.keys())
     for method in lst:
-        if method in ('aes-128-gcm', 'aes-192-gcm', 'aes-256-gcm', 'chacha20_poly1305'):
+        if is_aead(method):
             continue
         try:
             cipher = Encryptor(b'123456', method)
@@ -464,7 +487,7 @@ if __name__ == '__main__':
     print(ae2.decrypt(ct1))
     print(ae2.decrypt(ct2))
     for method in lst:
-        if method in ('aes-128-gcm', 'aes-192-gcm', 'aes-256-gcm', 'chacha20_poly1305'):
+        if is_aead(method):
             continue
         try:
             cipher1 = AEncryptor_HMAC(b'123456', method, b'ctx')
@@ -486,16 +509,17 @@ if __name__ == '__main__':
     print(ae2.decrypt(ct1))
     print(ae2.decrypt(ct2))
 
-    for method in ('aes-128-gcm', 'aes-192-gcm', 'aes-256-gcm', 'chacha20_poly1305'):
-        try:
-            cipher1 = AEncryptor_AEAD(b'123456', method, b'ctx')
-            cipher2 = AEncryptor_AEAD(b'123456', method, b'ctx')
-            t = time.clock()
-            for _ in range(1024):
-                ct1 = cipher1.encrypt(s)
-                ct2 = cipher1.encrypt(s)
-                cipher2.decrypt(ct1)
-                cipher2.decrypt(ct2)
-            print('%s %ss' % (method, time.clock() - t))
-        except Exception as e:
-            print(repr(e))
+    for method in lst:
+        if is_aead(method):
+            try:
+                cipher1 = AEncryptor_AEAD(b'123456', method, b'ctx')
+                cipher2 = AEncryptor_AEAD(b'123456', method, b'ctx')
+                t = time.clock()
+                for _ in range(1024):
+                    ct1 = cipher1.encrypt(s)
+                    ct2 = cipher1.encrypt(s)
+                    cipher2.decrypt(ct1)
+                    cipher2.decrypt(ct2)
+                print('%s %ss' % (method, time.clock() - t))
+            except Exception as e:
+                print(repr(e))

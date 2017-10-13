@@ -4,15 +4,16 @@
 from builtins import chr
 
 import struct
-import encrypt
 import socket
 import select
 import errno
-import backports.socketpair
 from threading import Thread
 import traceback
 import logging
 
+import encrypt
+
+import backports.socketpair
 from parent_proxy import ParentProxy
 
 logger = logging.getLogger('sssocket')
@@ -55,19 +56,11 @@ class sssocket(object):
         except ValueError:
             self.crypto = encrypt.AEncryptor_AEAD(sspassword, ssmethod, CTX)
             self.aead = True
-        host, port = self.__address
 
-        header = b''.join([chr(3).encode(),
-                           chr(len(host)).encode('latin1'),
-                           host.encode(),
-                           struct.pack(b">H", port)])
+        self._connected = False
 
-        self._sock.sendall(self.crypto.encrypt(header))
         # start forward thread here
-        if self.aead:
-            self._thread = Thread(target=self.forward_tcp_aead, args=(self._socketpair_b, self._sock, self.crypto, 60))
-        else:
-            self._thread = Thread(target=self.forward_tcp, args=(self._socketpair_b, self._sock, self.crypto, 60))
+        self._thread = Thread(target=self.forward_tcp, args=(self._socketpair_b, self._sock, self.crypto, 60))
         self._thread.start()
 
     def forward_tcp(self, local, remote, cipher, timeout=60):
@@ -79,53 +72,35 @@ class sssocket(object):
                 if not ins:
                     break
                 if remote in ins:
-                    data = remote.recv(self.bufsize)
-                    if not data:
-                        break
-                    local.sendall(cipher.decrypt(data))
+                    if self.aead:
+                        if not cipher._decryptor:
+                            data = self._rfile.read(cipher._iv_len)
+                            cipher.decrypt(data)
+                        _len = self._rfile.read(18)
+                        if not _len:
+                            break
+                        _len, = struct.unpack("!H", cipher.decrypt(_len))
+                        ct = self._rfile.read(_len+16)
+                        local.sendall(cipher.decrypt(ct))
+                    else:
+                        data = remote.recv(self.bufsize)
+                        if not data:
+                            break
+                        local.sendall(cipher.decrypt(data))
                 if local in ins:
                     data = local.recv(self.bufsize)
                     if not data:
                         break
-                    remote.sendall(cipher.encrypt(data))
-        except socket.timeout:
-            logger.info('socket.timeout')
-        except (OSError, IOError) as e:
-            if e.args[0] in (errno.EBADF,):
-                return
-            if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
-                raise
-        except Exception as e:
-            logger.error(repr(e))
-            logger.error(traceback.format_exc())
-        finally:
-            for sock in (remote, local):
-                try:
-                    sock.close()
-                except (OSError, IOError):
-                    pass
+                    if not self._connected:
+                        host, port = self.__address
 
-    def forward_tcp_aead(self, local, remote, cipher, timeout=60):
-        # remote: self._sock, connected to server
-        # local: self._socketpair_b, connected to client
-        try:
-            while 1:
-                ins, _, _ = select.select([local, remote], [], [], timeout)
-                if not ins:
-                    break
-                if remote in ins:
-                    if not cipher._decryptor:
-                        data = self._rfile.read(cipher._iv_len)
-                        cipher.decrypt(data)
-                    _len = self._rfile.read(18)
-                    _len = cipher.decrypt(_len)
-                    _len, = struct.unpack("!H", _len)
-                    ct = self._rfile.read(_len+16)
-                    local.sendall(cipher.decrypt(ct))
-                if local in ins:
-                    data = local.recv(self.bufsize)
-                    if not data:
-                        break
+                        header = b''.join([chr(3).encode(),
+                                           chr(len(host)).encode('latin1'),
+                                           host.encode(),
+                                           struct.pack(b">H", port)])
+                        data = header + data
+                        self._connected = True
+
                     remote.sendall(cipher.encrypt(data))
         except socket.timeout:
             logger.info('socket.timeout')
