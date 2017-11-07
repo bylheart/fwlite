@@ -548,8 +548,6 @@ class Settings(QtGui.QWidget):
         if not all([sServer, sPort.isdigit(), sMethod, sPass]):
             self.icon.showMessage(tr("MainWindow", "error_notice", None, QtGui.QApplication.UnicodeUTF8))
             return
-        if self.ui.ota_checkBox.isChecked():
-            sMethod += '-auth'
         data = json.dumps((sName, ('ss://%s:%s@%s:%s %s' % (urlquote(sMethod), urlquote(sPass), sServer, sPort, sPriority)))).encode()
         try:
             urllib2.urlopen('http://127.0.0.1:%d/api/parent' % self.port, data, timeout=1).read()
@@ -561,7 +559,6 @@ class Settings(QtGui.QWidget):
             self.ui.ssPortEdit.clear()
             self.ui.ssPassEdit.clear()
             self.ui.ssPriorityEdit.clear()
-            self.ui.ota_checkBox.setCheckState(QtCore.Qt.CheckState.Unchecked)
 
     def gfwlistToggle(self):
         try:
