@@ -47,7 +47,7 @@ from util import iv_checker
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from ctypes_libsodium import Salsa20Crypto
+from ctypes_libsodium import SodiumCrypto, SodiumAeadCrypto
 
 try:
     from hmac import compare_digest
@@ -118,8 +118,7 @@ method_supported = {
     'chacha20-ietf': (32, 12, False),
     # 'bypass': (16, 16, False),  # for testing only
 
-    # TODO: update ctypes_libsodium
-    # 'chacha20-ietf-poly1305': (32, 12, True),
+    'chacha20-ietf-poly1305': (32, 12, True),
 }
 
 
@@ -142,7 +141,7 @@ def get_cipher(key, method, op, iv):
     if method == 'bypass':
         return bypass()
     if method in ('salsa20', 'chacha20', 'chacha20-ietf'):
-        return Salsa20Crypto(method, key, iv, op)
+        return SodiumCrypto(method, key, iv, op)
     elif method == 'rc4-md5':
         md5 = hashlib.md5()
         md5.update(key)
@@ -323,11 +322,17 @@ try:
     method_supported.update({'aes-128-gcm': (16, 16, True),
                              'aes-192-gcm': (24, 24, True),
                              'aes-256-gcm': (32, 32, True),
-                             'chacha20-ietf-poly1305': (32, 12, True),
                              })
 except ImportError:
     sys.stderr.write('aead not supported by your python-cryptography')
     aead = None
+
+
+def get_aead_cipher(key, method):
+    # method should be AEAD method
+    if method.startswith('aes'):
+        return aead.AESGCM(key)
+    return SodiumAeadCrypto(method, key)
 
 
 class AEncryptor_AEAD(object):
@@ -343,7 +348,7 @@ class AEncryptor_AEAD(object):
             raise ValueError('non-AEAD method is not supported by AEncryptor_AEAD class!')
 
         self.method = method
-        self.algorithm = self.select_algo(method)
+
         self._ctx = ctx  # SUBKEY_INFO
         self.__key = key
 
@@ -361,11 +366,6 @@ class AEncryptor_AEAD(object):
 
         self._decryptor = None
         self._decryptor_nonce = 0
-
-    def select_algo(self, method):
-        if method.startswith('aes'):
-            return aead.AESGCM
-        return aead.ChaCha20Poly1305
 
     def key_expand(self, key, iv):
         algo = hashlib.sha1 if self._ctx == b"ss-subkey" else hashlib.sha256
@@ -416,7 +416,7 @@ class AEncryptor_AEAD(object):
                     continue
                 break
             _encryptor_skey = self.key_expand(self.__key, iv)
-            self._encryptor = self.algorithm(_encryptor_skey)
+            self._encryptor = get_aead_cipher(_encryptor_skey, self.method)
             ct = self._encryptor.encrypt(nonce, data, ad)
             ct = iv + ct
         else:
@@ -437,7 +437,7 @@ class AEncryptor_AEAD(object):
             iv, data = data[:self._iv_len], data[self._iv_len:]
             IV_CHECKER.check(self.__key, iv)
             _decryptor_skey = self.key_expand(self.__key, iv)
-            self._decryptor = self.algorithm(_decryptor_skey)
+            self._decryptor = get_aead_cipher(_decryptor_skey, self.method)
 
         if not data:
             return

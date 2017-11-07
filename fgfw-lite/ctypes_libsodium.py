@@ -41,7 +41,7 @@ __all__ = ['ciphers']
 libsodium = None
 loaded = False
 
-buf_size = 2048
+buf_size = 8196
 
 # for salsa20 and chacha20
 BLOCK_SIZE = 64
@@ -75,17 +75,31 @@ def load_libsodium():
                                                         c_char_p, c_ulonglong,
                                                         c_char_p)
 
-    try:
-        libsodium.crypto_stream_chacha20_ietf_xor_ic.restype = c_int
-        libsodium.crypto_stream_chacha20_ietf_xor_ic.argtypes = (
-            c_void_p, c_char_p,
-            c_ulonglong,
-            c_char_p,
-            c_uint,  # uint32_t initial counter
-            c_char_p
-        )
-    except Exception as e:
-        pass
+    libsodium.crypto_stream_chacha20_ietf_xor_ic.restype = c_int
+    libsodium.crypto_stream_chacha20_ietf_xor_ic.argtypes = (
+        c_void_p, c_char_p,
+        c_ulonglong,
+        c_char_p,
+        c_uint,  # uint32_t initial counter
+        c_char_p
+    )
+
+    libsodium.crypto_aead_chacha20poly1305_ietf_encrypt.restype = c_int
+    libsodium.crypto_aead_chacha20poly1305_ietf_encrypt.argtypes = (
+        c_void_p, c_void_p,
+        c_char_p, c_ulonglong,
+        c_char_p, c_ulonglong,
+        c_char_p,
+        c_char_p, c_char_p
+    )
+    libsodium.crypto_aead_chacha20poly1305_ietf_decrypt.restype = c_int
+    libsodium.crypto_aead_chacha20poly1305_ietf_decrypt.argtypes = (
+        c_void_p, c_void_p,
+        c_char_p,
+        c_char_p, c_ulonglong,
+        c_char_p, c_ulonglong,
+        c_char_p, c_char_p
+    )
 
     libsodium.sodium_init()
 
@@ -93,7 +107,7 @@ def load_libsodium():
     loaded = True
 
 
-class Salsa20Crypto(object):
+class SodiumCrypto(object):
     def __init__(self, cipher_name, key, iv, op):
         if not loaded:
             load_libsodium()
@@ -119,8 +133,8 @@ class Salsa20Crypto(object):
         # we can only prepend some padding to make the encryption align to
         # blocks
         padding = self.counter % BLOCK_SIZE
-        if buf_size < padding + l:
-            buf_size = (padding + l) * 2
+        while buf_size < padding + l:
+            buf_size = buf_size * 2
             buf = create_string_buffer(buf_size)
 
         if padding:
@@ -133,7 +147,60 @@ class Salsa20Crypto(object):
         return buf.raw[padding:padding + l]
 
 
-ciphers = {
-    'salsa20': (32, 8, Salsa20Crypto),
-    'chacha20': (32, 8, Salsa20Crypto),
-}
+class SodiumAeadCrypto(object):
+    def __init__(self, cipher_name, key):
+        self.__key = key
+        self._tlen = 16
+
+        if cipher_name == 'chacha20-ietf-poly1305':
+            self._encryptor = libsodium.crypto_aead_chacha20poly1305_ietf_encrypt
+            self._decryptor = libsodium.crypto_aead_chacha20poly1305_ietf_decrypt
+        else:
+            raise Exception('Unknown cipher')
+
+    def encrypt(self, nonce, data, associated):
+        global buf, buf_size
+        plen = len(data)
+        while buf_size < plen + self._tlen:
+            buf_size = buf_size * 2
+            buf = create_string_buffer(buf_size)
+
+        cipher_out_len = c_ulonglong(0)
+        associated_p = c_char_p(associated) if associated else None
+        associated_l = c_ulonglong(len(associated)) if associated else c_ulonglong(0)
+        self._encryptor(
+            byref(buf), byref(cipher_out_len),
+            c_char_p(data), c_ulonglong(plen),
+            associated_p, associated_l,
+            None,
+            c_char_p(nonce), c_char_p(self.__key)
+        )
+        if cipher_out_len.value != plen + self._tlen:
+            raise Exception("Encrypt failed")
+
+        return buf.raw[:cipher_out_len.value]
+
+    def decrypt(self, nonce, data, associated):
+        global buf, buf_size
+        clen = len(data)
+        while buf_size < clen:
+            buf_size = buf_size * 2
+            buf = create_string_buffer(buf_size)
+
+        cipher_out_len = c_ulonglong(0)
+        associated_p = c_char_p(associated) if associated else None
+        associated_l = c_ulonglong(len(associated)) if associated else c_ulonglong(0)
+        r = self._decryptor(
+            byref(buf), byref(cipher_out_len),
+            None,
+            c_char_p(data), c_ulonglong(clen),
+            associated_p, associated_l,
+            c_char_p(nonce), c_char_p(self.__key)
+        )
+        if r != 0:
+            raise Exception("Decrypt failed")
+
+        if cipher_out_len.value != clen - self._tlen:
+            raise Exception("Decrypt failed, length not match")
+
+        return buf.raw[:cipher_out_len.value]
