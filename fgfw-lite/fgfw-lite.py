@@ -96,7 +96,7 @@ except ImportError:
     def on_finish(hdlr):
         pass
 
-__version__ = '4.19.1'
+__version__ = '4.20'
 
 NetWorkIOError = (IOError, OSError)
 DEFAULT_TIMEOUT = 5

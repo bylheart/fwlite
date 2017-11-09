@@ -1,3 +1,10 @@
+2017.11.17 v4.20
+support shadowsocks AEAD
+remove OTA support
+update hxsocks protocol
+update geolite database
+update gfwlist
+
 2017.10.13 v4.19.3
 use system resolver
 update gfwlist

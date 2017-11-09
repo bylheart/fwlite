@@ -2,7 +2,7 @@
 
 A anti-censorship HTTP proxy with builtin shadowsocks support.
 
-Current Version: 4.19.3
+Current Version: 4.20
 
 Tested on Windows 7 and Windows 10.
 
@@ -18,7 +18,7 @@ It looks like this:
 
     [parents]
     shadowsocks = ss://aes-256-cfb:password@127.0.0.1:8388
-    shadowsocks_with_OTA = ss://aes-256-cfb-auth:password@127.0.0.1:8388
+    shadowsocks_aead = ss://aes-256-gcm:password@127.0.0.1:8388
 
 or this:
 
@@ -49,20 +49,20 @@ Run in command-line:
 
     sudo zypper install python-virtualenv
 
-	# create virtualenv
-	virtualenv env
+    # create virtualenv
+    virtualenv env
 
-	# install requirements
-	sudo zypper install gcc python-devel libffi-devel
-	./env/bin/python -m pip install repoze.lru ipaddr dnslib chardet geoip2 future backports.socketpair
-	./env/bin/python -m pip install gevent cryptography
+    # install requirements
+    sudo zypper install gcc python-devel libffi-devel
+    ./env/bin/python -m pip install repoze.lru ipaddr dnslib chardet geoip2 future backports.socketpair
+    ./env/bin/python -m pip install gevent cryptography
 
-	# install requirements for GUI. It's gonna take a while.
-	sudo zypper in libqt4-devel
+    # install requirements for GUI. It's gonna take a while.
+    sudo zypper in libqt4-devel
     ./env/bin/python -m pip install pyside
 
-	# run fwlite GUI
-	./env/bin/python path_to/FWLite.pyw
+    # run fwlite GUI
+    ./env/bin/python path_to/FWLite.pyw
 
 ##Features
 
