@@ -250,13 +250,13 @@ if __name__ == "__main__":
             import base64
             data = ''.join(data.split())
             data = base64.b64decode(data).decode()
-            for line in data.splitlines():
-                # if line.startswith('||'):
-                try:
-                    gfwlist.add(line)
-                except Exception:
-                    pass
-            del data
+        for line in data.splitlines():
+            # if line.startswith('||'):
+            try:
+                gfwlist.add(line)
+            except Exception:
+                pass
+        del data
     print('loading: %fs' % (time.clock() - t))
     print('result for inxian: %r' % gfwlist.match('http://www.inxian.com', 'www.inxian.com'))
     print('result for twitter: %r' % gfwlist.match('twitter.com:443', 'twitter.com'))
@@ -266,6 +266,7 @@ if __name__ == "__main__":
     print('result for keyword: %r' % gfwlist.match('http://www.test.com/iredmail.org', 'www.test.com'))
     print('result for url_startswith: %r' % gfwlist.match('http://itweet.net/whatever', 'itweet.net'))
     print('result for google.com.au: %r' % gfwlist.match('www.google.com.au:443', 'www.google.com.au'))
+    print('result for riseup.net:443: %r' % gfwlist.match('riseup.net:443', 'riseup.net'))
 
     url = sys.argv[1] if len(sys.argv) > 1 else 'http://news.163.com/16/1226/18/C97U4AI50001875N.html'
     host = urlparse.urlparse(url).hostname
