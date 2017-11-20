@@ -14,7 +14,7 @@
     "./Python27/six-1.10.0-py2.7.egg": "4de2d949366eb2e17c13b96f8dba2ff3ec622fa815f5066559acd041ea2013e1",
     "./README.md": "28f3c835515d0c7a39009a4d9ac41a34ac95b13006905b93948c03b38a0743e9",
     "./fgfw-lite/GeoLite2-Country.mmdb": "a87f66b41cbe0dd4e2460cfbaab21478b11b16b6e6f2be743e5bd904522765b5",
-    "./fgfw-lite/apfilter.py": "26702bd998aa5c0bed6a73499d2dde535ae3815e9e5223ee458ecd9cb145aeb4",
+    "./fgfw-lite/apfilter.py": "06134c557eb43b312094efa6957450e204dd02409cd104cfcf3c6fca71987411",
     "./fgfw-lite/config.py": "09d311fc9724942a10137de70194dcc6aa397b359358d2faafa2f68a04263c86",
     "./fgfw-lite/connection.py": "f2fda89aa3dccc86f22488d083fdaa84b15df532bb1b87c56ba271ce1fa50efa",
     "./fgfw-lite/ctypes_libsodium.py": "2090f528310311343ae351d37f0be09ad09691949f98bf104934985d02593020",
@@ -41,6 +41,6 @@
     "./fgfw-lite/ui_remoteresolver.py": "acbf620e5ee29a98f0284476600a356e7a212c6a2b990c562f10dde61b34c3dc",
     "./fgfw-lite/ui_settings.py": "d4601fd4e8f1d8b8354783958d74b32c9edc162f9fc422163bd8e4a6907ddc47",
     "./fgfw-lite/util.py": "72c05a8f3090e94ff5e748fa94b774e1541ad93c620cec04fe6af31281821bca",
-    "./release_note.txt": "1e30afa4d2057b7354015bfc0b5658e85d493f08943227874516a3afa80bba4e",
+    "./release_note.txt": "ddb81ce3967a4b5c93a007c93b69b25b1f1171d4328cbbfbf1337bcaad5a3194",
     "./userconf.sample.ini": "ea4a4d365ab2bdb25617846853069bb3c6a9047e86234efda6bc9d77e1cf9bb1"
 }
