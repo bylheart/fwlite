@@ -117,6 +117,10 @@ Block certain sites
 
     ||360.cn 403
 
+Close connection
+
+    ||360.cn reset
+
 Bad 302 Redirect, counteract ISP conducted MITM hijack(GWBN):
 
     |http://some.isp.server/ bad302
