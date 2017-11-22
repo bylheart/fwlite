@@ -61,7 +61,7 @@ class redirector(object):
     def add_redirect(self, rule, dest, pp=None):
         from apfilter import ap_rule
         if pp is None:
-            pp = self.conf.PARENT_PROXY
+            pp = self.conf.GET_PROXY
         try:
             if rule in [a.rule for a, b in self.redirlst]:
                 self.logger.warning('multiple redirector rule! %s' % rule)

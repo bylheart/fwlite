@@ -253,11 +253,11 @@ class Config(object):
         self.remotedns = [parse_hostport(dns, 53) for dns in remotedns.split('|')]
 
         self.REDIRECTOR = redirector(self)
-        self.PARENT_PROXY = get_proxy(self)
+        self.GET_PROXY = get_proxy(self)
         bad_ip = set(self.userconf.dget('dns', 'bad_ip', '').split('|'))
         self.resolver = resolver.get_resolver(self.localdns, self.remotedns,
                                               proxy=ParentProxy('self', 'http://127.0.0.1:%d' % self.listen[1]),
-                                              apfilter=[self.PARENT_PROXY.gfwlist, self.PARENT_PROXY.local],
+                                              apfilter=[self.GET_PROXY.gfwlist, self.GET_PROXY.local],
                                               bad_ip=bad_ip)
 
     def reload(self):

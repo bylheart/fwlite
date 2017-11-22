@@ -269,7 +269,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def getparent(self):
         if self._proxylist is None:
-            self._proxylist = self.conf.PARENT_PROXY.parentproxy(self.path, self.requesthost, self.command, self.rip, self.server.proxy_level)
+            self._proxylist = self.conf.GET_PROXY.get_proxy(self.path, self.requesthost, self.command, self.rip, self.server.proxy_level)
             self.logger.debug(repr(self._proxylist))
         if not self._proxylist:
             self.ppname = ''
@@ -313,7 +313,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.shortpath = '%s://%s%s%s%s' % (parse.scheme, parse.netloc, parse.path.split(':')[0], '?' if parse.query else '', ':' if ':' in parse.path else '')
 
         # redirector
-        new_url = self.conf.PARENT_PROXY.redirect(self)
+        new_url = self.conf.GET_PROXY.redirect(self)
         if new_url:
             self.logger.debug('redirect %s, %s %s' % (new_url, self.command, self.shortpath or self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
@@ -398,10 +398,10 @@ class ProxyHandler(HTTPRequestHandler):
                     return
             if not self.retryable:
                 self.close_connection = 1
-                self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
+                self.conf.GET_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
                 return
             if self.getparent():
-                self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
+                self.conf.GET_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
                 return self.send_error(504)
 
             self.upstream_name = self.ppname if self.pproxy.proxy.startswith('http') else self.requesthost
@@ -532,7 +532,7 @@ class ProxyHandler(HTTPRequestHandler):
             else:
                 content_length = None
 
-            if response_status in (301, 302) and self.conf.PARENT_PROXY.bad302(response_header.get('Location')):
+            if response_status in (301, 302) and self.conf.GET_PROXY.bad302(response_header.get('Location')):
                 raise IOError(0, 'Bad 302!')
 
             self.wfile_write(response_line)
@@ -589,7 +589,7 @@ class ProxyHandler(HTTPRequestHandler):
                             fd.remove(self.remotesoc)
                             self.connection.shutdown(socket.SHUT_WR)
             self.wfile_write()
-            self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname, rtime)
+            self.conf.GET_PROXY.notify(self.command, self.shortpath, self.requesthost, True if response_status < 400 else False, self.failed_parents, self.ppname, rtime)
             self.pproxy.log(self.requesthost[0], rtime)
             if remote_close or is_connection_dropped([self.remotesoc]):
                 try:
@@ -615,7 +615,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.warning('{} {} via {} failed: {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
             self.pproxy.log(self.requesthost[0], 5)
             return self._do_GET(True)
-        self.conf.PARENT_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
+        self.conf.GET_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
         return self.send_error(504)
 
     do_HEAD = do_POST = do_PUT = do_DELETE = do_OPTIONS = do_PATCH = do_TRACE = do_GET
@@ -696,7 +696,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.rbuffer.append(data)
 
         # redirector
-        new_url = self.conf.PARENT_PROXY.redirect(self)
+        new_url = self.conf.GET_PROXY.redirect(self)
         if new_url:
             self.logger.debug('redirect %s, %s %s' % (new_url, self.command, self.path))
             if new_url.isdigit() and 400 <= int(new_url) < 600:
@@ -732,7 +732,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.remotesoc:
             self.remotesoc.close()
         if not self.retryable or self.getparent():
-            self.conf.PARENT_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
+            self.conf.GET_PROXY.notify(self.command, self.path, self.path, False, self.failed_parents, self.ppname)
             return
         iplist = None
         if self.pproxy.name == 'direct' and self.requesthost[0] in self.conf.HOSTS and not self.failed_parents:
@@ -801,11 +801,11 @@ class ProxyHandler(HTTPRequestHandler):
                 return self._do_CONNECT(True)
             else:
                 self.logger.warning('%s %s via %s failed! %s' % (self.command, self.path, self.ppname, reason))
-                self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
+                self.conf.GET_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
                 return
         # not retryable, clear rbuffer
         self.rbuffer = []
-        self.conf.PARENT_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
+        self.conf.GET_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
         self.pproxy.log(self.requesthost[0], rtime)
         self.logger.debug('%s response time %.3fs' % (self.requesthost[0], rtime))
         self.logger.debug('start forwarding... %d' % len(fds))
@@ -911,18 +911,18 @@ class ProxyHandler(HTTPRequestHandler):
             body.write(data)
         body = body.getvalue()
         if parse.path == '/api/localrule' and self.command == 'GET':
-            data = json.dumps([(rule, self.conf.PARENT_PROXY.local.expire[rule]) for rule in self.conf.PARENT_PROXY.local.rules])
+            data = json.dumps([(rule, self.conf.GET_PROXY.local.expire[rule]) for rule in self.conf.GET_PROXY.local.rules])
             return self.write(200, data, 'application/json')
         elif parse.path == '/api/localrule' and self.command == 'POST':
             'accept a json encoded tuple: (str rule, int exp)'
             rule, exp = json.loads(body)
-            result = self.conf.PARENT_PROXY.add_temp(rule, exp)
+            result = self.conf.GET_PROXY.add_temp(rule, exp)
             self.write(400 if result else 201, result, 'application/json')
             return self.conf.stdout()
         elif parse.path.startswith('/api/localrule/') and self.command == 'DELETE':
             try:
                 rule = base64.urlsafe_b64decode(parse.path[15:].encode('latin1'))
-                expire = self.conf.PARENT_PROXY.local.remove(rule)
+                expire = self.conf.GET_PROXY.local.remove(rule)
                 self.write(200, json.dumps([rule, expire]), 'application/json')
                 return self.conf.stdout()
             except Exception as e:
@@ -935,7 +935,7 @@ class ProxyHandler(HTTPRequestHandler):
         elif parse.path == '/api/redirector' and self.command == 'POST':
             'accept a json encoded tuple: (str rule, str dest)'
             rule, dest = json.loads(body)
-            self.conf.PARENT_PROXY.add_redirect(rule, dest)
+            self.conf.GET_PROXY.add_redirect(rule, dest)
             self.write(200, data, 'application/json')
             return self.conf.stdout()
         elif parse.path.startswith('/api/redirector/') and self.command == 'DELETE':
@@ -1116,7 +1116,7 @@ def update(conf, logger, auto=False):
     if not conf.GUI:
         for item in subprocess_handler.ITEMS:
             item.restart()
-    conf.PARENT_PROXY.config()
+    conf.GET_PROXY.config()
     if count:
         logger.info('Update Completed, %d file Updated.' % count)
     if conf.userconf.dget('FGFW_Lite', 'updatecmd', ''):

@@ -147,7 +147,7 @@ class get_proxy(object):
         if self.conf.userconf.dgetbool('fgfwproxy', 'gfwlist', True) and self.gfwlist.match(uri, host):
             return True
 
-    def parentproxy(self, uri, host, command, ip, level=1):
+    def get_proxy(self, uri, host, command, ip, level=1):
         '''
             decide which parentproxy to use.
             url:  'www.google.com:443'
