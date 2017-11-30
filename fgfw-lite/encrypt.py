@@ -87,6 +87,7 @@ def EVP_BytesToKey(password, key_len):
     # so that we make the same key and iv as nodejs version
     m = []
     l = 0
+
     while l < key_len:
         md5 = hashlib.md5()
         data = password
@@ -357,6 +358,8 @@ class AEncryptor_AEAD(object):
 
         if self._ctx == b"ss-subkey":
             self.encrypt = self.encrypt_ss
+            if not isinstance(key, bytes):
+                key = key.encode('utf8')
             self.__key = EVP_BytesToKey(key, self._key_len)
         else:
             self.encrypt = self._encrypt
