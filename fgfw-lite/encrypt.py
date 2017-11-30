@@ -42,7 +42,7 @@ import hashlib
 import hmac
 import struct
 
-from util import iv_checker
+from util import iv_checker, ivError
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -198,7 +198,7 @@ class Encryptor_Stream(object):
                 iv = struct.pack(">H", _len) + random_string(self._iv_len-2)
                 try:
                     IV_CHECKER.check(self.__key, iv)
-                except ValueError:
+                except ivError:
                     continue
                 break
             self._encryptor = get_cipher(self.__key, self.method, 1, iv)
@@ -264,7 +264,7 @@ class AEncryptor_HMAC(object):
             iv = random_string(self._iv_len)
             try:
                 IV_CHECKER.check(self.__key, iv)
-            except ValueError:
+            except ivError:
                 continue
             break
         self.cipher_iv = iv
@@ -425,7 +425,7 @@ class AEncryptor_AEAD(object):
                     iv = random_string(self._iv_len)
                 try:
                     IV_CHECKER.check(self.__key, iv)
-                except ValueError:
+                except ivError:
                     continue
                 break
             _encryptor_skey = self.key_expand(self.__key, iv)

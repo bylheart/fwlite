@@ -145,6 +145,10 @@ def ip_to_country_code(ip):
         return u''
 
 
+class ivError(Exception):
+    pass
+
+
 class iv_store(object):
 
     def __init__(self, maxlen, timeout):
@@ -158,7 +162,7 @@ class iv_store(object):
         if random.random() < 0.01:
             self._clean()
         if item in self:
-            raise ValueError("iv reused")
+            raise ivError
         self.store[item] = self.last_time_used
         while len(self.store) > self.maxlen:
             self.store.popitem()
