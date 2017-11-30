@@ -172,7 +172,7 @@ def get_cipher(key, method, op, iv):
     return cipher.encryptor() if op else cipher.decryptor()
 
 
-class Encryptor(object):
+class Encryptor_Stream(object):
     def __init__(self, password, method):
         if method not in method_supported:
             raise ValueError('encryption method not supported')
@@ -224,12 +224,22 @@ key_len_to_hash = {
     32: hashlib.sha256,
 }
 
+SS_SUBKEY = b"ss-subkey"
+
+
+def Encryptor(password, method):
+    # return shadowsocks Encryptor
+    if is_aead(method):
+        return AEncryptor_AEAD(password, method, SS_SUBKEY)
+    else:
+        return Encryptor_Stream(password, method)
+
 
 def AEncryptor(key, method, ctx):
-    try:
-        return AEncryptor_HMAC(key, method, ctx)
-    except ValueError:
+    if is_aead(method):
         return AEncryptor_AEAD(key, method, ctx)
+    else:
+        return AEncryptor_HMAC(key, method, ctx)
 
 
 class AEncryptor_HMAC(object):

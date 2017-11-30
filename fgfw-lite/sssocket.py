@@ -24,8 +24,6 @@ formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
 hdr.setFormatter(formatter)
 logger.addHandler(hdr)
 
-CTX = b"ss-subkey"
-
 
 class sssocket(object):
     bufsize = 8192
@@ -51,11 +49,8 @@ class sssocket(object):
 
         self._sock = create_connection((sshost, ssport), self.timeout, parentproxy=self.parentproxy, tunnel=True)
         self._rfile = self._sock.makefile('rb')
-        try:
-            self.crypto = encrypt.Encryptor(sspassword, ssmethod)
-        except ValueError:
-            self.crypto = encrypt.AEncryptor_AEAD(sspassword, ssmethod, CTX)
-            self.aead = True
+        self.aead = encrypt.is_aead(ssmethod)
+        self.crypto = encrypt.Encryptor(sspassword, ssmethod)
 
         self._connected = False
 

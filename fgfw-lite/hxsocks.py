@@ -59,7 +59,6 @@ DEFAULT_METHOD = 'aes-128-cfb'
 DEFAULT_HASH = 'sha256'
 CTX = b'hxsocks'
 MAC_LEN = 16
-SS_SUBKEY = b"ss-subkey"
 
 keys = {}
 newkey_lock = defaultdict(RLock)
@@ -106,6 +105,7 @@ class _hxssocket(object):
         self.parentproxy = parentproxy
         self.PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
         self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [DEFAULT_METHOD])[0].lower()
+        self.aead = encrypt.is_aead(self.method)
         self.hash_algo = urlparse.parse_qs(self.hxsServer.parse.query).get('hash', [DEFAULT_HASH])[0].upper()
         self.serverid = (self.hxsServer.username, self.hxsServer.hostname, self.hxsServer.port)
         self.cipher = None
@@ -126,11 +126,9 @@ class _hxssocket(object):
                 from connection import create_connection
                 host, port = self.hxsServer.hostname, self.hxsServer.port
                 self._sock = create_connection((host, port), self.timeout, parentproxy=self.parentproxy, tunnel=True)
-                try:
-                    self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
-                except ValueError:
-                    self.pskcipher = encrypt.AEncryptor_AEAD(self.PSK, self.method, SS_SUBKEY)
-                    self.aead = True
+
+                self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+
                 self._rfile = self._sock.makefile('rb')
                 self._header_sent = False
                 self._header_received = False
@@ -196,11 +194,9 @@ class _hxssocket(object):
                         logger.debug('hxsocks connect')
                         from connection import create_connection
                         self._sock = create_connection((host, port), self.timeout, parentproxy=self.parentproxy, tunnel=True)
-                        try:
-                            self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
-                        except ValueError:
-                            self.pskcipher = encrypt.AEncryptor_AEAD(self.PSK, self.method, SS_SUBKEY)
-                            self.aead = True
+
+                        self.pskcipher = encrypt.Encryptor(self.PSK, self.method)
+
                         self._rfile = self._sock.makefile('rb')
                         self._header_sent = False
                         self._header_received = False

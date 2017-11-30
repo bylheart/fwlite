@@ -70,6 +70,7 @@ if sys.platform.startswith('win'):
 import config
 from util import parse_hostport, is_connection_dropped, extract_server_name
 from connection import create_connection
+from encrypt import BufEmptyError, TagInvalidError
 from resolver import TCP_Resolver
 from parent_proxy import ParentProxy
 from httputil import read_response_line, read_headers, read_header_data, httpconn_pool, parse_headers
@@ -98,7 +99,7 @@ except ImportError:
 
 __version__ = '4.20'
 
-NetWorkIOError = (IOError, OSError)
+NetWorkIOError = (IOError, OSError, BufEmptyError, TagInvalidError)
 DEFAULT_TIMEOUT = 5
 FAKEGIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x01D\x00;'
 
@@ -745,7 +746,6 @@ class ProxyHandler(HTTPRequestHandler):
             # self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except NetWorkIOError as e:
             self.logger.warning('%s %s via %s failed on connect! %r' % (self.command, self.path, self.ppname, e))
-            self.logger.error(traceback.format_exc())
             return self._do_CONNECT(True)
         self.logger.debug('%s connected' % self.path)
         count = 0
