@@ -83,15 +83,13 @@ def do_tunnel(soc, netloc, pp):
 
 
 def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, parentproxy=None, tunnel=False):
-    if not isinstance(parentproxy, ParentProxy):
-        logger.warning('parentproxy is not a ParentProxy instance, please check.')
-        if parentproxy is None:
-            parentproxy = 'direct'
+    if parentproxy and not isinstance(parentproxy, ParentProxy):
+        logger.warning('parentproxy is not a ParentProxy instance, please check. %s' % (parentproxy))
         parentproxy = ParentProxy(parentproxy, parentproxy)
     ctimeout = ctimeout or parentproxy.timeout
-    via = parentproxy.get_via()
+    via = parentproxy.get_via() if parentproxy else None
     s = None
-    if not parentproxy.proxy:
+    if not parentproxy or not parentproxy.proxy:
         return _create_connection(netloc, ctimeout, iplist=iplist)
     elif parentproxy.scheme == 'http':
         s = create_connection((parentproxy.hostname, parentproxy.port or 80), ctimeout, source_address, parentproxy=via, tunnel=True)
