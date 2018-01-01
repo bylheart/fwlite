@@ -36,8 +36,6 @@ formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
 hdr.setFormatter(formatter)
 logger.addHandler(hdr)
 
-__all__ = ['ciphers']
-
 libsodium = None
 loaded = False
 
@@ -149,6 +147,8 @@ class SodiumCrypto(object):
 
 class SodiumAeadCrypto(object):
     def __init__(self, cipher_name, key):
+        if not loaded:
+            load_libsodium()
         self.__key = key
         self._tlen = 16
 

@@ -17,6 +17,7 @@
 # with this program; if not, see <http://www.gnu.org/licenses>.
 
 from builtins import chr
+from six import byte2int
 
 import os
 import struct
@@ -30,7 +31,6 @@ import select
 import socket
 
 import backports.socketpair
-from six import byte2int
 
 from collections import defaultdict
 from threading import RLock, Thread
@@ -110,7 +110,6 @@ class _hxssocket(object):
         self.serverid = (self.hxsServer.username, self.hxsServer.hostname, self.hxsServer.port)
         self.cipher = None
         self._data_bak = None
-        self.aead = False
         self.readable = 0
         self.writeable = 0
         self.pooled = 0

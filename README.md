@@ -2,7 +2,7 @@
 
 A anti-censorship HTTP proxy with builtin shadowsocks support.
 
-Current Version: 4.20.2
+Current Version: 4.20.3
 
 Tested on Windows 7 and Windows 10.
 
@@ -80,7 +80,7 @@ Run in command-line:
 - Supported parent proxy
   - HTTP Proxy
   - Socks5 Proxy
-  - [Shadowsocks] by @clowwindy (with OTA support)
+  - [Shadowsocks] by @clowwindy (with AEAD support)
 - Prioritize parent proxies by response time
 - <del>Prioritize parent proxies by location</del>
 - Redirector
