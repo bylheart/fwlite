@@ -107,7 +107,8 @@ class _hxssocket(object):
         self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [DEFAULT_METHOD])[0].lower()
         self.aead = encrypt.is_aead(self.method)
         self.hash_algo = urlparse.parse_qs(self.hxsServer.parse.query).get('hash', [DEFAULT_HASH])[0].upper()
-        self.serverid = (self.hxsServer.username, self.hxsServer.hostname, self.hxsServer.port)
+        id_ = urlparse.parse_qs(self.hxsServer.parse.query).get('id', [''])[0]
+        self.serverid = (self.hxsServer.username, id_ or (self.hxsServer.hostname, self.hxsServer.port))
         self.cipher = None
         self._data_bak = None
         self.readable = 0
