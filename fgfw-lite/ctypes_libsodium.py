@@ -28,6 +28,8 @@ import logging
 from ctypes import CDLL, c_char_p, c_int, c_ulonglong, c_uint, byref, \
     create_string_buffer, c_void_p
 
+from cryptography.exceptions import InvalidTag
+
 logger = logging.getLogger('ctypes_libsodium')
 logger.setLevel(logging.INFO)
 hdr = logging.StreamHandler()
@@ -45,22 +47,89 @@ buf_size = 8196
 BLOCK_SIZE = 64
 
 
+def find_library_nt(name):
+    # modified from ctypes.util
+    # ctypes.util.find_library just returns first result he found
+    # but we want to try them all
+    # because on Windows, users may have both 32bit and 64bit version installed
+    import glob
+    results = []
+    for directory in os.environ['PATH'].split(os.pathsep):
+        fname = os.path.join(directory, name)
+        if os.path.isfile(fname):
+            results.append(fname)
+        if fname.lower().endswith(".dll"):
+            continue
+        fname += "*.dll"
+        files = glob.glob(fname)
+        if files:
+            results.extend(files)
+    return results
+
+
+def find_library(possible_lib_names, search_symbol, library_name):
+    import ctypes.util
+
+    paths = []
+
+    if type(possible_lib_names) not in (list, tuple):
+        possible_lib_names = [possible_lib_names]
+
+    lib_names = []
+    for lib_name in possible_lib_names:
+        lib_names.append(lib_name)
+        lib_names.append('lib' + lib_name)
+
+    for name in lib_names:
+        if os.name == "nt":
+            paths.extend(find_library_nt(name))
+        else:
+            path = ctypes.util.find_library(name)
+            if path:
+                paths.append(path)
+
+    if not paths:
+        # We may get here when find_library fails because, for example,
+        # the user does not have sufficient privileges to access those
+        # tools underlying find_library on linux.
+        import glob
+
+        for name in lib_names:
+            patterns = [
+                '/usr/local/lib*/lib%s.*' % name,
+                '/usr/lib*/lib%s.*' % name,
+                'lib%s.*' % name,
+                '%s.dll' % name]
+
+            for pat in patterns:
+                files = glob.glob(pat)
+                if files:
+                    paths.extend(files)
+    for path in paths:
+        try:
+            lib = CDLL(path)
+            if hasattr(lib, search_symbol):
+                logging.info('loading %s from %s', library_name, path)
+                return lib
+            else:
+                logging.warn('can\'t find symbol %s in %s', search_symbol,
+                             path)
+        except Exception:
+            pass
+    return None
+
+
 def load_libsodium():
     global loaded, libsodium, buf
 
-    from ctypes.util import find_library
+    libsodium = find_library('sodium', 'crypto_stream_salsa20_xor_ic', 'libsodium')
 
-    if os.name == "nt" and os.path.isfile('./Python27/libsodium.dll'):
-        libsodium_path = './Python27/libsodium.dll'
-    else:
-        for p in ('sodium', 'libsodium', ):
-            libsodium_path = find_library(p)
-            if libsodium_path:
-                break
-    if not libsodium_path:
-        raise IOError(0, 'libsodium not found')
-    logger.info('loading libsodium from %s' % libsodium_path)
-    libsodium = CDLL(libsodium_path)
+    if libsodium is None:
+        raise Exception('libsodium not found')
+
+    if libsodium.sodium_init() < 0:
+        raise Exception('libsodium init failed')
+
     libsodium.sodium_init.restype = c_int
     libsodium.crypto_stream_salsa20_xor_ic.restype = c_int
     libsodium.crypto_stream_salsa20_xor_ic.argtypes = (c_void_p, c_char_p,
@@ -198,7 +267,7 @@ class SodiumAeadCrypto(object):
             c_char_p(nonce), c_char_p(self.__key)
         )
         if r != 0:
-            raise Exception("Decrypt failed")
+            raise InvalidTag
 
         if cipher_out_len.value != clen - self._tlen:
             raise Exception("Decrypt failed, length not match")
