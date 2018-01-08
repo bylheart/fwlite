@@ -119,7 +119,7 @@ method_supported = {
     'chacha20-ietf': (32, 12, False),
     # 'bypass': (16, 16, False),  # for testing only
 
-    'chacha20-ietf-poly1305': (32, 12, True),
+    'chacha20-ietf-poly1305': (32, 32, True),
 }
 
 
@@ -414,12 +414,9 @@ class AEncryptor_AEAD(object):
         self._encryptor_nonce += 1
 
         if not self._encryptor:
-            _len = len(data) + self._iv_len + self._tag_len - 2
-            if self._ctx == b"ss-subkey":
-                _len += self._tag_len + data_len
-
             while True:
                 if self._ctx == b"ss-subkey":
+                    _len = self._iv_len + self._tag_len + data_len + self._tag_len
                     iv = struct.pack(">H", _len) + random_string(self._iv_len-2)
                 else:
                     iv = random_string(self._iv_len)
