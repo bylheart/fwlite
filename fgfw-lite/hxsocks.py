@@ -17,7 +17,7 @@
 # with this program; if not, see <http://www.gnu.org/licenses>.
 
 from builtins import chr
-from six import byte2int
+from six import byte2int, indexbytes
 
 import os
 import struct
@@ -311,8 +311,8 @@ class _hxssocket(object):
                         ct_len, = struct.unpack('>H', ct_len)
                         ct = self._rfile.read(ct_len)
                         data = cipher.decrypt(ct)
-                        pad_len = ord(data[0])
-                        cmd = ord(data[-1])
+                        pad_len = byte2int(data)
+                        cmd = indexbytes(data, -1)
                         if 0 < pad_len < 8:
                             logger.debug('Fake chunk, drop')
                             if pad_len == 1 and self.writeable:

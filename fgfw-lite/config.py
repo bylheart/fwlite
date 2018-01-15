@@ -236,7 +236,7 @@ class Config(object):
         if not localdns:
             if sys.platform.startswith('win'):
                 import subprocess
-                localdns = subprocess.check_output(['nslookup', '127.0.0.1']).splitlines()[1].split()[1]
+                localdns = subprocess.check_output(['nslookup', '127.0.0.1']).splitlines()[1].split()[1].decode()
             elif sys.platform == 'linux2':
                 lst = []
                 with open('/etc/resolv.conf') as f:
