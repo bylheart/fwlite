@@ -257,7 +257,7 @@ class MainWindow(QtGui.QMainWindow):
     def remoteDNS(self):
         self.resolve.show()
 
-    def showMessage(self, msg, timeout=None):
+    def showMessage(self, msg, timeout=10):
         if pynotify:
             notification = pynotify.Notification('FWLite Notify', msg)
             notification.set_hint('x', 200)
