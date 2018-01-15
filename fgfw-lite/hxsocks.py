@@ -30,8 +30,6 @@ import traceback
 import select
 import socket
 
-import backports.socketpair
-
 from collections import defaultdict
 from threading import RLock, Thread
 try:
@@ -53,6 +51,9 @@ formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s %(message)s',
                               datefmt='%H:%M:%S')
 hdr.setFormatter(formatter)
 logger.addHandler(hdr)
+
+if not hasattr(socket, 'socketpair'):
+    import backports.socketpair
 
 
 DEFAULT_METHOD = 'aes-128-cfb'

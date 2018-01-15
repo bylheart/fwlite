@@ -13,8 +13,10 @@ import logging
 
 import encrypt
 
-import backports.socketpair
 from parent_proxy import ParentProxy
+
+if not hasattr(socket, 'socketpair'):
+    import backports.socketpair
 
 logger = logging.getLogger('sssocket')
 logger.setLevel(logging.INFO)

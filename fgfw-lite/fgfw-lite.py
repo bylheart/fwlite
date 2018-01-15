@@ -171,12 +171,14 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_header('Connection', 'keep_alive')
         self.end_headers()
         if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
-            self._wfile_write(content)
+            self._wfile_write(content.encode('UTF-8'))
         self.logger.error('%s %s ' % (self.path, code))
 
     def write(self, code=200, msg=None, ctype=None):
         if msg is None:
             msg = b''
+        if not isinstance(msg, bytes):
+            msg = msg.encode('UTF-8')
         self.send_response(code)
         if ctype:
             self.send_header('Content-type', ctype)
@@ -921,13 +923,12 @@ class ProxyHandler(HTTPRequestHandler):
             return self.conf.stdout()
         elif parse.path.startswith('/api/localrule/') and self.command == 'DELETE':
             try:
-                rule = base64.urlsafe_b64decode(parse.path[15:].encode('latin1'))
+                rule = base64.urlsafe_b64decode(parse.path[15:].encode('latin1')).decode()
                 expire = self.conf.GET_PROXY.local.remove(rule)
                 self.write(200, json.dumps([rule, expire]), 'application/json')
                 return self.conf.stdout()
             except Exception as e:
-                sys.stderr.write(traceback.format_exc() + '\n')
-                sys.stderr.flush()
+                self.logger.error(traceback.format_exc())
                 return self.send_error(404, repr(e))
         elif parse.path == '/api/redirector' and self.command == 'GET':
             data = json.dumps([(index, rule[0].rule, rule[1]) for index, rule in enumerate(self.conf.REDIRECTOR.redirlst)])
@@ -942,7 +943,7 @@ class ProxyHandler(HTTPRequestHandler):
             try:
                 rule = urlparse.parse_qs(parse.query).get('rule', [''])[0]
                 if rule:
-                    assert base64.urlsafe_b64decode(rule) == self.conf.REDIRECTOR.redirlst[int(parse.path[16:])][0].rule
+                    assert base64.urlsafe_b64decode(rule).decode() == self.conf.REDIRECTOR.redirlst[int(parse.path[16:])][0].rule
                 rule, dest = self.conf.REDIRECTOR.redirlst.pop(int(parse.path[16:]))
                 self.write(200, json.dumps([int(parse.path[16:]), rule.rule, dest]), 'application/json')
                 return self.conf.stdout()
@@ -1001,7 +1002,7 @@ class ProxyHandler(HTTPRequestHandler):
                 self.write(200, json.dumps(result), 'application/json')
             except Exception:
                 result = traceback.format_exc()
-                self.write(200, json.dumps(result), 'application/json')
+                self.write(200, json.dumps(result.split()), 'application/json')
         elif parse.path == '/' and self.command == 'GET':
             return self.write(200, 'Hello World !', 'text/html')
         self.send_error(404)

@@ -273,9 +273,9 @@ class Config(object):
     def addparentproxy(self, name, proxy):
         self.parentlist.addstr(name, proxy)
 
-    def stdout(self, text=b''):
+    def stdout(self, text=''):
         if self.GUI:
-            sys.stdout.write(text + b'\n')
+            sys.stdout.write(text + '\n')
             sys.stdout.flush()
 
 
