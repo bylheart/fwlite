@@ -11,78 +11,71 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>FW-Lite Remote Resolver</string>
+   <string>Remote Resolver</string>
   </property>
   <property name="locale">
    <locale language="English" country="UnitedStates"/>
   </property>
-  <widget class="QWidget" name="verticalLayoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>4</y>
-     <width>301</width>
-     <height>191</height>
-    </rect>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="margin">
+    <number>6</number>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout">
-    <item>
-     <layout class="QFormLayout" name="formLayout">
-      <property name="fieldGrowthPolicy">
-       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-      </property>
-      <item row="0" column="0">
-       <widget class="QLabel" name="hostLabel">
-        <property name="text">
-         <string>Hostname:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLineEdit" name="hostLineEdit">
-        <property name="text">
-         <string>www.google.com</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="serverLabel">
-        <property name="text">
-         <string>DNS Server:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="serverlineEdit">
-        <property name="text">
-         <string>8.8.8.8</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <widget class="QPushButton" name="goButton">
-      <property name="text">
-       <string>Resolve</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QPlainTextEdit" name="resultTextEdit">
-      <property name="acceptDrops">
-       <bool>false</bool>
-      </property>
-      <property name="undoRedoEnabled">
-       <bool>false</bool>
-      </property>
-      <property name="readOnly">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
+     <item row="0" column="0">
+      <widget class="QLabel" name="hostLabel">
+       <property name="text">
+        <string>Hostname:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="hostLineEdit">
+       <property name="text">
+        <string>www.google.com</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="serverLabel">
+       <property name="text">
+        <string>DNS Server:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="serverlineEdit">
+       <property name="text">
+        <string>8.8.8.8</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QPushButton" name="goButton">
+     <property name="text">
+      <string>Resolve</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="resultTextEdit">
+     <property name="acceptDrops">
+      <bool>false</bool>
+     </property>
+     <property name="undoRedoEnabled">
+      <bool>false</bool>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections/>
