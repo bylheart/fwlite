@@ -70,7 +70,7 @@ if sys.platform.startswith('win'):
 import config
 from util import parse_hostport, is_connection_dropped, extract_server_name
 from connection import create_connection
-from encrypt import BufEmptyError, TagInvalidError
+from encrypt import BufEmptyError, InvalidTag
 from resolver import TCP_Resolver
 from parent_proxy import ParentProxy
 from httputil import read_response_line, read_headers, read_header_data, httpconn_pool, parse_headers
@@ -99,7 +99,7 @@ except ImportError:
 
 __version__ = '4.20.3'
 
-NetWorkIOError = (IOError, OSError, BufEmptyError, TagInvalidError)
+NetWorkIOError = (IOError, OSError, BufEmptyError, InvalidTag)
 DEFAULT_TIMEOUT = 5
 FAKEGIF = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x01D\x00;'
 
@@ -842,13 +842,15 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.debug('socket.timeout error')
             pass
         except NetWorkIOError as e:
-            self.logger.debug('NetWorkIOError, code %r' % e.args[0])
-            if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
-                raise
-            if e.args[0] in (errno.EBADF,):
-                return
+            self.logger.info('NetWorkIOError, code %r' % e.args[0])
+            self.logger.info(traceback.format_exc())
+            pass
         finally:
             if hasattr(self.remotesoc, 'pooled') and self.remotesoc.pooled:
+                try:
+                    self.remotesoc.close()
+                except NetWorkIOError:
+                    pass
                 self.remotesoc = None
 
     def on_conn_log(self):

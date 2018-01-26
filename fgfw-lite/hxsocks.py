@@ -39,7 +39,7 @@ except ImportError:
 from parent_proxy import ParentProxy
 from httputil import httpconn_pool
 import encrypt
-from encrypt import BufEmptyError, TagInvalidError
+from encrypt import BufEmptyError, InvalidTag
 from ecc import ECC
 
 import logging
@@ -155,6 +155,10 @@ class _hxssocket(object):
 
             self._sock.settimeout(8)
             resp_len = self._rfile.read(2)
+            if not resp_len:
+                self._sock.close()
+                self._sock = None
+                continue
             self._sock.settimeout(self.timeout)
             resp_len, = struct.unpack('>H', resp_len)
 
@@ -162,11 +166,13 @@ class _hxssocket(object):
 
             try:
                 resp = self.cipher.decrypt(ct)
-            except TagInvalidError:
+            except InvalidTag:
                 if self.serverid in keys:
                     del keys[self.serverid]
                 continue
             except BufEmptyError:
+                self._sock.close()
+                self._sock = None
                 continue
 
             d = byte2int(resp) if resp else None

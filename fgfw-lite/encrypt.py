@@ -46,6 +46,7 @@ from util import iv_checker, ivError
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.exceptions import InvalidTag
 
 from ctypes_libsodium import SodiumCrypto, SodiumAeadCrypto
 
@@ -71,10 +72,6 @@ except ImportError:
 
 
 class BufEmptyError(Exception):
-    pass
-
-
-class TagInvalidError(Exception):
     pass
 
 
@@ -321,7 +318,7 @@ class AEncryptor_HMAC(object):
         pt = self.decipher.update(buf) if buf else b''
         if compare_digest(rmac, mac):
             return pt
-        raise TagInvalidError
+        raise InvalidTag
 
 
 if sys.version_info[0] == 3:
@@ -453,10 +450,7 @@ class AEncryptor_AEAD(object):
             return
         nonce = struct.pack('<Q', self._decryptor_nonce) + b'\x00\x00\x00\x00'
         self._decryptor_nonce += 1
-        try:
-            return self._decryptor.decrypt(nonce, data, ad)
-        except Exception:
-            raise TagInvalidError
+        return self._decryptor.decrypt(nonce, data, ad)
 
 
 if __name__ == '__main__':
