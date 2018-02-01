@@ -142,7 +142,7 @@ class Config(object):
         self.userconf = SConfigParser()
         self.reload()
         self.UPDATE_INTV = 6
-        self.timeout = self.userconf.dgetint('fgfwproxy', 'timeout', 4)
+        self.timeout = self.userconf.dgetint('fgfwproxy', 'timeout', 3)
         ParentProxy.DEFAULT_TIMEOUT = self.timeout
         self.parentlist = ParentProxyList()
         self.HOSTS = defaultdict(list)

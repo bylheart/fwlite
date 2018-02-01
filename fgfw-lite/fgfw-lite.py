@@ -616,7 +616,7 @@ class ProxyHandler(HTTPRequestHandler):
     def on_GET_Error(self, e):
         if self.ppname:
             self.logger.warning('{} {} via {} failed: {}'.format(self.command, self.shortpath, self.ppname, repr(e)))
-            self.pproxy.log(self.requesthost[0], 5)
+            self.pproxy.log(self.requesthost[0], 10)
             return self._do_GET(True)
         self.conf.GET_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
         return self.send_error(504)
@@ -731,7 +731,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.logger.debug('_do_CONNECT')
         if retry:
             self.failed_parents.append(self.ppname)
-            self.pproxy.log(self.requesthost[0], 5)
+            self.pproxy.log(self.requesthost[0], 10)
         if self.remotesoc:
             self.remotesoc.close()
         if not self.retryable or self.getparent():
@@ -878,10 +878,10 @@ class ProxyHandler(HTTPRequestHandler):
                 self.rtimeout = self.conf.timeout
                 self.ctimeout = self.conf.timeout
             else:
-                self.rtimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 20)
-                self.ctimeout = min(2 ** len(self.failed_parents) + self.conf.timeout, 20)
+                self.rtimeout = min(2 ** len(self.failed_parents) + self.conf.timeout - 1, 10)
+                self.ctimeout = min(2 ** len(self.failed_parents) + self.conf.timeout - 1, 10)
         else:
-            self.ctimeout = self.rtimeout = 20
+            self.ctimeout = self.rtimeout = 10
 
     def _http_connect_via_proxy(self, netloc, iplist):
         if not self.failed_parents:
