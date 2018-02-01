@@ -1,22 +1,17 @@
 #!/usr/bin/env python
 # coding:utf-8
-import sys
 import time
-import traceback
-import socket
 import logging
 try:
     import urllib.parse as urlparse
     urlquote = urlparse.quote
     urlunquote = urlparse.unquote
-    from ipaddress import ip_address
 except ImportError:
     import urlparse
     import urllib2
     urlquote = urllib2.quote
     urlunquote = urllib2.unquote
-    from ipaddr import IPAddress as ip_address
-from util import ip_to_country_code
+
 
 ASIA = ('AE', 'AF', 'AL', 'AZ', 'BD', 'BH', 'BN', 'BT', 'CN', 'CY', 'HK', 'ID',
         'IL', 'IN', 'IQ', 'IR', 'JO', 'JP', 'KH', 'KP', 'KR', 'KW', 'KZ', 'LA',
@@ -96,14 +91,14 @@ class ParentProxy(object):
 
         score = self.get_avg_resp_time() + self.get_avg_resp_time(host)
         result += score * 5
-        logger.debug('proxy %s to %s response time penalty is %.3f' % (self.name, host, score * 5))
+        logger.debug('proxy %s to %s expected response time: %.3f' % (self.name, host, score))
         return result
 
     def log(self, host, rtime):
         self.avg_resp_time = 0.87 * self.get_avg_resp_time() + (1 - 0.87) * rtime
         self.avg_resp_time_by_host[host] = 0.87 * self.get_avg_resp_time(host) + (1 - 0.87) * rtime
         self.avg_resp_time_ts = self.avg_resp_time_by_host_ts[host] = time.time()
-        logger.debug('%s to %s: %.3fs %.3fs' % (self.name, host, rtime, self.avg_resp_time))
+        logger.debug('%s to %s: %.3fs avg: %.3fs' % (self.name, host, rtime, self.avg_resp_time))
 
     def get_avg_resp_time(self, host=None):
         if host is None:

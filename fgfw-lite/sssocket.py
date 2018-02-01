@@ -101,11 +101,6 @@ class sssocket(object):
                     remote.sendall(cipher.encrypt(data))
         except socket.timeout:
             logger.info('socket.timeout')
-        except (OSError, IOError) as e:
-            if e.args[0] in (errno.EBADF,):
-                return
-            if e.args[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.ENOTCONN, errno.EPIPE):
-                raise
         except Exception as e:
             logger.error(repr(e))
             logger.error(traceback.format_exc())

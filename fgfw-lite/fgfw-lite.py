@@ -827,19 +827,30 @@ class ProxyHandler(HTTPRequestHandler):
                     else:
                         self.logger.debug('client closed')
                         fds.remove(self.connection)
-                        self.remotesoc.shutdown(socket.SHUT_WR)
+                        try:
+                            self.remotesoc.shutdown(socket.SHUT_WR)
+                        except NetWorkIOError:
+                            pass
                 if self.remotesoc in ins:
-                    data = self.remotesoc.recv(self.bufsize)
+                    try:
+                        data = self.remotesoc.recv(self.bufsize)
+                    except NetWorkIOError:
+                        data = b''
                     if data:
                         # self.logger.info('read from remote %d, %s' % (len(data), self.path))
                         self._wfile_write(data)
                     else:
                         self.logger.debug('remote closed')
                         fds.remove(self.remotesoc)
-                        self.connection.shutdown(socket.SHUT_WR)
+                        try:
+                            self.connection.shutdown(socket.SHUT_WR)
+                        except NetWorkIOError:
+                            pass
             self.logger.debug('forward completed successfully.')
         except socket.timeout:
             self.logger.debug('socket.timeout error')
+            pass
+        except ClientError:
             pass
         except NetWorkIOError as e:
             self.logger.info('NetWorkIOError, code %r' % e.args[0])

@@ -316,7 +316,12 @@ class _hxssocket(object):
                         closed = 1
                     else:
                         ct_len, = struct.unpack('>H', ct_len)
-                        ct = self._rfile.read(ct_len)
+                        try:
+                            ct = self._rfile.read(ct_len)
+                        except (OSError, IOError) as e:
+                            logger.error('hxsocks line 320: %r' % e)
+                            closed = 1
+                            raise e
                         data = cipher.decrypt(ct)
                         pad_len = byte2int(data)
                         cmd = indexbytes(data, -1)
@@ -342,7 +347,10 @@ class _hxssocket(object):
 
                 if local in ins:
                     # data from client
-                    data = local.recv(self.bufsize)
+                    try:
+                        data = local.recv(self.bufsize)
+                    except (OSError, IOError):
+                        data = b''
                     if not data:
                         fds.remove(local)
                         # send fake chunk
@@ -374,6 +382,8 @@ class _hxssocket(object):
                 logger.debug('hxsocks pooled. %s' % self.hxsServer.name)
                 return
             logger.debug('hxsocks closed, readable %s, writeable %s, closed %s' % (self.readable, self.writeable, closed))
+        except InvalidTag:
+            closed = True
         except Exception as e:
             logger.error(repr(e))
             logger.error(traceback.format_exc())
