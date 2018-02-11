@@ -97,7 +97,7 @@ except ImportError:
     def on_finish(hdlr):
         pass
 
-__version__ = '4.20.3'
+__version__ = '4.20.5'
 
 NetWorkIOError = (IOError, OSError, BufEmptyError, InvalidTag)
 DEFAULT_TIMEOUT = 5
@@ -241,6 +241,7 @@ class ProxyHandler(HTTPRequestHandler):
         self.traffic_count = [0, 0]  # [read from client, write to client]
 
     def handle_one_request(self):
+        self.logger.debug('enter handle_one_request: %d' % self.connection.getpeername()[1])
         self._proxylist = None
         self.remotesoc = None
         self.retryable = True
@@ -264,7 +265,7 @@ class ProxyHandler(HTTPRequestHandler):
                 raise
         finally:
             if self.path:
-                self.logger.debug(self.shortpath or self.path + ' finished.')
+                self.logger.debug(self.shortpath or self.path + ' finished: %d' % self.connection.getpeername()[1])
                 self.logger.debug('upload: %d, download %d' % tuple(self.traffic_count))
             if self.remotesoc:
                 self.remotesoc.close()
@@ -273,7 +274,7 @@ class ProxyHandler(HTTPRequestHandler):
     def getparent(self):
         if self._proxylist is None:
             self._proxylist = self.conf.GET_PROXY.get_proxy(self.path, self.requesthost, self.command, self.rip, self.server.proxy_level)
-            self.logger.debug(repr(self._proxylist))
+            self.logger.debug(repr(self._proxylist) + str(self.connection.getpeername()[1]))
         if not self._proxylist:
             self.ppname = ''
             self.pproxy = None
@@ -728,7 +729,7 @@ class ProxyHandler(HTTPRequestHandler):
         self._do_CONNECT()
 
     def _do_CONNECT(self, retry=False):
-        self.logger.debug('_do_CONNECT')
+        self.logger.debug('_do_CONNECT: %d' % self.connection.getpeername()[1])
         if retry:
             self.failed_parents.append(self.ppname)
             self.pproxy.log(self.requesthost[0], 10)
@@ -742,7 +743,6 @@ class ProxyHandler(HTTPRequestHandler):
             iplist = self.conf.HOSTS.get(self.requesthost[0])
             self._proxylist.insert(0, self.pproxy)
         self.set_timeout()
-        self.logger.debug('create connection')
         try:
             self.remotesoc = self._connect_via_proxy(self.requesthost, iplist, tunnel=True)
             # self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -763,14 +763,14 @@ class ProxyHandler(HTTPRequestHandler):
                 reason = ''
                 (ins, _, _) = select.select(fds, [], [], self.conf.timeout*2)
                 if not ins:
-                    self.logger.debug('timeout, break(0)')
+                    self.logger.debug('timeout, break, stage 0')
                     reason = 'timeout'
                     break
                 if self.connection in ins:
-                    self.logger.debug('read from client(0)')
+                    self.logger.debug('data from client, stage 0')
                     data = self.connection_recv(self.bufsize)
                     if not data:
-                        self.logger.debug('client closed(0)')
+                        self.logger.debug('client closed, stage 0')
                         reason = 'client closed'
                         self.remotesoc.shutdown(socket.SHUT_WR)
                         fds.remove(self.connection)
@@ -783,18 +783,18 @@ class ProxyHandler(HTTPRequestHandler):
                     if self.retryable:
                         self.rbuffer.append(data)
                 if self.remotesoc in ins:
-                    self.logger.debug('read from remote(0)')
+                    self.logger.debug('data from remote, stage 0')
                     data = self.remotesoc.recv(self.bufsize)
                     if not data:  # remote connection closed
                         # gonna retry, do not close connection
-                        self.logger.debug('remote closed(0)')
+                        self.logger.debug('remote closed, stage 0')
                         reason = 'remote closed'
                         fds.remove(self.remotesoc)
                         break
                     rtime = time.clock() - timelog
                     self._wfile_write(data)
             except NetWorkIOError as e:
-                self.logger.warning('do_CONNECT error: %r on %s %s(0)' % (e, reason, count))
+                self.logger.warning('do_CONNECT error: %r on %s %s, stage 0' % (e, reason, count))
                 break
         if self.retryable:
             reason = reason or "don't know why"
@@ -822,7 +822,7 @@ class ProxyHandler(HTTPRequestHandler):
                 if self.connection in ins:
                     data = self.connection_recv(self.bufsize)
                     if data:
-                        self.logger.debug('read from client %d, %s' % (len(data), self.path))
+                        self.logger.debug('read from client %d, %d' % (len(data), self.connection.getpeername()[1]))
                         self.remotesoc.sendall(data)
                     else:
                         self.logger.debug('client closed')
@@ -837,23 +837,23 @@ class ProxyHandler(HTTPRequestHandler):
                     except NetWorkIOError:
                         data = b''
                     if data:
-                        # self.logger.info('read from remote %d, %s' % (len(data), self.path))
+                        self.logger.debug('read from remote %d, %d' % (len(data), self.connection.getpeername()[1]))
                         self._wfile_write(data)
                     else:
-                        self.logger.debug('remote closed')
+                        self.logger.debug('remote closed: %d' % self.connection.getpeername()[1])
                         fds.remove(self.remotesoc)
                         try:
                             self.connection.shutdown(socket.SHUT_WR)
                         except NetWorkIOError:
                             pass
-            self.logger.debug('forward completed successfully.')
+            self.logger.debug('forward completed successfully: %d' % self.connection.getpeername()[1])
         except socket.timeout:
-            self.logger.debug('socket.timeout error')
+            self.logger.debug('socket.timeout error: %d' % self.connection.getpeername()[1])
             pass
         except ClientError:
             pass
         except NetWorkIOError as e:
-            self.logger.info('NetWorkIOError, code %r' % e.args[0])
+            self.logger.info('NetWorkIOError, code %r, %d' % (e.args[0], self.connection.getpeername()[1]))
             self.logger.info(traceback.format_exc())
             pass
         finally:
@@ -865,7 +865,7 @@ class ProxyHandler(HTTPRequestHandler):
                 self.remotesoc = None
 
     def on_conn_log(self):
-        self.logmethod('{} {} via {}. {}{}'.format(self.command, self.shortpath or self.path, self.ppname, 'slow ' if self.slow else '', self.client_address[0]))
+        self.logmethod('{} {} via {}. {}{}'.format(self.command, self.shortpath or self.path, self.ppname, 'slow ' if self.slow else '', self.client_address[1]))
 
     def wfile_write(self, data=None):
         if data is None:
