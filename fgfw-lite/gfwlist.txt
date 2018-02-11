@@ -1,9 +1,9 @@
 [AutoProxy 0.2.9]
-! Checksum: 4lCzocW7PtchrfCTKvXmhQ
+! Checksum: XcPXG8YBfTELG7oWQCsEGA
 ! Expires: 6h
 ! Title: GFWList4LL
 ! GFWList with EVERYTHING included
-! Last Modified: Wed, 03 Jan 2018 20:09:59 -0500
+! Last Modified: Sat, 10 Feb 2018 22:23:06 -0500
 !
 ! HomePage: https://github.com/gfwlist/gfwlist
 ! License: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
@@ -244,9 +244,11 @@ share.dmhy.org
 ||i.lithium.com
 ||cloud.mail.ru
 ||cdn-images.mailchimp.com
+||dictionary.goo.ne.jp
 ||go.nesnode.com
 ||nikkei.com
 ||my.pcloud.com
+||picacomic.com
 ||pixiv.net
 ||secure.raxcdn.com
 ||sosreader.com
@@ -773,6 +775,15 @@ userapi.nytlog.com
 cn.nytstyle.com
 ||nytstyle.com
 
+!!---Steam---
+.steamcommunity.com
+||steamcommunity.com
+!--steamcommunity.com/profiles/76561198062771609
+!--steamcommunity.com/groups/LibetTibet
+!--steamcommunity.com/groups/zhonggong
+!--steamcommunity.com/id/CJT_Jackton
+|http://store.steampowered.com/app/333600
+
 !!---Telegram---
 !!!---Domain---
 ||t.me
@@ -781,6 +792,7 @@ cn.nytstyle.com
 ||telegram.me
 ||telegram.org
 .telegramdownload.com
+!!!---IP---
 
 !!---Twitter---
 ||periscope.tv
@@ -938,6 +950,7 @@ blogs.yahoo.co.jp
 buy.yahoo.com.tw/gdsale
 hk.yahoo.com
 hk.knowledge.yahoo.com
+tw.money.yahoo.com
 hk.myblog.yahoo.com
 news.yahoo.com/china-blocks-bbc
 ||hk.news.yahoo.com
@@ -980,6 +993,7 @@ video.yahoo.com
 ||12vpn.com
 ||12vpn.net
 141hongkong.com/forum
+||141jj.com
 .141tube.com
 .1688.com.au
 .173ng.com
@@ -1112,6 +1126,7 @@ abclite.net
 .acg18.me
 |http://acg18.me
 ||acgkj.com
+.acmedia365.com
 .acnw.com.au
 actfortibet.org
 actimes.com.au
@@ -1277,7 +1292,7 @@ apkpure.com
 ||appsto.re
 ||archives.gov
 .archive.is
-|http://archive.is
+||archive.is
 .archive.fo
 ||archive.org
 .arctosia.com
@@ -1321,6 +1336,7 @@ atgfw.org
 .atnext.com
 ||atnext.com
 ice.audionow.com
+||av.movie
 avaaz.org
 ||avaaz.org
 !--||avast.com
@@ -2173,11 +2189,13 @@ gloryhole.com
 ||dollf.com
 .domain.club.tw
 .domaintoday.com.au
+chinese.donga.com
 dongtaiwang.com
 ||dongtaiwang.com
 .dongtaiwang.net
 ||dongtaiwang.net
 .dongyangjing.com
+|http://danbooru.donmai.us
 .dontfilter.us
 ||dontmovetochina.com
 .dorjeshugden.com
@@ -4628,6 +4646,7 @@ thecenter.mit.edu
 .mitao.com.tw
 .mitbbs.com
 ||mitbbs.com
+mitbbsau.com
 .mixero.com
 ||mixero.com
 mixpod.com
@@ -4636,6 +4655,7 @@ mixpod.com
 ||mizzmona.com
 .mk5000.com
 .mlcool.com
+.mm-cg.com
 ||mmaaxx.com
 .mmmca.com
 mnewstv.com
@@ -4741,6 +4761,7 @@ mymediarom.com/files/box
 ||myparagliding.com
 ||mypopescu.com
 myradio.hk/podcast
+.myreadingmanga.info
 mysinablog.com
 .myspace.com
 !--.blogs.myspace.com
@@ -5147,6 +5168,7 @@ philly.com
 ||photodharma.net
 ||photofocus.com
 ||phuquocservices.com
+||picacomiccn.com
 .picidae.net
 ||img*.picturedip.com
 picturesocial.com
@@ -5481,6 +5503,7 @@ rfaweb.org
 .rileyguide.com
 riku.me/
 .ritouki.jp
+||ritter.vg
 .rlwlw.com
 ||rlwlw.com
 .rmjdw.com
@@ -5488,7 +5511,7 @@ riku.me/
 .roadshow.hk
 .roboforex.com
 ||robustnessiskey.com
-||roc-taiwan.org
+!--||roc-taiwan.org
 ||rocket-inc.net
 |http://www2.rocketbbs.com/11/bbs.cgi?id=5mus
 |http://www2.rocketbbs.com/11/bbs.cgi?id=freemgl
@@ -5882,12 +5905,6 @@ usinfo.state.gov
 |http://startuplivingchina.com
 ||static-economist.com
 ||stc.com.sa
-.steamcommunity.com
-||steamcommunity.com
-!--steamcommunity.com/profiles/76561198062771609
-!--steamcommunity.com/groups/LibetTibet
-!--steamcommunity.com/groups/zhonggong
-!--steamcommunity.com/id/CJT_Jackton
 ||steel-storm.com
 .steganos.com
 ||steganos.com
@@ -5999,7 +6016,7 @@ tahr.org.tw
 .taiwandaily.net
 ||taiwandaily.net
 .taiwandc.org
-||taiwanembassy.org
+!--||taiwanembassy.org
 .taiwanjustice.com
 taiwankiss.com
 taiwannation.com
@@ -6007,7 +6024,7 @@ taiwannation.com.tw
 ||taiwanncf.org.tw
 ||taiwannews.com.tw
 |http://www.taiwanonline.cc/
-||taiwantoday.tw
+!--||taiwantoday.tw
 taiwantp.net
 ||taiwantt.org.tw
 taiwanus.net
@@ -6350,6 +6367,7 @@ tube8.com
 |http://tubeislam.com
 .tubestack.com
 ||tubewolf.com
+.tuibeitu.net
 tuidang.net
 tuidang.org
 .tuidang.se
@@ -7349,6 +7367,7 @@ zhuichaguoji.org
 .zinio.com
 ||zinio.com
 .ziporn.com
+.zippyshare.com
 .zkaip.com
 ||zkaip.com
 realforum.zkiz.com
@@ -7365,7 +7384,7 @@ zomobo.net
 .zoozle.net
 writer.zoho.com
 ||zpn.im
-.zshare.net/download
+||zspeeder.me
 .zsrhao.com
 .zuo.la
 ||zuo.la

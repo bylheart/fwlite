@@ -1,3 +1,7 @@
+2018.2.12 v4.20.5
+adjust timeout
+update gfwlist
+
 2018.1.8 v4.20.4
 fix chacha20-ietf-poly1305
 update hxsocks
