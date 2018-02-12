@@ -763,14 +763,14 @@ class ProxyHandler(HTTPRequestHandler):
                 reason = ''
                 (ins, _, _) = select.select(fds, [], [], self.conf.timeout*2)
                 if not ins:
-                    self.logger.debug('timeout, break, stage 0')
+                    self.logger.debug('timeout, break, stage 0: %d' % self.connection.getpeername()[1])
                     reason = 'timeout'
                     break
                 if self.connection in ins:
-                    self.logger.debug('data from client, stage 0')
+                    self.logger.debug('data from client, stage 0: %d' % self.connection.getpeername()[1])
                     data = self.connection_recv(self.bufsize)
                     if not data:
-                        self.logger.debug('client closed, stage 0')
+                        self.logger.debug('client closed, stage 0: %d' % self.connection.getpeername()[1])
                         reason = 'client closed'
                         self.remotesoc.shutdown(socket.SHUT_WR)
                         fds.remove(self.connection)
@@ -783,26 +783,26 @@ class ProxyHandler(HTTPRequestHandler):
                     if self.retryable:
                         self.rbuffer.append(data)
                 if self.remotesoc in ins:
-                    self.logger.debug('data from remote, stage 0')
+                    self.logger.debug('data from remote, stage 0: %d' % self.connection.getpeername()[1])
                     data = self.remotesoc.recv(self.bufsize)
                     if not data:  # remote connection closed
                         # gonna retry, do not close connection
-                        self.logger.debug('remote closed, stage 0')
+                        self.logger.debug('remote closed, stage 0: %d' % self.connection.getpeername()[1])
                         reason = 'remote closed'
                         fds.remove(self.remotesoc)
                         break
                     rtime = time.clock() - timelog
                     self._wfile_write(data)
             except NetWorkIOError as e:
-                self.logger.warning('do_CONNECT error: %r on %s %s, stage 0' % (e, reason, count))
+                self.logger.warning('do_CONNECT error: %r on %s %s, stage 0: %d' % (e, reason, count, self.connection.getpeername()[1]))
                 break
         if self.retryable:
             reason = reason or "don't know why"
             if reason != 'client closed':
-                self.logger.warning('%s %s via %s failed! %s. retry...' % (self.command, self.path, self.ppname, reason))
+                self.logger.warning('%s %s via %s failed! %s. retry... %d' % (self.command, self.path, self.ppname, reason, self.connection.getpeername()[1]))
                 return self._do_CONNECT(True)
             else:
-                self.logger.warning('%s %s via %s failed! %s' % (self.command, self.path, self.ppname, reason))
+                self.logger.warning('%s %s via %s failed! %s %d' % (self.command, self.path, self.ppname, reason, self.connection.getpeername()[1]))
                 self.conf.GET_PROXY.notify(self.command, self.path, self.requesthost, True, self.failed_parents, self.ppname, rtime)
                 return
         # not retryable, clear rbuffer
@@ -817,7 +817,7 @@ class ProxyHandler(HTTPRequestHandler):
                 self.delay()
                 ins, _, _ = select.select(fds, [], [], 60)
                 if not ins:
-                    self.logger.debug('tcp forwarding timed out.')
+                    self.logger.debug('tcp forwarding timed out: %d' % self.connection.getpeername()[1])
                     break
                 if self.connection in ins:
                     data = self.connection_recv(self.bufsize)
@@ -825,7 +825,7 @@ class ProxyHandler(HTTPRequestHandler):
                         self.logger.debug('read from client %d, %d' % (len(data), self.connection.getpeername()[1]))
                         self.remotesoc.sendall(data)
                     else:
-                        self.logger.debug('client closed')
+                        self.logger.debug('client closed: %d' % self.connection.getpeername()[1])
                         fds.remove(self.connection)
                         try:
                             self.remotesoc.shutdown(socket.SHUT_WR)

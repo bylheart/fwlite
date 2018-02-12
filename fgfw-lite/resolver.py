@@ -82,11 +82,12 @@ dns_cache = DNS_Cache()
 
 
 def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
-    logger.debug('entering getaddrinfo()')
+    logger.debug('entering getaddrinfo(%s)' % host)
     exp = None
     for _ in range(2):
         try:
             result = socket.getaddrinfo(host, port, family, socktype, proto, flags)
+            logger.debug('done getaddrinfo(%s)' % host)
             return result
         except Exception as e:
             exp = e
@@ -94,7 +95,7 @@ def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
 
 
 def _resolver(host, port=0):
-    logger.debug('entering _resolver()')
+    logger.debug('entering _resolver(%s)' % host)
     return [(i[0], i[4][0]) for i in getaddrinfo(host, port)]
 
 
@@ -113,6 +114,7 @@ def _udp_dns_record(host, qtype, server, timeout=3):
 
 
 def tcp_dns_record(host, qtype, server, proxy, timeout=2):
+    logger.debug('entering tcp_dns_record(%s, %s, %s)' % (host, server, proxy))
     if isinstance(qtype, str):
         query = dnslib.DNSRecord.question(host, qtype=qtype)
     else:
@@ -142,7 +144,7 @@ class BaseResolver(object):
         self.dnsserver = tuple(dnsserver)
 
     def record(self, host, qtype):
-        logger.debug('entering %s.record()... %r' % (self.__class__.__name__, self))
+        logger.debug('entering %s.record(%s)' % (self.__class__.__name__, host))
         result = dns_cache.query(host, (self.__class__.__name__, qtype, self.dnsserver))
         if result:
             if isinstance(result, Exception):
@@ -166,7 +168,7 @@ class BaseResolver(object):
         return result
 
     def resolve(self, host, dirty=False):
-        logger.debug('entering %s.resolve()... %r' % (self.__class__.__name__, self))
+        logger.debug('entering %s.resolve(%s)' % (self.__class__.__name__, host))
         try:
             ip = ip_address(host)
             return [(2 if ip._version == 4 else 10, host), ]
@@ -183,7 +185,7 @@ class BaseResolver(object):
             return []
 
     def get_ip_address(self, host):
-        logger.debug('entering %s.get_ip_address()... %r' % (self.__class__.__name__, self))
+        logger.debug('entering %s.get_ip_address(%s)' % (self.__class__.__name__, host))
         try:
             return ip_address(host)
         except Exception:
@@ -274,6 +276,7 @@ class Resolver(BaseResolver):
         return record
 
     def resolve(self, host, dirty=False):
+        logger.debug('entering %s.resolve(%s)' % (self.__class__.__name__, host))
         try:
             ip = ip_address(host)
             return [(2 if ip._version == 4 else 10, host), ]
@@ -309,6 +312,7 @@ class Anti_GFW_Resolver(BaseResolver):
                 return True
 
     def resolve(self, host, dirty=False):
+        logger.debug('entering %s.resolve(%s)' % (self.__class__.__name__, host))
         try:
             ip = ip_address(host)
             return [(2 if ip._version == 4 else 10, host), ]
