@@ -857,7 +857,7 @@ class ProxyHandler(HTTPRequestHandler):
             self.logger.info(traceback.format_exc())
             pass
         finally:
-            if hasattr(self.remotesoc, 'pooled') and self.remotesoc.pooled:
+            if hasattr(self.remotesoc, 'pooled') and not self.remotesoc.pooled:
                 try:
                     self.remotesoc.close()
                 except NetWorkIOError:
