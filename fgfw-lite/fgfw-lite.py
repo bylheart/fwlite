@@ -636,7 +636,7 @@ class ProxyHandler(HTTPRequestHandler):
         if self.path.endswith(':80') and data in (b'GET ', b'POST'):
             # it's a http request, start parsing
             request_line = data + self.rfile.readline()
-            self.requestline = request_line.rstrip('\r\n')
+            self.requestline = request_line.rstrip(b'\r\n')
             words = self.requestline.split()
             if len(words) == 3:
                 command, path, version = words
