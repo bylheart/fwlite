@@ -285,7 +285,7 @@ class _hxssocket(object):
         # remote: self._sock, connect with server
         fds = [local, remote]
         total_send = 0
-        closed = 0
+        closed = 0  # proxy connection closed
         close_count = 0
         try:
             while fds:
@@ -308,7 +308,10 @@ class _hxssocket(object):
                         break
                 if remote in ins:
                     # data from server
-                    ct_len = self._rfile.read(2)
+                    try:
+                        ct_len = self._rfile.read(2)
+                    except Exception:
+                        ct_len = b''
                     if not ct_len:
                         logger.debug('server closed')
                         fds.remove(remote)
@@ -319,7 +322,6 @@ class _hxssocket(object):
                         try:
                             ct = self._rfile.read(ct_len)
                         except (OSError, IOError) as e:
-                            logger.error('hxsocks line 320: %r' % e)
                             closed = 1
                             raise e
                         data = cipher.decrypt(ct)
@@ -363,7 +365,11 @@ class _hxssocket(object):
                         data = chr(padding_len).encode('latin1') + b * padding_len
                         ct = cipher.encrypt(data)
                         data = struct.pack('>H', len(ct)) + ct
-                        remote.sendall(data)
+                        try:
+                            remote.sendall(data)
+                        except (OSError, IOError) as e:
+                            closed = True
+                            raise e
                     else:
                         padding_len = random.randint(8, 255)
                         data = chr(padding_len).encode('latin1') + data + b'\x00' * padding_len
@@ -385,7 +391,7 @@ class _hxssocket(object):
         except InvalidTag:
             closed = True
         except Exception as e:
-            logger.error(repr(e))
+            logger.error(repr(e) + ' closed' if closed else '')
             logger.error(traceback.format_exc())
         finally:
             try:
