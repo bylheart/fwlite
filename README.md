@@ -1,4 +1,4 @@
-#FWLite
+# FWLite
 
 A anti-censorship HTTP proxy with builtin shadowsocks support.
 
@@ -8,9 +8,9 @@ Tested on Windows 7 and Windows 10.
 
 [Download](https://github.com/v3aqb/fwlite/archive/master.zip)
 
-##Quick Start
+## Quick Start
 
-####Set parent proxy
+#### Set parent proxy
 
 Add your own parent proxy in the `parents` section of main configuration file `userconf.ini`.
 
@@ -29,13 +29,13 @@ or this:
     # connect to 'http://server:8087' via 'socks5://127.0.0.1:1080'
     proxy3 = http://server:8087|socks5://127.0.0.1:1080
 
-####Set browser
+#### Set browser
 
 Set your browser's proxy setting to `http://127.0.0.1:8118`.
 
 On Windows, this should be done automatically.
 
-####Start
+#### Start
 
 For Windows, run `FWLite.exe`
 
@@ -45,7 +45,7 @@ Run in command-line:
 
     python2.7 /path_to/fwlite/fgfw-lite/fgfw-lite.py
 
-####Instruction under openSUSE
+#### Instruction under openSUSE
 
     sudo zypper install python-virtualenv
 
@@ -64,7 +64,7 @@ Run in command-line:
     # run fwlite GUI
     ./env/bin/python path_to/FWLite.pyw
 
-##Features
+## Features
 
 - Set IE proxy automatically (windows)
 - Detect blocked sites automatically
@@ -88,7 +88,7 @@ Run in command-line:
 
 Not all features are listed here, and only few of them are covered in GUI.
 
-##User Defined Rules(./fgfw-lite/local.txt)
+## User Defined Rules(./fgfw-lite/local.txt)
 
 FW-Lite uses [autoproxy rules](http://mydf.github.io/blog/autoproxy/), the differences are:
 
@@ -130,11 +130,11 @@ Assign a parent proxy for certain sites
     ||bbc.co.uk shadowsocks-uk
     ||googlevideo.com shadowsocks-us1 shaodwsocks-us2
 
-##License
+## License
 
 GPLv2
 
-##Thanks
+## Thanks
 
 [翻墙路由器的原理与实现]
 
