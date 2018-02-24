@@ -233,92 +233,9 @@ def Encryptor(password, method):
 
 
 def AEncryptor(key, method, ctx):
-    if is_aead(method):
-        return AEncryptor_AEAD(key, method, ctx)
-    else:
-        return AEncryptor_HMAC(key, method, ctx)
-
-
-class AEncryptor_HMAC(object):
-    '''
-    Provide Authenticated Encryption
-    '''
-    def __init__(self, key, method, ctx):
-        if method not in method_supported:
-            raise ValueError('encryption method not supported')
-
-        self._key_len, self._iv_len, is_aead = method_supported.get(method)
-        if is_aead:
-            raise ValueError('AEAD method is not supported by AEncryptor_HMAC class!')
-
-        self.method = method
-        self.__key = key
-        self.mac_len = 16
-        self.iv_sent = False
-        self.hfunc = key_len_to_hash[self._key_len]
-
-        while True:
-            iv = random_string(self._iv_len)
-            try:
-                IV_CHECKER.check(self.__key, iv)
-            except ivError:
-                continue
-            break
-        self.cipher_iv = iv
-
-        encrypt_key = hmac.new(key, self.cipher_iv, hashlib.sha256).digest()[:self._key_len]
-        encrypt_auth_key = hmac.new(key, encrypt_key, hashlib.sha256).digest()[:self._key_len]
-        self.__enmac = hmac.new(encrypt_auth_key, digestmod=self.hfunc)
-        self.__encrypt_seq = 0
-        self.cipher = get_cipher(encrypt_key, method, 1, self.cipher_iv)
-
-        self.decipher = None
-        self.__demac = None
-        self.__decrypt_seq = 0
-
-    def encrypt(self, buf, ad=None):
-        if not buf:
-            raise BufEmptyError
-        if self.iv_sent:
-            ct = self.cipher.update(buf)
-        else:
-            self.iv_sent = True
-            ct = self.cipher_iv + self.cipher.update(buf)
-
-        enmac = self.__enmac.copy()
-        enmac.update(struct.pack('!Q', self.__encrypt_seq))
-        self.__encrypt_seq += 1
-        enmac.update(ct)
-        if ad:
-            enmac.update(ad)
-        return ct + enmac.digest()[:self.mac_len]
-
-    def decrypt(self, buf, ad=None):
-        if not buf:
-            raise BufEmptyError
-        if self.decipher is None:
-            iv, buf = buf[:self._iv_len], buf[self._iv_len:]
-            IV_CHECKER.check(self.__key, iv)
-            decrypt_key = hmac.new(self.__key, iv, hashlib.sha256).digest()[:self._key_len]
-            decrypt_auth_key = hmac.new(self.__key, decrypt_key, hashlib.sha256).digest()[:self._key_len]
-            self.__demac = hmac.new(decrypt_auth_key, digestmod=self.hfunc)
-            self.decipher = get_cipher(decrypt_key, self.method, 0, iv)
-            del self.__key
-
-        demac = self.__demac.copy()
-        demac.update(struct.pack('!Q', self.__decrypt_seq))
-        if self.__decrypt_seq == 0:
-            demac.update(iv)
-        self.__decrypt_seq += 1
-        buf, mac = buf[:self.mac_len * -1], buf[self.mac_len * -1:]
-        demac.update(buf)
-        if ad:
-            demac.update(ad)
-        rmac = demac.digest()[:self.mac_len]
-        pt = self.decipher.update(buf) if buf else b''
-        if compare_digest(rmac, mac):
-            return pt
-        raise InvalidTag
+    if not is_aead(method):
+        method = 'chacha20-ietf-poly1305'
+    return AEncryptor_AEAD(key, method, ctx)
 
 
 if sys.version_info[0] == 3:
@@ -411,9 +328,12 @@ class AEncryptor_AEAD(object):
         self._encryptor_nonce += 1
 
         if not self._encryptor:
+            _len = len(data) + self._iv_len + self._tag_len - 2
+            if self._ctx == b"ss-subkey":
+                _len += self._tag_len + data_len
+
             while True:
                 if self._ctx == b"ss-subkey":
-                    _len = self._iv_len + self._tag_len + data_len + self._tag_len
                     iv = struct.pack(">H", _len) + random_string(self._iv_len-2)
                 else:
                     iv = random_string(self._iv_len)
@@ -483,28 +403,7 @@ if __name__ == '__main__':
             print('%s %ss' % (method, time.clock() - t))
         except Exception as e:
             print(repr(e))
-    print('test AE HMAC')
-    ae1 = AEncryptor_HMAC(b'123456', 'aes-256-cfb', b'ctx')
-    ae2 = AEncryptor_HMAC(b'123456', 'aes-256-cfb', b'ctx')
-    ct1 = ae1.encrypt(b'abcde')
-    ct2 = ae1.encrypt(b'fg')
-    print(ae2.decrypt(ct1))
-    print(ae2.decrypt(ct2))
-    for method in lst:
-        if is_aead(method):
-            continue
-        try:
-            cipher1 = AEncryptor_HMAC(b'123456', method, b'ctx')
-            cipher2 = AEncryptor_HMAC(b'123456', method, b'ctx')
-            t = time.clock()
-            for _ in range(1024):
-                ct1 = cipher1.encrypt(s)
-                ct2 = cipher1.encrypt(s)
-                cipher2.decrypt(ct1)
-                cipher2.decrypt(ct2)
-            print('%s-HMAC %ss' % (method, time.clock() - t))
-        except Exception as e:
-            print(repr(e))
+
     print('test AE GCM')
     ae1 = AEncryptor_AEAD(b'123456', 'aes-128-gcm', b'ctx')
     ae2 = AEncryptor_AEAD(b'123456', 'aes-128-gcm', b'ctx')
