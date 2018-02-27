@@ -75,16 +75,14 @@ Run in command-line:
   - connection reset
 - Multiple work profile
 - Support Network which require a Proxy ([issue #39](https://github.com/v3aqb/fwlite/issues/39))
-- Support FTP LIST/RETR (Anonymous Only)
 - Support websocket protocol
 - Supported parent proxy
   - HTTP Proxy
   - Socks5 Proxy
   - [Shadowsocks] by @clowwindy (with AEAD support)
 - Prioritize parent proxies by response time
-- <del>Prioritize parent proxies by location</del>
 - Redirector
-- Support PAC for WPAD
+- Simple PAC for WPAD
 
 Not all features are listed here, and only few of them are covered in GUI.
 
