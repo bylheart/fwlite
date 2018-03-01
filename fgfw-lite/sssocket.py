@@ -41,6 +41,8 @@ class sssocket(object):
         self.crypto = None
         self.aead = False
         self._socketpair_a, self._socketpair_b = socket.socketpair()
+        self._socketpair_a.settimeout(5)
+        self._socketpair_b.settimeout(5)
         self._ota_chunk_idx = 0
         self._thread = None
 

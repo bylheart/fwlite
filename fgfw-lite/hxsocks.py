@@ -100,6 +100,8 @@ class _hxssocket(object):
         self.timeout = ctimeout
         self._sock = None
         self._socketpair_a, self._socketpair_b = socket.socketpair()
+        self._socketpair_a.settimeout(5)
+        self._socketpair_b.settimeout(5)
         self.fileno = self._socketpair_a.fileno
         if parentproxy and not isinstance(parentproxy, ParentProxy):
             parentproxy = ParentProxy(parentproxy, parentproxy)
