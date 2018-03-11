@@ -1,3 +1,6 @@
+2018.3.11 v4.20.6
+...
+
 2018.2.12 v4.20.5
 adjust timeout
 update gfwlist
