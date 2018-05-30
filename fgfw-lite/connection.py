@@ -103,6 +103,10 @@ def create_connection(netloc, ctimeout=None, source_address=None, iplist=None, p
         from hxsocks import hxssocket
         s = hxssocket(parentproxy, ctimeout, via)
         s.connect(netloc)
+    elif parentproxy.scheme == 'hxs2':
+        from hxsocks2 import hxs2_get_connection
+        conn = hxs2_get_connection(parentproxy, ctimeout, via)
+        s = conn.connect(netloc)
     elif parentproxy.scheme == 'socks5':
         s = create_connection((parentproxy.hostname, parentproxy.port or 1080), ctimeout, source_address, parentproxy=via, tunnel=True)
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
