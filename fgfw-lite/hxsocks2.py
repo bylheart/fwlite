@@ -367,10 +367,10 @@ class hxs2_connection(object):
         acipher = ECC(self.__pskcipher._key_len)
         pubk = acipher.get_pub_key()
         logger.debug('hxsocks2 send key exchange request')
-        ts = struct.pack('>I', int(time.time()))
+        ts = int(time.time()) // 30
+        ts = struct.pack('>I', ts)
         padding_len = random.randint(64, 255)
-        data = b''.join([ts,
-                         chr(len(pubk)).encode('latin1'),
+        data = b''.join([chr(len(pubk)).encode('latin1'),
                          pubk,
                          hmac.new(psw.encode(), ts + pubk + usn.encode(), hashlib.sha256).digest(),
                          b'\x00' * padding_len])
