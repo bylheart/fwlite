@@ -1,5 +1,9 @@
+2018.5.30 v4.21
+add hxsocks2
+update hxsocks key exchange
+
 2018.3.11 v4.20.6
-...
+bug fix
 
 2018.2.12 v4.20.5
 adjust timeout
