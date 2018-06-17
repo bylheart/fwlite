@@ -307,8 +307,9 @@ class Anti_GFW_Resolver(BaseResolver):
     def is_poisoned(self, domain):
         if not self.apfilter_list:
             return
+        url = 'http://%s/' % domain
         for apfilter in self.apfilter_list:
-            if apfilter and apfilter.match(domain, domain, True):
+            if apfilter and apfilter.match(url, domain):
                 return True
 
     def resolve(self, host, dirty=False):
