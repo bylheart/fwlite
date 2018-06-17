@@ -117,13 +117,13 @@ class hxs2_connection(object):
         if parentproxy and not isinstance(parentproxy, ParentProxy):
             parentproxy = ParentProxy(parentproxy, parentproxy)
         self.parentproxy = parentproxy
-        _PSK = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
+        _psk = urlparse.parse_qs(self.hxsServer.parse.query).get('PSK', [''])[0]
         self.method = urlparse.parse_qs(self.hxsServer.parse.query).get('method', [DEFAULT_METHOD])[0].lower()
         self.hash_algo = urlparse.parse_qs(self.hxsServer.parse.query).get('hash', [DEFAULT_HASH])[0].upper()
 
         self._connection_write_lock = RLock()
 
-        self.__pskcipher = Encryptor(_PSK, self.method)
+        self.__pskcipher = Encryptor(_psk, self.method)
         self.__cipher = None
         self._next_stream_id = 1
 
@@ -223,10 +223,11 @@ class hxs2_connection(object):
         last_ping = 0
         while True:
             # read frame_len
-            timeout = 5 if last_ping else 30
+            timeout = 2 if last_ping else 30
             ins, _, _ = select.select([self._sock], [], [], timeout)
             if not ins:
                 if last_ping:
+                    logger.info('server no response ' + self.hxsServer.name)
                     break
                 self.send_frame(6, 0, 0, b'\x00' * random.randint(64, 256))
                 last_ping = time.time()
@@ -294,7 +295,10 @@ class hxs2_connection(object):
                     if frame_flags == END_STREAM_FLAG:
                         if self._stream_status[stream_id] == OPEN:
                             self._stream_status[stream_id] = REMOTE_CLOSED
-                            self._client_sock[stream_id].shutdown(socket.SHUT_WR)  # KeyError?
+                            try:
+                                self._client_sock[stream_id].shutdown(socket.SHUT_WR)  # KeyError?
+                            except KeyError:
+                                pass
                             self._client_status[stream_id] = LOCAL_CLOSED
                         elif self._stream_status[stream_id] == LOCAL_CLOSED:
                             self._stream_status[stream_id] = CLOSED
@@ -323,7 +327,7 @@ class hxs2_connection(object):
                 # PING
                 if frame_flags == 1:
                     resp_time = time.time() - last_ping
-                    logger.info('server response time: %.3f' % resp_time)
+                    logger.info('server response time: %.3f %s' % (resp_time, self.hxsServer.name))
                     last_ping = 0
                 else:
                     self.send_frame(6, 1, 0, b'\x00' * random.randint(64, 256))
@@ -342,7 +346,7 @@ class hxs2_connection(object):
             else:
                 break
         # out of loop, destroy connection
-        logger.info('out of loop')
+        logger.info('out of loop ' + self.hxsServer.name)
         self.manager.remove(self)
         self._rfile.close()
         try:
