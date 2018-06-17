@@ -183,7 +183,7 @@ class Config(object):
             self.logger.addHandler(hdlr)
 
         self.region = set(x.upper() for x in self.userconf.dget('fgfwproxy', 'region', '').split('|') if x.strip())
-        self.profiles = len(self.userconf.dget('fgfwproxy', 'profile', '13'))
+        self.profile_num = len(self.userconf.dget('fgfwproxy', 'profile', '13'))
         self.xheaders = self.userconf.dgetbool('fgfwproxy', 'xheaders', False)
 
         if self.userconf.dget('fgfwproxy', 'parentproxy', ''):

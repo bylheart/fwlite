@@ -361,7 +361,7 @@ class ProxyHandler(HTTPRequestHandler):
 
         if self.rip.is_loopback:
             if ip_address(self.client_address[0]).is_loopback:
-                if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
+                if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profile_num):
                     return self.api(parse)
             else:
                 return self.send_error(403)
@@ -722,7 +722,7 @@ class ProxyHandler(HTTPRequestHandler):
 
         if self.rip.is_loopback:
             if ip_address(self.client_address[0]).is_loopback:
-                if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profiles):
+                if self.requesthost[1] in range(self.conf.listen[1], self.conf.listen[1] + self.conf.profile_num):
                     # prevent loop
                     return
             else:
