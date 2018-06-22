@@ -416,6 +416,8 @@ class ProxyHandler(HTTPRequestHandler):
                 self._proxylist.insert(0, self.pproxy)
             self.set_timeout()
             self.remotesoc = self._http_connect_via_proxy(self.requesthost, iplist)
+            if hasattr(self.remotesoc, 'name'):
+                self.ppname = self.remotesoc.name
             self.remotesoc.settimeout(self.rtimeout)
             self.wbuffer = []
             self.wbuffer_size = 0
@@ -747,6 +749,8 @@ class ProxyHandler(HTTPRequestHandler):
         try:
             self.remotesoc = self._connect_via_proxy(self.requesthost, iplist, tunnel=True)
             # self.remotesoc.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            if hasattr(self.remotesoc, 'name'):
+                self.ppname = self.remotesoc.name
         except NetWorkIOError as e:
             self.logger.warning('%s %s via %s failed on connect! %r' % (self.command, self.path, self.ppname, e))
             return self._do_CONNECT(True)
@@ -762,7 +766,7 @@ class ProxyHandler(HTTPRequestHandler):
         while self.retryable:
             try:
                 reason = ''
-                (ins, _, _) = select.select(fds, [], [], self.conf.timeout*2)
+                (ins, _, _) = select.select(fds, [], [], self.conf.timeout * 2)
                 if not ins:
                     self.logger.debug('timeout, break, stage 0: %d' % self.connection_port)
                     reason = 'timeout'

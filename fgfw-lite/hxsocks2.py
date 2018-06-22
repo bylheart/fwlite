@@ -77,17 +77,14 @@ CONN_MANAGER = {}  # (server, parentproxy): manager
 
 
 class conn_manager(object):
-    def __init__(self, hxsServer, ctimeout, parentproxy):
-        self.hxsServer = hxsServer
+    def __init__(self, ctimeout):
         self.ctimeout = ctimeout
-        self.parentproxy = parentproxy
+        self.connection = None
 
-        self.connection = hxs2_connection(self.hxsServer, self.ctimeout, self.parentproxy, self)
-
-    def get_connection(self):
+    def get_connection(self, hxsServer, parentproxy):
         # choose / create and return a connection
         if not self.connection:
-            self.connection = hxs2_connection(self.hxsServer, self.ctimeout, self.parentproxy, self)
+            self.connection = hxs2_connection(hxsServer, self.ctimeout, parentproxy, self)
         return self.connection
 
     def remove(self, conn):
@@ -97,9 +94,10 @@ class conn_manager(object):
 
 
 def hxs2_get_connection(hxsServer, ctimeout, parentproxy=None):
-    if (hxsServer, parentproxy) not in CONN_MANAGER:
-        CONN_MANAGER[(hxsServer, parentproxy)] = conn_manager(hxsServer, ctimeout, parentproxy)
-    return CONN_MANAGER[(hxsServer, parentproxy)].get_connection()
+    id_ = urlparse.parse_qs(hxsServer.parse.query).get('id', [hxsServer.name, ])[0]
+    if id_ not in CONN_MANAGER:
+        CONN_MANAGER[id_] = conn_manager(ctimeout)
+    return CONN_MANAGER[id_].get_connection(hxsServer, parentproxy)
 
 
 class hxs2_connection(object):
@@ -109,6 +107,7 @@ class hxs2_connection(object):
         if not isinstance(hxsServer, ParentProxy):
             hxsServer = ParentProxy(hxsServer, hxsServer)
         self.hxsServer = hxsServer
+        self.name = self.hxsServer.name
         self.timeout = ctimeout
         self.manager = manager
 
@@ -135,7 +134,7 @@ class hxs2_connection(object):
         # start read from hxsocks2 connection
         Thread(target=self.read_from_connection).start()
 
-    def connect(self, address):
+    def connect(self, address, timeout=3):
         logger.debug('hxsocks2 send connect request')
         payload = b''.join([chr(len(address[0])).encode('latin1'),
                             address[0].encode(),
@@ -152,12 +151,13 @@ class hxs2_connection(object):
         # wait for server response
         event = Event()
         self._client_status[stream_id] = event
-        event.wait(timeout=10)
+        event.wait(timeout=timeout)
 
         if stream_id not in self._stream_status:
             # server should have some response by now
             logger.error('no response from server')
             self.manager.remove(self)
+            self._client_status[stream_id] = CLOSED
             raise OSError('no response from server')
 
         if self._stream_status[stream_id] == OPEN:
@@ -212,6 +212,9 @@ class hxs2_connection(object):
 
     def send_frame(self, type_, flags, stream_id, payload):
         logger.debug('send_frame type: %d, stream_id: %d' % (type_, stream_id))
+        if self._sock is None:
+            logger.error('connection closed. ' + self.name)
+            return
         with self._connection_write_lock:
             header = struct.pack('>BBH', type_, flags, stream_id)
             data = header + payload
@@ -223,7 +226,7 @@ class hxs2_connection(object):
         last_ping = 0
         while True:
             # read frame_len
-            timeout = 2 if last_ping else 30
+            timeout = 2 if last_ping else 10
             ins, _, _ = select.select([self._sock], [], [], timeout)
             if not ins:
                 if last_ping:
@@ -313,6 +316,10 @@ class hxs2_connection(object):
                         if isinstance(self._client_status[stream_id], Event):
                             self._client_status[stream_id].set()
                             self._stream_status[stream_id] = OPEN
+                        else:
+                            # close stream
+                            self._stream_status[stream_id] = CLOSED
+                            self.send_frame(3, 0, stream_id, b'\x00' * random.randint(8, 256))
             elif frame_type == 3:
                 # RST_STREAM
                 self._stream_status[stream_id] = CLOSED
@@ -320,8 +327,6 @@ class hxs2_connection(object):
                     self._client_status[stream_id] = CLOSED
                     self._client_sock[stream_id].close()
                     del self._client_sock[stream_id]
-                else:
-                    self._client_status[stream_id].set()
 
             elif frame_type == 6:
                 # PING
@@ -350,7 +355,9 @@ class hxs2_connection(object):
         self.manager.remove(self)
         self._rfile.close()
         try:
-            self._sock.close()
+            if self._sock:
+                self._sock.close()
+                self._sock = None
         except (OSError, IOError):
             pass
         for stream_id, sock in self._client_sock.items():
