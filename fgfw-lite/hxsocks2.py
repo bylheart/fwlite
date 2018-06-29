@@ -109,7 +109,8 @@ class hxs2_connection(object):
         self.hxsServer = hxsServer
         self.name = self.hxsServer.name
         self.timeout = ctimeout
-        self.manager = manager
+        self._manager = manager
+        self._last_ping = 0
 
         self._sock = None
 
@@ -145,7 +146,7 @@ class hxs2_connection(object):
         self._next_stream_id += 1
         if self._next_stream_id > MAX_STREAM_ID:
             logger.info('MAX_STREAM_ID reached')
-            self.manager.remove(self)
+            self._manager.remove(self)
 
         self.send_frame(1, 0, stream_id, payload)
         # wait for server response
@@ -155,10 +156,9 @@ class hxs2_connection(object):
 
         if stream_id not in self._stream_status:
             # server should have some response by now
-            logger.error('no response from server')
-            self.manager.remove(self)
-            self._client_status[stream_id] = CLOSED
-            raise OSError('no response from server')
+            logger.error('no response from server, timeout=%.3f' % timeout)
+            self.send_ping()
+            raise OSError('not connected')
 
         if self._stream_status[stream_id] == OPEN:
             socketpair_a, socketpair_b = socket.socketpair()
@@ -221,19 +221,22 @@ class hxs2_connection(object):
             ct = self.__cipher.encrypt(data)
             self._sock.sendall(struct.pack('>H', len(ct)) + ct)
 
+    def send_ping(self):
+        if self._last_ping == 0:
+            self._last_ping = time.time()
+            self.send_frame(6, 0, 0, b'\x00' * random.randint(64, 256))
+
     def read_from_connection(self):
         logger.debug('start read from connection')
-        last_ping = 0
         while True:
             # read frame_len
-            timeout = 2 if last_ping else 10
+            timeout = 2 if self._last_ping else 10
             ins, _, _ = select.select([self._sock], [], [], timeout)
             if not ins:
-                if last_ping:
+                if self._last_ping:
                     logger.info('server no response ' + self.hxsServer.name)
                     break
-                self.send_frame(6, 0, 0, b'\x00' * random.randint(64, 256))
-                last_ping = time.time()
+                self.send_ping()
                 continue
 
             try:
@@ -331,16 +334,16 @@ class hxs2_connection(object):
             elif frame_type == 6:
                 # PING
                 if frame_flags == 1:
-                    resp_time = time.time() - last_ping
+                    resp_time = time.time() - self._last_ping
                     logger.info('server response time: %.3f %s' % (resp_time, self.hxsServer.name))
-                    last_ping = 0
+                    self._last_ping = 0
                 else:
                     self.send_frame(6, 1, 0, b'\x00' * random.randint(64, 256))
             elif frame_type == 7:
                 # GOAWAY
                 # no more new stream
                 max_stream_id = payload.read(2)
-                self.manager.remove(self)
+                self._manager.remove(self)
                 for stream_id, sock in self._client_sock:
                     if stream_id > max_stream_id:
                         # reset stream
@@ -352,7 +355,7 @@ class hxs2_connection(object):
                 break
         # out of loop, destroy connection
         logger.info('out of loop ' + self.hxsServer.name)
-        self.manager.remove(self)
+        self._manager.remove(self)
         self._rfile.close()
         try:
             if self._sock:
