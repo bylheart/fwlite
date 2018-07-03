@@ -393,7 +393,6 @@ class ProxyHandler(HTTPRequestHandler):
                 self.conf.GET_PROXY.notify(self.command, self.shortpath, self.requesthost, False, self.failed_parents, self.ppname)
                 return self.send_error(504)
 
-            self.upstream_name = self.ppname if self.pproxy.proxy.startswith('http') else self.requesthost
             iplist = None
             if self.pproxy.name == 'direct' and self.requesthost[0] in self.conf.HOSTS and not self.failed_parents:
                 iplist = self.conf.HOSTS.get(self.requesthost[0])
@@ -589,7 +588,7 @@ class ProxyHandler(HTTPRequestHandler):
                 except Exception:
                     pass
             else:
-                self.HTTPCONN_POOL.put(self.upstream_name, self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
+                self.HTTPCONN_POOL.put((self.client_address, self.requesthost), self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
             self.remotesoc = None
             if self.close_connection:
                 self.connection.close()
@@ -877,7 +876,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _http_connect_via_proxy(self, netloc, iplist):
         if not self.failed_parents:
-            result = self.HTTPCONN_POOL.get(self.upstream_name)
+            result = self.HTTPCONN_POOL.get((self.client_address, self.requesthost))
             if result:
                 self._proxylist.insert(0, self.conf.parentlist.get(self.ppname))
                 sock, self.ppname = result
