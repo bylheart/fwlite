@@ -156,8 +156,9 @@ class hxs2_connection(object):
 
         if stream_id not in self._stream_status:
             # server should have some response by now
-            logger.error('no response from server, timeout=%.3f' % timeout)
+            logger.error('not connected from %s, timeout=%.3f' % (self.name, timeout))
             self.send_ping()
+            # self._manager.remove(self)
             raise OSError('not connected')
 
         if self._stream_status[stream_id] == OPEN:
