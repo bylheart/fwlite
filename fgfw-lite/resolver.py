@@ -96,7 +96,18 @@ def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
 
 def _resolver(host, port=0):
     logger.debug('entering _resolver(%s)' % host)
-    return [(i[0], i[4][0]) for i in getaddrinfo(host, port)]
+    result = dns_cache.query(host, '_resolver')
+    if result:
+        if isinstance(result, Exception):
+            raise result
+        return result
+    try:
+        result = [(i[0], i[4][0]) for i in getaddrinfo(host, port)]
+        dns_cache.cache(host, '_resolver', result)
+    except Exception as e:
+        dns_cache.cache(host, '_resolver', e)
+        raise e
+    return result
 
 
 def _udp_dns_record(host, qtype, server, timeout=3):
@@ -294,6 +305,7 @@ class Anti_GFW_Resolver(BaseResolver):
         self.bad_ip = bad_ip
 
     def record(self, domain, qtype):
+        logger.warning('Anti_GFW_Resolver.record(%s)' % domain)
         try:
             if not self.is_poisoned(domain):
                 record = self.local.record(domain, qtype)
