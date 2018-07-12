@@ -2,11 +2,15 @@
 
 A anti-censorship HTTP proxy with builtin shadowsocks support.
 
-Current Version: 4.21
+Current Version: 4.21.1
 
 Tested on Windows 7 and Windows 10.
 
 [Download](https://github.com/v3aqb/fwlite/archive/master.zip)
+
+## Known Issues
+
+- Incompatible with slow DNS server(ie. Pcap_DNSProxy) (issue 62)
 
 ## Quick Start
 

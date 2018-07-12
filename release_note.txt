@@ -1,3 +1,8 @@
+2018.7.12 v4.21.1
+update hxsocks2
+update resolver
+update gfwlist
+
 2018.5.30 v4.21
 add hxsocks2
 update hxsocks key exchange
