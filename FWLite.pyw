@@ -17,6 +17,7 @@ import atexit
 import base64
 import operator
 import json
+import socket
 import subprocess
 import traceback
 from collections import deque
@@ -164,6 +165,15 @@ class MainWindow(QtGui.QMainWindow):
                 lines.remove(line)
             elif '<DNS Question:' in line:
                 lines.remove(line)
+        test = lines[-10] if len(lines) > 10 else lines
+        lst = [line for line in test if 'hxsocks2:ERROR connection closed' in line]
+        if len(lst) > 2:
+            try:
+                urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=0.3)
+                lines.append('GUI: fwlite responding')
+            except Exception:
+                lines.append('GUI: fwlite NOT responding, restart...')
+                freload = True
         self.consoleText.extend(lines)
         self.ui.console.setPlainText(u'\n'.join(self.consoleText))
         self.ui.console.moveCursor(QtGui.QTextCursor.End)
