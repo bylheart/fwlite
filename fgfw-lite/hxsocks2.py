@@ -318,8 +318,8 @@ class hxs2_connection(object):
                     else:
                         # confirm a stream is opened
                         if isinstance(self._client_status[stream_id], Event):
-                            self._client_status[stream_id].set()
                             self._stream_status[stream_id] = OPEN
+                            self._client_status[stream_id].set()
                         else:
                             # close stream
                             self._stream_status[stream_id] = CLOSED
@@ -358,6 +358,12 @@ class hxs2_connection(object):
         logger.info('out of loop ' + self.hxsServer.name)
         self._manager.remove(self)
         self._rfile.close()
+
+        for sid, status in self._client_status.items():
+            if isinstance(status, Event):
+                self._stream_status[sid] = CLOSED
+                status.set()
+
         try:
             if self._sock:
                 self._sock.close()
