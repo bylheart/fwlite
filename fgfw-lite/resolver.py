@@ -96,18 +96,7 @@ def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
 
 def _resolver(host, port=0):
     logger.debug('entering _resolver(%s)' % host)
-    result = dns_cache.query(host, '_resolver')
-    if result:
-        if isinstance(result, Exception):
-            raise result
-        return result
-    try:
-        result = [(i[0], i[4][0]) for i in getaddrinfo(host, port)]
-        dns_cache.cache(host, '_resolver', result)
-    except Exception as e:
-        dns_cache.cache(host, '_resolver', e)
-        raise e
-    return result
+    return [(i[0], i[4][0]) for i in getaddrinfo(host, port)]
 
 
 def _udp_dns_record(host, qtype, server, timeout=3):
