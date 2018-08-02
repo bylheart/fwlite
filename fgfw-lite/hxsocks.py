@@ -235,7 +235,7 @@ class _hxssocket(object):
                     if self.aead:
                         ct_len = self.pskcipher.decrypt(self._rfile.read(18))
                         ct_len, = struct.unpack('!H', ct_len)
-                        ct = self.pskcipher.decrypt(self._rfile.read(ct_len+16))
+                        ct = self.pskcipher.decrypt(self._rfile.read(ct_len + 16))
                         data = ct[2:]
                     else:
                         resp_len = self.pskcipher.decrypt(self._rfile.read(2))
@@ -279,6 +279,7 @@ class _hxssocket(object):
                             logger.error('hxs getKey Error: server auth failed, bad username or password')
                     else:
                         logger.error('hxs getKey Error. bad password or timestamp.')
+                    self._sock.close()
                 else:
                     raise IOError(0, 'hxs getKey Error')
 

@@ -449,6 +449,7 @@ class hxs2_connection(object):
                 logger.error('hxs getKey Error: server auth failed, bad username or password')
         else:
             logger.error('hxs getKey Error. bad password or timestamp.')
+        self._sock.close()
         raise OSError(0, 'hxs getKey Error')
 
 
