@@ -231,33 +231,18 @@ class Config(object):
                     except Exception as e:
                         self.logger.warning('%s %s' % (e, line))
 
-        localdns = self.userconf.dget('dns', 'localdns', '')
-        # get local dns setting from system
-        if not localdns:
-            if sys.platform.startswith('win'):
-                import subprocess
-                localdns = subprocess.check_output(['nslookup', '127.0.0.1']).splitlines()[1].split()[1].decode()
-            elif sys.platform == 'linux2':
-                lst = []
-                with open('/etc/resolv.conf') as f:
-                    for line in f:
-                        if line.startswith('nameserver'):
-                            lst.append(line.split()[1])
-                localdns = '|'.join(lst)
-            else:
-                localdns = '119.29.29.29'
-        self.logger.info('localdns: ' + localdns)
-        self.localdns = [parse_hostport(dns, 53) for dns in localdns.split('|')]
-        remotedns = localdns if self.rproxy else self.userconf.dget('dns', 'remotedns', '8.8.8.8')
+        remotedns = self.userconf.dget('dns', 'remotedns', '8.8.8.8')
         self.logger.info('remotedns: ' + remotedns)
         self.remotedns = [parse_hostport(dns, 53) for dns in remotedns.split('|')]
 
         self.REDIRECTOR = redirector(self)
         self.GET_PROXY = get_proxy(self)
+
+        apf = [] if self.rproxy else [self.GET_PROXY.gfwlist, self.GET_PROXY.local]
         bad_ip = set(self.userconf.dget('dns', 'bad_ip', '').split('|'))
-        self.resolver = resolver.get_resolver(self.localdns, self.remotedns,
+        self.resolver = resolver.get_resolver(self.remotedns,
                                               proxy=ParentProxy('self', 'http://127.0.0.1:%d' % self.listen[1]),
-                                              apfilter=[self.GET_PROXY.gfwlist, self.GET_PROXY.local],
+                                              apfilter=apf,
                                               bad_ip=bad_ip)
 
     def reload(self):

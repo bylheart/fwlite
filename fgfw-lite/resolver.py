@@ -234,7 +234,7 @@ class UDP_Resolver(BaseResolver):
         for i in range(2):
             for server in self.dnsserver:
                 try:
-                    sock.settimeout(i+1)
+                    sock.settimeout(i + 1)
                     sock.sendto(query_data, server)
                     reply_data, reply_address = sock.recvfrom(8192)
                     record = dnslib.DNSRecord.parse(reply_data)
@@ -261,19 +261,8 @@ class TCP_Resolver(BaseResolver):
 
 
 class Resolver(BaseResolver):
-    def __init__(self, dnsserver, timeout=3):
-        self.dnsserver = tuple(dnsserver)
-        self.UDP_Resolver = UDP_Resolver(dnsserver, timeout=timeout)
-        self.TCP_Resolver = TCP_Resolver(dnsserver, timeout=timeout+1)
-
-    def record(self, domain, qtype):
-        try:
-            record = self.UDP_Resolver.record(domain, qtype)
-            if record and record.header.tc == 1:
-                raise ValueError('tcp required')
-        except Exception:
-            record = self.TCP_Resolver.record(domain, qtype)
-        return record
+    def __init__(self, timeout=3):
+        self.timeout = timeout
 
     def resolve(self, host, dirty=False):
         logger.debug('entering %s.resolve(%s)' % (self.__class__.__name__, host))
@@ -285,25 +274,12 @@ class Resolver(BaseResolver):
 
 
 class Anti_GFW_Resolver(BaseResolver):
-    def __init__(self, localdns, remotedns, proxy, apfilter_list, bad_ip):
-        logger.debug('localdns: %r' % localdns)
+    def __init__(self, remotedns, proxy, apfilter_list, bad_ip):
         logger.debug('remotedns: %r' % remotedns)
-        self.local = Resolver(localdns, timeout=1)
+        self.local = Resolver(timeout=1)
         self.remote = TCP_Resolver(remotedns, proxy, timeout=3)
         self.apfilter_list = apfilter_list
         self.bad_ip = bad_ip
-
-    def record(self, domain, qtype):
-        logger.warning('Anti_GFW_Resolver.record(%s)' % domain)
-        try:
-            if not self.is_poisoned(domain):
-                record = self.local.record(domain, qtype)
-                if any([str(x.rdata) in self.bad_ip for x in record.rr if x.rtype in (dnslib.QTYPE.A, dnslib.QTYPE.AAAA)]):
-                    raise ValueError('ip in bad_ip list')
-                return record
-        except Exception as e:
-            logger.info('resolve %s via local failed! %r' % (domain, e))
-        return self.remote.record(domain, qtype)
 
     def is_poisoned(self, domain):
         if not self.apfilter_list:
@@ -333,12 +309,12 @@ class Anti_GFW_Resolver(BaseResolver):
         return self.remote.resolve(host)
 
 
-def get_resolver(localdns, remotedns=None, proxy=None, apfilter=None, bad_ip=None):
+def get_resolver(remotedns=None, proxy=None, apfilter=None, bad_ip=None):
     bad_ip = bad_ip or set()
-    if not remotedns or localdns == remotedns:
-        return Resolver(localdns)
+    if not apfilter:
+        return Resolver()
     else:
-        return Anti_GFW_Resolver(localdns, remotedns, proxy, apfilter, bad_ip)
+        return Anti_GFW_Resolver(remotedns, proxy, apfilter, bad_ip)
 
 
 if __name__ == '__main__':
