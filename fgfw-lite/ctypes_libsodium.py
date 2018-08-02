@@ -23,6 +23,7 @@
 from __future__ import absolute_import, division, print_function, \
     with_statement
 
+import sys
 import os
 import logging
 from ctypes import CDLL, c_char_p, c_int, c_ulonglong, c_uint, byref, \
@@ -64,6 +65,9 @@ def find_library_nt(name):
         files = glob.glob(fname)
         if files:
             results.extend(files)
+    path = os.path.join(os.path.dirname(sys.executable), 'libsodium.dll')
+    if os.path.exists(path):
+        results.append(path)
     return results
 
 
