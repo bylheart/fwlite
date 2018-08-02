@@ -38,7 +38,7 @@ except ImportError:
 from parent_proxy import ParentProxy
 import encrypt
 from encrypt import InvalidTag, AEncryptor, Encryptor
-from ecc import ECC
+from ecc import ECC, InvalidSignature
 
 import logging
 
@@ -438,12 +438,13 @@ class hxs2_connection(object):
                 raise OSError(0, 'hxs: bad certificate')
 
             if auth == hmac.new(psw.encode(), pubk + server_key + usn.encode(), hashlib.sha256).digest():
-                if ECC.verify_with_pub_key(server_cert, auth, signature, self.hash_algo):
+                try:
+                    ECC.verify_with_pub_key(server_cert, auth, signature, self.hash_algo)
                     shared_secret = acipher.get_dh_key(server_key)
                     logger.debug('hxs key exchange success')
                     self.__cipher = AEncryptor(shared_secret, self.method, CTX)
                     return
-                else:
+                except InvalidSignature:
                     logger.error('hxs getKey Error: server auth failed, bad signature')
             else:
                 logger.error('hxs getKey Error: server auth failed, bad username or password')

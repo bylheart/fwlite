@@ -40,7 +40,7 @@ from parent_proxy import ParentProxy
 from httputil import httpconn_pool
 import encrypt
 from encrypt import BufEmptyError, InvalidTag
-from ecc import ECC
+from ecc import ECC, InvalidSignature
 
 import logging
 
@@ -267,13 +267,14 @@ class _hxssocket(object):
                             logger.error('hxs: server %s certificate mismatch! PLEASE CHECK!' % server_id)
                             raise OSError(0, 'hxs: bad certificate')
                         if auth == hmac.new(psw.encode(), pubk + server_key + usn.encode(), hashlib.sha256).digest():
-                            if ECC.verify_with_pub_key(server_cert, auth, signature, self.hash_algo):
+                            try:
+                                ECC.verify_with_pub_key(server_cert, auth, signature, self.hash_algo)
                                 shared_secret = acipher.get_dh_key(server_key)
                                 keys[self.serverid] = (hashlib.md5(pubk).digest(), shared_secret)
                                 self.cipher = encrypt.AEncryptor(keys[self.serverid][1], self.method, CTX)
                                 logger.debug('hxs key exchange success')
                                 return
-                            else:
+                            except InvalidSignature:
                                 logger.error('hxs getKey Error: server auth failed, bad signature')
                         else:
                             logger.error('hxs getKey Error: server auth failed, bad username or password')

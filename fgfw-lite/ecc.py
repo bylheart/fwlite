@@ -3,6 +3,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_der_private_key,\
     load_der_public_key, Encoding, PublicFormat, PrivateFormat, NoEncryption
+from cryptography.exceptions import InvalidSignature
 
 
 class ECC(object):
@@ -40,22 +41,14 @@ class ECC(object):
 
     def sign(self, data, hash_algo):
         '''Sign the given digest using ECDSA. Returns a signature.'''
-        signer = self.ec_private.signer(ec.ECDSA(getattr(hashes, hash_algo)()))
-        signer.update(data)
-        signature = signer.finalize()
+        signature = self.ec_private.sign(data, ec.ECDSA(getattr(hashes, hash_algo)()))
         return signature
 
     def verify(self, data, signature, hash_algo):
         '''Verify the given digest using ECDSA. r and s are the ECDSA signature parameters.
            if verified, return 1.
         '''
-        verifier = self.ec_public.verifier(signature, ec.ECDSA(getattr(hashes, hash_algo)()))
-        verifier.update(data)
-        try:
-            verifier.verify()
-            return 1
-        except Exception:
-            return 0
+        self.ec_public.verify(signature, data, ec.ECDSA(getattr(hashes, hash_algo)()))
 
     @staticmethod
     def verify_with_pub_key(pubkey, data, signature, hash_algo):
@@ -63,13 +56,7 @@ class ECC(object):
            if verified, return 1.
         '''
         pubkey = load_der_public_key(pubkey, backend=default_backend())
-        verifier = pubkey.verifier(signature, ec.ECDSA(getattr(hashes, hash_algo)()))
-        verifier.update(data)
-        try:
-            verifier.verify()
-            return 1
-        except Exception:
-            return 0
+        pubkey.verify(signature, data, ec.ECDSA(getattr(hashes, hash_algo)()))
 
     @staticmethod
     def save_pub_key(pubkey, dest):
