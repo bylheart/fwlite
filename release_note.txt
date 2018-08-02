@@ -1,3 +1,9 @@
+2018.8.2 v4.21.3
+update resolver
+fix libsodium on windows
+update GeoLite2-Country.mmdb
+update gfwlist
+
 2018.7.22 v4.21.2
 update hxsocks2
 restart fwlite when not responding
