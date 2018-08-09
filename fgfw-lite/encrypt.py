@@ -45,10 +45,8 @@ import struct
 from util import iv_checker, ivError
 
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes, aead
 from cryptography.exceptions import InvalidTag
-
-from ctypes_libsodium import SodiumCrypto, SodiumAeadCrypto
 
 try:
     from hmac import compare_digest
@@ -115,7 +113,9 @@ method_supported = {
     'rc4-md5': (16, 16, False),
     'chacha20-ietf': (32, 12, False),
     # 'bypass': (16, 16, False),  # for testing only
-
+    'aes-128-gcm': (16, 16, True),
+    'aes-192-gcm': (24, 24, True),
+    'aes-256-gcm': (32, 32, True),
     'chacha20-ietf-poly1305': (32, 32, True),
 }
 
@@ -135,11 +135,39 @@ class bypass(object):
 IV_CHECKER = iv_checker(1048576, 3600)
 
 
+class chacha20_ietf(object):
+    def __init__(self, cipher_name, key, iv, op):
+        self.key = key
+        self.iv = iv
+        assert cipher_name == 'chacha20-ietf'
+
+        # byte counter, not block counter
+        self.counter = 0
+
+    def update(self, data):
+        l = len(data)
+
+        # we can only prepend some padding to make the encryption align to
+        # blocks
+        padding = self.counter % 64
+        if padding:
+            data = (b'\0' * padding) + data
+
+        nonce = struct.pack("<i", self.counter // 64) + self.iv
+
+        algorithm = algorithms.ChaCha20(key, nonce)
+        cipher = Cipher(algorithm, mode=None, backend=default_backend())
+        encryptor = cipher.encryptor()
+        ct = encryptor.update(data)
+
+        self.counter += l
+
+        return ct[padding:]
+
+
 def get_cipher(key, method, op, iv):
     if method == 'bypass':
         return bypass()
-    if method in ('salsa20', 'chacha20', 'chacha20-ietf'):
-        return SodiumCrypto(method, key, iv, op)
     elif method == 'rc4-md5':
         md5 = hashlib.md5()
         md5.update(key)
@@ -148,7 +176,7 @@ def get_cipher(key, method, op, iv):
         method = 'rc4'
     cipher = None
 
-    if method.startswith('rc4'):
+    if method in ('rc4', 'chacha20-ietf'):
         pass
     elif method.endswith('ctr'):
         mode = modes.CTR(iv)
@@ -157,8 +185,14 @@ def get_cipher(key, method, op, iv):
     else:
         raise ValueError('operation mode "%s" not supported!' % method.upper())
 
-    if method.startswith('rc4'):
+    if method == 'rc4':
         cipher = Cipher(algorithms.ARC4(key), None, default_backend())
+    elif method == 'chacha20-ietf':
+        try:
+            return chacha20_ietf(method, key, iv, op)
+        except:
+            from ctypes_libsodium import SodiumCrypto
+            return SodiumCrypto(method, key, iv, op)
     elif method.startswith('aes'):
         cipher = Cipher(algorithms.AES(key), mode, default_backend())
     elif method.startswith('camellia'):
@@ -242,22 +276,16 @@ if sys.version_info[0] == 3:
     def buffer(x):
         return x
 
-try:
-    from cryptography.hazmat.primitives.ciphers import aead
-    method_supported.update({'aes-128-gcm': (16, 16, True),
-                             'aes-192-gcm': (24, 24, True),
-                             'aes-256-gcm': (32, 32, True),
-                             })
-except ImportError:
-    sys.stderr.write('aead not supported by your python-cryptography')
-    aead = None
-
 
 def get_aead_cipher(key, method):
     # method should be AEAD method
     if method.startswith('aes'):
         return aead.AESGCM(key)
-    return SodiumAeadCrypto(method, key)
+    try:
+        return aead.ChaCha20Poly1305(key)
+    except:
+        from ctypes_libsodium import SodiumAeadCrypto
+        return SodiumAeadCrypto(method, key)
 
 
 class AEncryptor_AEAD(object):
