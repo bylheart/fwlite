@@ -83,15 +83,9 @@ dns_cache = DNS_Cache()
 
 def getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
     logger.debug('entering getaddrinfo(%s)' % host)
-    exp = None
-    for _ in range(2):
-        try:
-            result = socket.getaddrinfo(host, port, family, socktype, proto, flags)
-            logger.debug('done getaddrinfo(%s)' % host)
-            return result
-        except Exception as e:
-            exp = e
-    raise exp
+    result = socket.getaddrinfo(host, port, family, socktype, proto, flags)
+    logger.debug('done getaddrinfo(%s)' % host)
+    return result
 
 
 def _resolver(host, port=0):
