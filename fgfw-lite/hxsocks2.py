@@ -113,6 +113,7 @@ class hxs2_connection(object):
         self._last_ping = 0
 
         self._sock = None
+        self._rfile = None
 
         if parentproxy and not isinstance(parentproxy, ParentProxy):
             parentproxy = ParentProxy(parentproxy, parentproxy)
