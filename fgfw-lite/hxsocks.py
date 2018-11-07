@@ -126,7 +126,7 @@ class _hxssocket(object):
         self._address = address
         try:
             self.getKey()
-        except:
+        except Exception:
             self._sock.close()
             self._rfile.close()
         if self._sock is None:
@@ -159,13 +159,13 @@ class _hxssocket(object):
                                                                 keys[self.serverid][0],
                                                                 struct.pack('>H', len(ct)), ct])))
 
-        self._sock.settimeout(8)
+        self._sock.settimeout(3)
         resp_len = self._rfile.read(2)
         if not resp_len:
             self._sock.close()
             self._rfile.close()
             self._sock = None
-            continue
+            raise IOError(0, 'hxsocks server closed 0.')
         self._sock.settimeout(self.timeout)
         resp_len, = struct.unpack('>H', resp_len)
 
@@ -176,12 +176,12 @@ class _hxssocket(object):
         except InvalidTag:
             if self.serverid in keys:
                 del keys[self.serverid]
-            continue
+            raise IOError(0, 'hxsocks InvalidTag.')
         except BufEmptyError:
             self._sock.close()
             self._rfile.close()
             self._sock = None
-            continue
+            raise IOError(0, 'hxsocks server closed 1.')
 
         d = byte2int(resp) if resp else None
         if d == 0:
@@ -344,7 +344,7 @@ class _hxssocket(object):
                         else:
                             if random.random() < 0.1:
                                 self.send_fake_chunk(2)
-                            data = data[1:0-pad_len] if pad_len else data[1:]
+                            data = data[1:0 - pad_len] if pad_len else data[1:]
                             if data:
                                 local.sendall(data)
                             else:

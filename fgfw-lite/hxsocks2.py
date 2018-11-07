@@ -196,7 +196,7 @@ class hxs2_connection(object):
                 return
             try:
                 data = sock.recv(self.bufsize)
-            except OSError:
+            except Exception:
                 try:
                     sock.close()
                 except OSError:

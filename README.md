@@ -12,6 +12,10 @@ Tested on Windows 7 and Windows 10.
 
 - Incompatible with slow DNS server(ie. Pcap_DNSProxy) (issue 62)
 
+## For Linux and Mac:
+
+Check [fwlite-cli] and [fwlite-gui].
+
 ## Quick Start
 
 #### Set parent proxy
@@ -41,32 +45,7 @@ On Windows, this should be done automatically.
 
 #### Start
 
-For Windows, run `FWLite.exe`
-
-For Linux and Mac, run `python2 /path_to/fwlite/FWLite.pyw`
-
-Run in command-line:
-
-    python2.7 /path_to/fwlite/fgfw-lite/fgfw-lite.py
-
-#### Instruction under openSUSE
-
-    sudo zypper install python-virtualenv
-
-    # create virtualenv
-    virtualenv env
-
-    # install requirements
-    sudo zypper install gcc python-devel libffi-devel
-    ./env/bin/python -m pip install repoze.lru ipaddr dnslib chardet geoip2 future backports.socketpair
-    ./env/bin/python -m pip install gevent cryptography
-
-    # install requirements for GUI. It's gonna take a while.
-    sudo zypper in libqt4-devel
-    ./env/bin/python -m pip install pyside
-
-    # run fwlite GUI
-    ./env/bin/python path_to/FWLite.pyw
+run `FWLite.exe`
 
 ## Features
 
@@ -136,13 +115,9 @@ Assign a parent proxy for certain sites
 
 GPLv2
 
-## Thanks
+## More info
 
 [翻墙路由器的原理与实现]
-
-[COW]
-
-[GoAgent]
 
 [Shadowsocks]
 
@@ -150,9 +125,9 @@ GPLv2
 
 [gfwlist]
 
-[COW]:https://github.com/cyfdecyf/cow
-[GoAgent]:https://github.com/goagent/goagent
 [Shadowsocks]:https://github.com/clowwindy/shadowsocks
 [pybuild]:https://github.com/goagent/pybuild
 [gfwlist]:https://github.com/gfwlist/gfwlist
 [翻墙路由器的原理与实现]:https://docs.google.com/document/d/1mmMiMYbviMxJ-DhTyIGdK7OOg581LSD1CZV4XY1OMG8/pub
+[fwlite-cli]:https://github.com/v3aqb/fwlite-cli
+[fwlite-gui]:https://github.com/v3aqb/fwlite-gui
