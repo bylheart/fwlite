@@ -1,3 +1,7 @@
+2018.11.12 v4.22
+fix hxsocks
+GUI: restart when stops responding
+
 2018.8.30 v4.21.5
 fix "too many opened files"
 
