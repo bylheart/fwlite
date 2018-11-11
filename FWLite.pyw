@@ -106,6 +106,8 @@ class MainWindow(QtGui.QMainWindow):
         self.consoleText = deque(maxlen=300)
 
         self.runner = QtCore.QProcess(self)
+        self.overwatch = QtCore.QTimer(self)
+        self.overwatch.timeout.connect(self.check_alive)
 
         self.conf = SConfigParser()
         self.conf.read('userconf.ini')
@@ -136,6 +138,7 @@ class MainWindow(QtGui.QMainWindow):
             self.runner.waitForFinished(100)
 
     def createProcess(self):
+        self.overwatch.stop()
         self.killProcess()
         self.runner.readyReadStandardError.connect(self.newStderrInfo)
         self.runner.readyReadStandardOutput.connect(self.newStdoutInfo)
@@ -145,6 +148,7 @@ class MainWindow(QtGui.QMainWindow):
             python = '"{}"'.format(sys.executable)
         cmd = '%s -B ./fgfw-lite/fgfw-lite.py -GUI' % python
         self.runner.start(cmd)
+        self.overwatch.start(5000)
 
     def newStderrInfo(self):
         freload = False
@@ -167,17 +171,6 @@ class MainWindow(QtGui.QMainWindow):
                 lines.remove(line)
         self.consoleText.extend(lines)
 
-        lines = list(self.consoleText)
-        test = lines[-10] if len(lines) > 10 else lines
-        lst = [line for line in test if 'hxsocks2:ERROR connection closed' in line]
-        if len(lst) > 2:
-            try:
-                urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=0.3)
-                self.consoleText.append('GUI: fwlite responding')
-            except Exception:
-                self.consoleText.append('GUI: fwlite NOT responding, restart...')
-                freload = True
-
         self.ui.console.setPlainText(u'\n'.join(self.consoleText))
         self.ui.console.moveCursor(QtGui.QTextCursor.End)
         if freload:
@@ -187,6 +180,18 @@ class MainWindow(QtGui.QMainWindow):
         self.LocalRules.ref.emit()
         self.RedirRules.ref.emit()
         self.Settings.ref.emit()
+
+    def check_alive(self):
+        try:
+            urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=0.3)
+            # self.consoleText.append('GUI: fwlite responding')
+        except Exception:
+            self.consoleText.append('GUI: fwlite NOT responding, restart...')
+            self.reload(clear=False)
+        else:
+            self.overwatch.start(5000)
+        self.ui.console.setPlainText(u'\n'.join(self.consoleText))
+        self.ui.console.moveCursor(QtGui.QTextCursor.End)
 
     def center(self):
         qr = self.frameGeometry()
