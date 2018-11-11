@@ -127,8 +127,12 @@ class _hxssocket(object):
         try:
             self.getKey()
         except Exception:
-            self._sock.close()
-            self._rfile.close()
+            for item in (self._sock, self._rfile):
+                try:
+                    item.close()
+                except Exception:
+                    pass
+            raise IOError(0, 'hxsocks get key failed.')
         if self._sock is None:
             from connection import create_connection
             host, port = self.hxsServer.hostname, self.hxsServer.port

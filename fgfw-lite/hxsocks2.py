@@ -138,7 +138,7 @@ class hxs2_connection(object):
             for item in (self._rfile, self._sock):
                 try:
                     item.close()
-                except:
+                except Exception:
                     pass
             raise e
         # start read from hxsocks2 connection
