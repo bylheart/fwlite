@@ -589,7 +589,7 @@ class ProxyHandler(HTTPRequestHandler):
                 except Exception:
                     pass
             else:
-                self.HTTPCONN_POOL.put((self.client_address, self.requesthost), self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
+                self.HTTPCONN_POOL.put((self.client_address[0], self.requesthost), self.remotesoc, self.ppname if '(pooled)' in self.ppname else (self.ppname + '(pooled)'))
             self.remotesoc = None
             if self.close_connection:
                 self.connection.close()
@@ -833,7 +833,7 @@ class ProxyHandler(HTTPRequestHandler):
 
     def _http_connect_via_proxy(self, netloc, iplist):
         if not self.failed_parents:
-            result = self.HTTPCONN_POOL.get((self.client_address, self.requesthost))
+            result = self.HTTPCONN_POOL.get((self.client_address[0], self.requesthost))
             if result:
                 self._proxylist.insert(0, self.conf.parentlist.get(self.ppname))
                 sock, self.ppname = result
