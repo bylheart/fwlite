@@ -239,129 +239,134 @@ class hxs2_connection(object):
     def read_from_connection(self):
         logger.debug('start read from connection')
         while True:
-            # read frame_len
-            timeout = 2 if self._last_ping else 10
-            ins, _, _ = select.select([self._sock], [], [], timeout)
-            if not ins:
-                if self._last_ping:
-                    logger.info('server no response ' + self.hxsServer.name)
-                    break
-                self.send_ping()
-                continue
-
             try:
-                frame_len = self._rfile.read(2)
-                frame_len, = struct.unpack('>H', frame_len)
-            except Exception as e:
-                # destroy connection
-                logger.error('read from connection error: %r' % e)
-                break
-
-            # read frame_data
-            try:
-                frame_data = self._rfile.read(frame_len)
-                frame_data = self.__cipher.decrypt(frame_data)
-            except (OSError, IOError, InvalidTag) as e:
-                # destroy connection
-                logger.error('read frame data error: %r' % e)
-                break
-
-            # parse chunk_data
-            # +------+-------------------+----------+
-            # | type | flags | stream_id | payload  |
-            # +------+-------------------+----------+
-            # |  1   |   1   |     2     | Variable |
-            # +------+-------------------+----------+
-
-            header, payload = frame_data[:4], frame_data[4:]
-            frame_type, frame_flags, stream_id = struct.unpack('>BBH', header)
-            payload = io.BytesIO(payload)
-            logger.debug('recv frame_type: %s, stream_id: %s' % (frame_type, stream_id))
-
-            if frame_type == 0:
-                # DATA
-                # first 2 bytes of payload indicates data_len, the rest would be padding
-                data_len, = struct.unpack('>H', payload.read(2))
-                data = payload.read(data_len)
-                if len(data) != data_len:
-                    # something went wrong, destory connection
-                    break
-                # check if stream writable
-                if self._client_status[stream_id] & LOCAL_CLOSED:
+                # read frame_len
+                timeout = 2 if self._last_ping else 10
+                ins, _, _ = select.select([self._sock], [], [], timeout)
+                if not ins:
+                    if self._last_ping:
+                        logger.info('server no response ' + self.hxsServer.name)
+                        break
+                    self.send_ping()
                     continue
-                # sent data to stream
-                try:
-                    self._client_sock[stream_id].sendall(data)
-                except (OSError, IOError) as e:
-                    # TODO: remote closed, reset stream
-                    try:
-                        self._client_sock[stream_id].close()
-                    except (OSError, IOError):
-                        pass
-                    self._client_status[stream_id] = CLOSED
-                    self.send_frame(3, 0, stream_id, b'\x00' * random.randint(8, 256))
-                    self._stream_status[stream_id] = CLOSED
-            elif frame_type == 1:
-                # HEADER
-                if self._next_stream_id == stream_id:
-                    # server is not supposed to open a new stream
-                    # send connection error?
-                    break
-                elif stream_id < self._next_stream_id:
-                    if frame_flags == END_STREAM_FLAG:
-                        if self._stream_status[stream_id] == OPEN:
-                            self._stream_status[stream_id] = REMOTE_CLOSED
-                            try:
-                                self._client_sock[stream_id].shutdown(socket.SHUT_WR)  # KeyError?
-                            except KeyError:
-                                pass
-                            self._client_status[stream_id] = LOCAL_CLOSED
-                        elif self._stream_status[stream_id] == LOCAL_CLOSED:
-                            self._stream_status[stream_id] = CLOSED
-                            self._client_sock[stream_id].close()
-                            self._client_sock[stream_id] = CLOSED
-                            del self._client_sock[stream_id]
-                        else:
-                            # something wrong
-                            pass
-                    else:
-                        # confirm a stream is opened
-                        if isinstance(self._client_status[stream_id], Event):
-                            self._stream_status[stream_id] = OPEN
-                            self._client_status[stream_id].set()
-                        else:
-                            # close stream
-                            self._stream_status[stream_id] = CLOSED
-                            self.send_frame(3, 0, stream_id, b'\x00' * random.randint(8, 256))
-            elif frame_type == 3:
-                # RST_STREAM
-                self._stream_status[stream_id] = CLOSED
-                if stream_id in self._client_sock:
-                    self._client_status[stream_id] = CLOSED
-                    self._client_sock[stream_id].close()
-                    del self._client_sock[stream_id]
 
-            elif frame_type == 6:
-                # PING
-                if frame_flags == 1:
-                    resp_time = time.time() - self._last_ping
-                    logger.info('server response time: %.3f %s' % (resp_time, self.hxsServer.name))
-                    self._last_ping = 0
+                try:
+                    frame_len = self._rfile.read(2)
+                    frame_len, = struct.unpack('>H', frame_len)
+                except Exception as e:
+                    # destroy connection
+                    logger.error('read from connection error: %r' % e)
+                    break
+
+                # read frame_data
+                try:
+                    frame_data = self._rfile.read(frame_len)
+                    frame_data = self.__cipher.decrypt(frame_data)
+                except (OSError, IOError, InvalidTag) as e:
+                    # destroy connection
+                    logger.error('read frame data error: %r' % e)
+                    break
+
+                # parse chunk_data
+                # +------+-------------------+----------+
+                # | type | flags | stream_id | payload  |
+                # +------+-------------------+----------+
+                # |  1   |   1   |     2     | Variable |
+                # +------+-------------------+----------+
+
+                header, payload = frame_data[:4], frame_data[4:]
+                frame_type, frame_flags, stream_id = struct.unpack('>BBH', header)
+                payload = io.BytesIO(payload)
+                logger.debug('recv frame_type: %s, stream_id: %s' % (frame_type, stream_id))
+
+                if frame_type == 0:
+                    # DATA
+                    # first 2 bytes of payload indicates data_len, the rest would be padding
+                    data_len, = struct.unpack('>H', payload.read(2))
+                    data = payload.read(data_len)
+                    if len(data) != data_len:
+                        # something went wrong, destory connection
+                        break
+                    # check if stream writable
+                    if self._client_status[stream_id] & LOCAL_CLOSED:
+                        continue
+                    # sent data to stream
+                    try:
+                        self._client_sock[stream_id].sendall(data)
+                    except (OSError, IOError):
+                        # TODO: remote closed, reset stream
+                        try:
+                            self._client_sock[stream_id].close()
+                        except (OSError, IOError):
+                            pass
+                        self._client_status[stream_id] = CLOSED
+                        self.send_frame(3, 0, stream_id, b'\x00' * random.randint(8, 256))
+                        self._stream_status[stream_id] = CLOSED
+                elif frame_type == 1:
+                    # HEADER
+                    if self._next_stream_id == stream_id:
+                        # server is not supposed to open a new stream
+                        # send connection error?
+                        break
+                    elif stream_id < self._next_stream_id:
+                        if frame_flags == END_STREAM_FLAG:
+                            if self._stream_status[stream_id] == OPEN:
+                                self._stream_status[stream_id] = REMOTE_CLOSED
+                                try:
+                                    self._client_sock[stream_id].shutdown(socket.SHUT_WR)  # KeyError?
+                                except KeyError:
+                                    pass
+                                self._client_status[stream_id] = LOCAL_CLOSED
+                            elif self._stream_status[stream_id] == LOCAL_CLOSED:
+                                self._stream_status[stream_id] = CLOSED
+                                self._client_sock[stream_id].close()
+                                self._client_sock[stream_id] = CLOSED
+                                del self._client_sock[stream_id]
+                            else:
+                                # something wrong
+                                pass
+                        else:
+                            # confirm a stream is opened
+                            if isinstance(self._client_status[stream_id], Event):
+                                self._stream_status[stream_id] = OPEN
+                                self._client_status[stream_id].set()
+                                time.sleep(0)
+                            else:
+                                # close stream
+                                self._stream_status[stream_id] = CLOSED
+                                self.send_frame(3, 0, stream_id, b'\x00' * random.randint(8, 256))
+                elif frame_type == 3:
+                    # RST_STREAM
+                    self._stream_status[stream_id] = CLOSED
+                    if stream_id in self._client_sock:
+                        self._client_status[stream_id] = CLOSED
+                        self._client_sock[stream_id].close()
+                        del self._client_sock[stream_id]
+
+                elif frame_type == 6:
+                    # PING
+                    if frame_flags == 1:
+                        resp_time = time.time() - self._last_ping
+                        logger.info('server response time: %.3f %s' % (resp_time, self.hxsServer.name))
+                        self._last_ping = 0
+                    else:
+                        self.send_frame(6, 1, 0, b'\x00' * random.randint(64, 256))
+                elif frame_type == 7:
+                    # GOAWAY
+                    # no more new stream
+                    max_stream_id = payload.read(2)
+                    self._manager.remove(self)
+                    for stream_id, sock in self._client_sock:
+                        if stream_id > max_stream_id:
+                            # reset stream
+                            pass
+                elif frame_type == 8:
+                    # WINDOW_UPDATE
+                    pass
                 else:
-                    self.send_frame(6, 1, 0, b'\x00' * random.randint(64, 256))
-            elif frame_type == 7:
-                # GOAWAY
-                # no more new stream
-                max_stream_id = payload.read(2)
-                self._manager.remove(self)
-                for stream_id, sock in self._client_sock:
-                    if stream_id > max_stream_id:
-                        # reset stream
-                        pass
-            elif frame_type == 8:
-                # WINDOW_UPDATE
-                pass
-            else:
+                    break
+            except Exception:
+                logger.error(self.logger.info(traceback.format_exc()))
                 break
         # out of loop, destroy connection
         logger.info('out of loop ' + self.hxsServer.name)
@@ -382,7 +387,7 @@ class hxs2_connection(object):
         for stream_id, sock in self._client_sock.items():
             try:
                 sock.close()
-            except:
+            except Exception:
                 pass
 
     def getKey(self):

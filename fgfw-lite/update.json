@@ -1,6 +1,6 @@
 {
     "./FWLite.exe": "0ab5b34ee662b71b1dccd5ed0f4c81eea62665cb29f4634fc0ae227e4b3e2929",
-    "./FWLite.pyw": "d696169caa4af9b0d6cb2e1744cd961acfa0878ca49d6c4eb4a64b911af74087",
+    "./FWLite.pyw": "765a5ef9d8a0ecfd01762b6ca112dbef6610b60109679d95cb85e1d6dd54df47",
     "./Python27/asn1crypto-0.22.0-py2.7.egg": "21c587ff10fc11aac9bc28c4aa20043ce66a5444864397e7030c2ee64e52502e",
     "./Python27/backports.socketpair-3.5.0.2-py2.7.egg": "090b1c67b5bd392d0aa7939a367be740cc82997f8c6963ea37f118539fc841ef",
     "./Python27/cffi-1.10.0-py2.7-win32.egg": "476d73fb0aaeb201193120c0fb8a7d7a08b4a65e10181bea03a940a3b933c176",
@@ -24,7 +24,7 @@
     "./fgfw-lite/get_proxy.py": "2fd3ffcbda19a1236c25a87acd3d0bb19f224b0b85c144926fec8d43ae8bcdba",
     "./fgfw-lite/httputil.py": "cc06795cbc5edb1b0d9e73128d1f5f841dee34697ff8ca9123a5b03af9d1cfdc",
     "./fgfw-lite/hxsocks.py": "d5c683e1e92ae3c3119c4b2a83b27063a1ad66bd336139375b015604109eaa9d",
-    "./fgfw-lite/hxsocks2.py": "c183eb19f8541a1810c26ee82047a54b76662569edc7657373d058365cd413f8",
+    "./fgfw-lite/hxsocks2.py": "d3ae28b7dd9150a56181f8d23f7bf3b20be2257c7d960eb444e8ec6e1f4b1224",
     "./fgfw-lite/lang/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "./fgfw-lite/lang/en_US.py": "bf75c9b1db571513c476cf2594d8c0901b561cb3e30b77b216d2ff654b6e7151",
     "./fgfw-lite/lang/zh_CN.py": "8d266de5f176f2946ac9c7baed83be5b5fed1d0c181db3fe7c5b15f6ff3627d1",

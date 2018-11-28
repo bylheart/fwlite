@@ -183,7 +183,7 @@ class MainWindow(QtGui.QMainWindow):
 
     def check_alive(self):
         try:
-            urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=0.3)
+            urllib2.urlopen('http://127.0.0.1:%d/api/localrule' % self.port, timeout=1)
             # self.consoleText.append('GUI: fwlite responding')
         except Exception:
             self.consoleText.append('GUI: fwlite NOT responding, restart...')
