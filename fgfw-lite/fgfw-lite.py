@@ -1017,7 +1017,7 @@ def update(conf, logger, auto=False):
                 logger.info('%s Updated.' % path)
             else:
                 logger.info('{} NOT updated: {}'.format(path, str(r.getcode())))
-    branch = conf.userconf.dget('FGFW_Lite', 'branch', 'master')
+    branch = '0.4'
     count = 0
     try:
         r = json.loads(urllib2.urlopen('https://github.com/v3aqb/fwlite/raw/%s/fgfw-lite/update.json' % branch).read())

@@ -1,6 +1,6 @@
 {
     "./FWLite.exe": "0ab5b34ee662b71b1dccd5ed0f4c81eea62665cb29f4634fc0ae227e4b3e2929",
-    "./FWLite.pyw": "765a5ef9d8a0ecfd01762b6ca112dbef6610b60109679d95cb85e1d6dd54df47",
+    "./FWLite.pyw": "7df78c02806593836f39c6c4f8bc4b94c52bfdceafa992712ba85dbf797d5503",
     "./Python27/asn1crypto-0.22.0-py2.7.egg": "21c587ff10fc11aac9bc28c4aa20043ce66a5444864397e7030c2ee64e52502e",
     "./Python27/backports.socketpair-3.5.0.2-py2.7.egg": "090b1c67b5bd392d0aa7939a367be740cc82997f8c6963ea37f118539fc841ef",
     "./Python27/cffi-1.10.0-py2.7-win32.egg": "476d73fb0aaeb201193120c0fb8a7d7a08b4a65e10181bea03a940a3b933c176",
@@ -20,7 +20,7 @@
     "./fgfw-lite/ctypes_libsodium.py": "b8cc9cbbf0ca639a0fc7fbd08dad461eb799139ed2e203e48d0ab366f959d644",
     "./fgfw-lite/ecc.py": "486217725e8633c6958068bc946813c0aa5a129768ad6615dfc01f0ff5bcc99e",
     "./fgfw-lite/encrypt.py": "2dacfdc59fe6a99a829a509afc4f1fc13045056ef1f1f80b803f6cddc2091cc2",
-    "./fgfw-lite/fgfw-lite.py": "4525fb84e5b3078114f9db9d6461fafa8034391df449558c9c211865f802adca",
+    "./fgfw-lite/fgfw-lite.py": "076cc38d0d6878d3a758f7e09e22d1afef67332a6b942b1aa1dc636be6bac8bf",
     "./fgfw-lite/get_proxy.py": "2fd3ffcbda19a1236c25a87acd3d0bb19f224b0b85c144926fec8d43ae8bcdba",
     "./fgfw-lite/httputil.py": "cc06795cbc5edb1b0d9e73128d1f5f841dee34697ff8ca9123a5b03af9d1cfdc",
     "./fgfw-lite/hxsocks.py": "d5c683e1e92ae3c3119c4b2a83b27063a1ad66bd336139375b015604109eaa9d",

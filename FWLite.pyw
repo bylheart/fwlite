@@ -148,7 +148,7 @@ class MainWindow(QtGui.QMainWindow):
             python = '"{}"'.format(sys.executable)
         cmd = '%s -B ./fgfw-lite/fgfw-lite.py -GUI' % python
         self.runner.start(cmd)
-        self.overwatch.start(5000)
+        # self.overwatch.start(5000)
 
     def newStderrInfo(self):
         freload = False
