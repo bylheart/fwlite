@@ -6,11 +6,7 @@ Current Version: 4.22
 
 Tested on Windows 7 and Windows 10.
 
-[Download](https://github.com/v3aqb/fwlite/archive/master.zip)
-
-## Known Issues
-
-- Incompatible with slow DNS server(ie. Pcap_DNSProxy) (issue 62)
+[Download](https://github.com/v3aqb/fwlite/archive/0.4.zip)
 
 ## For Linux and Mac:
 
@@ -62,7 +58,7 @@ run `FWLite.exe`
 - Supported parent proxy
   - HTTP Proxy
   - Socks5 Proxy
-  - [Shadowsocks] by @clowwindy (with AEAD support)
+  - [Shadowsocks] by @clowwindy
 - Prioritize parent proxies by response time
 - Redirector
 - Simple PAC for WPAD
