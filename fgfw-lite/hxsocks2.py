@@ -131,7 +131,15 @@ class hxs2_connection(object):
         self._client_status = {}
         self._stream_status = {}
 
-        self.getKey()
+        try:
+            self.getKey()
+        except Exception as e:
+            for item in (self._rfile, self._sock):
+                try:
+                    item.close()
+                except:
+                    pass
+            raise e
         # start read from hxsocks2 connection
         Thread(target=self.read_from_connection).start()
 
@@ -450,7 +458,6 @@ class hxs2_connection(object):
                 logger.error('hxs getKey Error: server auth failed, bad username or password')
         else:
             logger.error('hxs getKey Error. bad password or timestamp.')
-        self._sock.close()
         raise OSError(0, 'hxs getKey Error')
 
 

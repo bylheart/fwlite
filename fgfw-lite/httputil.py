@@ -125,5 +125,3 @@ class httpconn_pool(object):
                     pcount += 1
                 for soc in remove_lst:
                     self._remove(soc)
-            if pcount:
-                self.logger.debug('%d remotesoc purged, %d in connection pool.(%s)' % (pcount, len(self.socs), ', '.join([('%s' % k[0]) if isinstance(k, tuple) else k for k, v in self.POOL.items() if v])))

@@ -112,6 +112,10 @@ class sssocket(object):
                     sock.close()
                 except (OSError, IOError):
                     pass
+            try:
+                self._rfile.close()
+            except (OSError, IOError):
+                pass
 
     def recv(self, size):
         return self._socketpair_a.recv(size)

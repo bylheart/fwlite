@@ -97,7 +97,7 @@ except ImportError:
     def on_finish(hdlr):
         pass
 
-__version__ = '4.21.4'
+__version__ = '4.21.5'
 
 NetWorkIOError = (IOError, OSError, BufEmptyError, InvalidTag)
 DEFAULT_TIMEOUT = 5
@@ -151,7 +151,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             BaseHTTPRequestHandler.finish(self)
         except NetWorkIOError as e:
             if e[0] not in (errno.ECONNABORTED, errno.ECONNRESET, errno.EPIPE):
-                raise
+                raise e
 
     def send_error(self, code, message=None):
         """Send and log an error reply. """
@@ -260,7 +260,7 @@ class ProxyHandler(HTTPRequestHandler):
             if e.errno in (errno.ECONNABORTED, errno.ECONNRESET, errno.EPIPE):
                 self.close_connection = 1
             else:
-                raise
+                raise e
         finally:
             if self.path:
                 self.logger.debug(self.shortpath or self.path + ' finished: %d' % self.connection_port)
@@ -372,6 +372,7 @@ class ProxyHandler(HTTPRequestHandler):
         self._do_GET()
 
     def _do_GET(self, retry=False):
+        remoterfile = None
         try:
             if retry:
                 if self.remotesoc:
@@ -593,9 +594,14 @@ class ProxyHandler(HTTPRequestHandler):
             if self.close_connection:
                 self.connection.close()
         except ClientError as e:
-            raise
+            raise e
         except NetWorkIOError as e:
             return self.on_GET_Error(e)
+        finally:
+            try:
+                remoterfile.close()
+            except:
+                pass
 
     def on_GET_Error(self, e):
         if self.ppname:
@@ -616,57 +622,8 @@ class ProxyHandler(HTTPRequestHandler):
 
         data = self.connection_recv(4)
 
-        if self.path.endswith(':80') and data in (b'GET ', b'POST'):
-            # it's a http request, start parsing
-            request_line = data + self.rfile.readline()
-            self.requestline = request_line.rstrip(b'\r\n')
-            words = self.requestline.split()
-            if len(words) == 3:
-                command, path, version = words
-                if version[:5] != 'HTTP/':
-                    return
-                try:
-                    base_version_number = version.split('/', 1)[1]
-                    version_number = base_version_number.split(".")
-                    # RFC 2145 section 3.1 says there can be only one "." and
-                    #   - major and minor numbers MUST be treated as
-                    #      separate integers;
-                    #   - HTTP/2.4 is a lower version than HTTP/2.13, which in
-                    #      turn is lower than HTTP/12.3;
-                    #   - Leading zeros MUST be ignored by recipients.
-                    if len(version_number) != 2:
-                        raise ValueError
-                    version_number = int(version_number[0]), int(version_number[1])
-                except (ValueError, IndexError):
-                    return
-                if version_number >= (1, 1) and self.protocol_version >= "HTTP/1.1":
-                    self.close_connection = 0
-            else:
-                return
-            self.command, self.path, self.request_version = command, path, version
-
-            # get headers
-            header_data = []
-            while True:
-                line = self.rfile_readline()
-                header_data.append(line)
-                if line in (b'\r\n', b'\n', b'\r'):  # header ends with a empty line
-                    break
-                if not line:
-                    raise IOError(0, 'remote socket closed')
-            self.header_data = b''.join(header_data)
-            self.headers = parse_headers(self.header_data)
-
-            conntype = self.headers.get('Connection', "")
-            if conntype.lower() == 'close':
-                self.close_connection = 1
-            elif (conntype.lower() == 'keep-alive' and
-                  self.protocol_version >= "HTTP/1.1"):
-                self.close_connection = 0
-            return self.do_GET()
-
-        elif data.startswith(b'\x16\x03'):
-            # parse SNI
+        # parse SNI
+        if data.startswith(b'\x16\x03'):
             data = data + self.connection_recv(8196)
             try:
                 server_name = extract_server_name(data)
